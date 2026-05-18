@@ -1,0 +1,4 @@
+# Configuration for openapi-python-client (B246).
+# See https://github.com/openapi-generators/openapi-python-client#configuration
+project_name_override: nousviz-client
+package_name_override: nousviz_client

@@ -1,0 +1,116 @@
+name: Bug report
+description: Report a confirmed bug. For "how do I…" questions use Discussions instead.
+title: "[bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug. To help us reproduce + fix it
+        quickly, please fill in every required field below. If a field doesn't
+        apply (e.g. you hit the bug from the API not the browser), say "n/a".
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: A clear description of the actual behaviour you observed.
+      placeholder: When I clicked X, the page Y instead of Z.
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-expected
+    attributes:
+      label: What you expected to happen
+      placeholder: I expected Z, because the docs / UI / previous version did Z.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps starting from a clean state.
+      placeholder: |
+        1. Install plugin foo
+        2. Open /datasets/foo/bar
+        3. Click "View rows"
+        4. Observe that …
+    validations:
+      required: true
+
+  - type: input
+    id: nousviz-version
+    attributes:
+      label: NousViz version
+      description: Output of `cat VERSION` from the source tree, or the version shown in `/api/health`.
+      placeholder: e.g. 0.9.11.4
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: How did you install?
+      options:
+        - "Quick start: install.sh (curl-pipe one-liner)"
+        - "setup.sh --server (server deploy)"
+        - "setup.sh (local development)"
+        - "Manual / from source"
+        - "Other (describe in 'Additional context')"
+    validations:
+      required: true
+
+  - type: input
+    id: postgres-version
+    attributes:
+      label: Postgres version
+      description: "`psql --version` or `SELECT version();`"
+      placeholder: e.g. PostgreSQL 16.4
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Host OS
+      placeholder: e.g. Ubuntu 24.04, macOS 14.5
+    validations:
+      required: true
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser (frontend bugs only)
+      description: Required only if the bug is in the dashboard UI.
+      placeholder: e.g. Chrome 130 / Firefox 131 / Safari 18 — n/a if not a frontend bug
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Trim to the relevant lines. `pm2 logs api --lines 50 --nostream` is usually a good start. Mask any secrets.
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Anything else that might help — recent config changes, plugin list (`pm2 list`), workarounds you tried.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: acknowledgements
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched [existing issues](https://github.com/nousviz/nousviz-app/issues) and didn't find a duplicate
+          required: true
+        - label: I'm running a recent NousViz version (within the last few releases)
+          required: true

@@ -1,0 +1,38 @@
+# dataport.yaml — Starter Plugin Data Port Configuration
+#
+# Contributes read-only table views to the core Data Port page (/data-port).
+# The core data_port.py route scans plugins/installed/*/dataport.yaml at request time.
+# No core code change is needed when you add or change this file.
+#
+# Rule: Only reference tables declared in plugin.yaml databases.postgres.tables.
+
+tabs:
+  - id: items
+    label: Items
+    table: starter_items          # Must be in plugin.yaml databases.postgres.tables
+    columns:
+      - { key: id,         label: ID,      type: text }
+      - { key: name,       label: Name,    type: text }
+      - { key: status,     label: Status,  type: badge,
+          values: { active: green, inactive: grey, archived: red } }
+      - { key: created_at, label: Created, type: datetime }
+      - { key: updated_at, label: Updated, type: datetime }
+    default_sort: created_at DESC
+    page_size: 50
+    filters:
+      - { key: status, label: Status, type: select,
+          options: [active, inactive, archived] }
+      - { key: name,   label: Name,   type: text_search }
+
+  - id: events
+    label: Sync Events
+    table: starter_events
+    columns:
+      - { key: id,          label: ID,         type: text }
+      - { key: event_type,  label: Event Type, type: text }
+      - { key: created_at,  label: Timestamp,  type: datetime }
+    default_sort: created_at DESC
+    page_size: 100
+    filters:
+      - { key: event_type, label: Type, type: select,
+          options: [sync, install, error] }

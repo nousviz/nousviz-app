@@ -1,0 +1,61 @@
+name: Feature request
+description: Propose a new feature, capability, or improvement.
+title: "[feature] "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for proposing a feature. Strong feature requests describe a real
+        problem first, then a proposal — it's much easier to evaluate "I'm
+        trying to do X and currently can't" than "please add Y".
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to accomplish? Why is the current behaviour blocking?
+      placeholder: I'm trying to alert on a chart widget, but alerts only support KPI thresholds today, so I have to …
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed
+    attributes:
+      label: Proposed solution
+      description: How should NousViz behave to solve the problem? Sketches, mockups, API shape are welcome.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What other approaches have you tried or considered? Why didn't they work?
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Related plugins, similar features in other tools, links to relevant discussion.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      description: Optional, but very helpful.
+      options:
+        - label: I'm willing to open a PR for this if the maintainers think it fits
+          required: false
+
+  - type: checkboxes
+    id: acknowledgements
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched [existing issues](https://github.com/nousviz/nousviz-app/issues) and the [roadmap](https://github.com/nousviz/nousviz-app/blob/main/ROADMAP.md), and this isn't already planned
+          required: true

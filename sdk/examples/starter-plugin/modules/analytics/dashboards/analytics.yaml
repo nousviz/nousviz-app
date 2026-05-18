@@ -1,0 +1,47 @@
+# Module dashboard — rendered by DashboardRenderer when the module is enabled.
+# No frontend code needed — pure YAML + SQL.
+
+title: Analytics
+db_engine: postgres
+refresh_seconds: 60
+
+panels:
+  - type: stat
+    label: Items This Week
+    query: >
+      SELECT count(*) AS value
+      FROM starter_items
+      WHERE created_at >= now() - interval '7 days'
+    fallback_empty: true
+
+  - type: stat
+    label: Items This Month
+    query: >
+      SELECT count(*) AS value
+      FROM starter_items
+      WHERE created_at >= now() - interval '30 days'
+    fallback_empty: true
+
+  - type: line_chart
+    label: Items Over Time
+    query: >
+      SELECT date_trunc('day', created_at) AS x,
+             count(*) AS y
+      FROM starter_items
+      WHERE created_at >= now() - interval '30 days'
+      GROUP BY date_trunc('day', created_at)
+      ORDER BY x
+    x_key: x
+    y_key: y
+    fallback_empty: true
+
+  - type: bar_chart
+    label: Items by Status
+    query: >
+      SELECT status AS x, count(*) AS y
+      FROM starter_items
+      GROUP BY status
+      ORDER BY y DESC
+    x_key: x
+    y_key: y
+    fallback_empty: true

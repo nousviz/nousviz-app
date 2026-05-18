@@ -1,0 +1,361 @@
+[
+  {
+    "id": "71b6f3e3-41df-42ec-825a-f1369b54b5e7",
+    "annotation_id": "ann_google_core_update_march_2025",
+    "slug": "google-core-update-march-2025",
+    "title": "Google Core Update \u2014 March 2025",
+    "summary": "Broad core ranking update affecting search visibility, traffic, and rankings across all verticals.",
+    "description": "Google released a broad core update in March 2025. Core updates re-evaluate content quality signals and can cause significant ranking shifts. Sites with thin content, poor E-E-A-T signals, or outdated information may see traffic declines, while high-quality sites may benefit.",
+    "scope": "global",
+    "vendor": "google",
+    "status": "published",
+    "visibility": "public",
+    "start_time": "2025-03-13T00:00:00Z",
+    "end_time": "2025-03-27T00:00:00Z",
+    "trust_level": "official",
+    "review_state": "approved",
+    "created_by": "internal_editor",
+    "products": [
+      "search",
+      "google-search-console"
+    ],
+    "categories": [
+      "core-update",
+      "algorithm-update"
+    ],
+    "industries": [
+      "seo",
+      "affiliate-marketing",
+      "ecommerce"
+    ],
+    "tags": [
+      "rankings",
+      "traffic",
+      "volatility",
+      "search",
+      "google"
+    ],
+    "related_plugins": [
+      "google-search-console"
+    ],
+    "related_datasets": [
+      "gsc_performance_raw"
+    ],
+    "sources": [
+      {
+        "label": "Google Search Central Blog",
+        "source_url": "https://developers.google.com/search/blog"
+      },
+      {
+        "label": "Google SearchLiaison",
+        "source_url": "https://twitter.com/searchliaison"
+      }
+    ],
+    "seo_title": "Google Core Update \u2014 March 2025 | Nousviz Annotations",
+    "seo_description": "Broad core ranking update affecting search visibility, traffic, and rankings across all verticals.",
+    "published_at": "2026-03-15T16:59:55.434488+00:00",
+    "created_at": "2026-03-15T16:59:55.434488+00:00",
+    "updated_at": "2026-03-15T16:59:55.434488+00:00"
+  },
+  {
+    "id": "b8678bda-02ed-4f21-b8c9-56818b9cb752",
+    "annotation_id": "ann_google_core_update_december_2024",
+    "slug": "google-core-update-december-2024",
+    "title": "Google Core Update \u2014 December 2024",
+    "summary": "Year-end core update with significant ranking volatility observed across affiliate and ecommerce sites.",
+    "description": "The December 2024 core update rolled out over approximately two weeks. Affiliate marketers reported notable shifts in rankings for review content and comparison pages. Sites relying heavily on programmatic SEO saw mixed results.",
+    "scope": "global",
+    "vendor": "google",
+    "status": "published",
+    "visibility": "public",
+    "start_time": "2024-12-12T00:00:00Z",
+    "end_time": "2024-12-24T00:00:00Z",
+    "trust_level": "official",
+    "review_state": "approved",
+    "created_by": "internal_editor",
+    "products": [
+      "search",
+      "google-search-console"
+    ],
+    "categories": [
+      "core-update",
+      "algorithm-update"
+    ],
+    "industries": [
+      "seo",
+      "affiliate-marketing",
+      "ecommerce"
+    ],
+    "tags": [
+      "rankings",
+      "traffic",
+      "volatility",
+      "search",
+      "google",
+      "affiliate"
+    ],
+    "related_plugins": [
+      "google-search-console"
+    ],
+    "related_datasets": [
+      "gsc_performance_raw"
+    ],
+    "sources": [
+      {
+        "label": "Google Search Central Blog",
+        "source_url": "https://developers.google.com/search/blog"
+      }
+    ],
+    "seo_title": "Google Core Update \u2014 December 2024 | Nousviz Annotations",
+    "seo_description": "Year-end core update with significant ranking volatility observed across affiliate and ecommerce sites.",
+    "published_at": "2026-03-15T16:59:55.436436+00:00",
+    "created_at": "2026-03-15T16:59:55.436436+00:00",
+    "updated_at": "2026-03-15T16:59:55.436436+00:00"
+  },
+  {
+    "id": "ef8672af-488e-4725-ba31-b2d3ef92e040",
+    "annotation_id": "ann_google_core_update_august_2024",
+    "slug": "google-core-update-august-2024",
+    "title": "Google Core Update \u2014 August 2024",
+    "summary": "Summer core update with reported impact on health, finance, and affiliate content verticals.",
+    "description": "The August 2024 core update focused on content quality and helpfulness signals. Sites with original research and first-hand experience saw improvements, while aggregator and thin affiliate content saw declines.",
+    "scope": "global",
+    "vendor": "google",
+    "status": "published",
+    "visibility": "public",
+    "start_time": "2024-08-15T00:00:00Z",
+    "end_time": "2024-08-31T00:00:00Z",
+    "trust_level": "official",
+    "review_state": "approved",
+    "created_by": "internal_editor",
+    "products": [
+      "search",
+      "google-search-console"
+    ],
+    "categories": [
+      "core-update",
+      "algorithm-update"
+    ],
+    "industries": [
+      "seo",
+      "affiliate-marketing"
+    ],
+    "tags": [
+      "rankings",
+      "traffic",
+      "search",
+      "google"
+    ],
+    "related_plugins": [
+      "google-search-console"
+    ],
+    "related_datasets": [
+      "gsc_performance_raw"
+    ],
+    "sources": [],
+    "seo_title": "Google Core Update \u2014 August 2024 | Nousviz Annotations",
+    "seo_description": "Summer core update with reported impact on health, finance, and affiliate content verticals.",
+    "published_at": "2026-03-15T16:59:55.437736+00:00",
+    "created_at": "2026-03-15T16:59:55.437736+00:00",
+    "updated_at": "2026-03-15T16:59:55.437736+00:00"
+  },
+  {
+    "id": "acd42be8-1263-4088-9a9d-1e4b0d6939fc",
+    "annotation_id": "ann_google_core_update_march_2024",
+    "slug": "google-core-update-march-2024",
+    "title": "Google Core Update \u2014 March 2024",
+    "summary": "Major core update combined with spam update, significantly impacting low-quality content sites.",
+    "description": "Google's March 2024 core update was released alongside a spam update, resulting in one of the most impactful algorithm changes in recent years. Many affiliate and review sites experienced dramatic traffic losses. The update emphasized original, helpful content and penalized sites with AI-generated or thin content at scale.",
+    "scope": "global",
+    "vendor": "google",
+    "status": "published",
+    "visibility": "public",
+    "start_time": "2024-03-05T00:00:00Z",
+    "end_time": "2024-04-19T00:00:00Z",
+    "trust_level": "official",
+    "review_state": "approved",
+    "created_by": "internal_editor",
+    "products": [
+      "search",
+      "google-search-console"
+    ],
+    "categories": [
+      "core-update",
+      "algorithm-update"
+    ],
+    "industries": [
+      "seo",
+      "affiliate-marketing",
+      "ecommerce"
+    ],
+    "tags": [
+      "rankings",
+      "traffic",
+      "volatility",
+      "search",
+      "google",
+      "spam",
+      "ai-content"
+    ],
+    "related_plugins": [
+      "google-search-console"
+    ],
+    "related_datasets": [
+      "gsc_performance_raw"
+    ],
+    "sources": [
+      {
+        "label": "Google Blog \u2014 March 2024 Core Update",
+        "source_url": "https://developers.google.com/search/blog/2024/03/core-update-spam-update"
+      }
+    ],
+    "seo_title": "Google Core Update \u2014 March 2024 | Nousviz Annotations",
+    "seo_description": "Major core update combined with spam update, significantly impacting low-quality content sites.",
+    "published_at": "2026-03-15T16:59:55.438867+00:00",
+    "created_at": "2026-03-15T16:59:55.438867+00:00",
+    "updated_at": "2026-03-15T16:59:55.438867+00:00"
+  },
+  {
+    "id": "e7812f26-6d9a-4127-a8e1-f0f2ed0faa4f",
+    "annotation_id": "ann_google_spam_update_march_2024",
+    "slug": "google-spam-update-march-2024",
+    "title": "Google Spam Update \u2014 March 2024",
+    "summary": "Spam policies update targeting scaled content abuse, expired domain abuse, and site reputation abuse.",
+    "description": "Released alongside the March 2024 core update, this spam update introduced new policies against three forms of spam: scaled content abuse (mass AI content), expired domain abuse (buying domains for their authority), and site reputation abuse (third-party content on authoritative domains).",
+    "scope": "global",
+    "vendor": "google",
+    "status": "published",
+    "visibility": "public",
+    "start_time": "2024-03-05T00:00:00Z",
+    "end_time": "2024-03-20T00:00:00Z",
+    "trust_level": "official",
+    "review_state": "approved",
+    "created_by": "internal_editor",
+    "products": [
+      "search"
+    ],
+    "categories": [
+      "spam-update",
+      "policy-change"
+    ],
+    "industries": [
+      "seo",
+      "affiliate-marketing"
+    ],
+    "tags": [
+      "spam",
+      "ai-content",
+      "google",
+      "policy"
+    ],
+    "related_plugins": [
+      "google-search-console"
+    ],
+    "related_datasets": [
+      "gsc_performance_raw"
+    ],
+    "sources": [],
+    "seo_title": "Google Spam Update \u2014 March 2024 | Nousviz Annotations",
+    "seo_description": "Spam policies update targeting scaled content abuse, expired domain abuse, and site reputation abuse.",
+    "published_at": "2026-03-15T16:59:55.440148+00:00",
+    "created_at": "2026-03-15T16:59:55.440148+00:00",
+    "updated_at": "2026-03-15T16:59:55.440148+00:00"
+  },
+  {
+    "id": "ef860e20-6376-42af-b547-0b86301062cf",
+    "annotation_id": "ann_google_search_console_data_delay",
+    "slug": "google-search-console-data-delay",
+    "title": "Google Search Console Data Delay",
+    "summary": "GSC performance data delayed by 3-5 days for multiple properties.",
+    "description": "Google Search Console experienced a data processing delay affecting performance reports. Data for several days was missing or incomplete. Google confirmed the issue and data was backfilled within a week.",
+    "scope": "product",
+    "vendor": "google",
+    "status": "published",
+    "visibility": "public",
+    "start_time": "2025-09-10T00:00:00Z",
+    "end_time": "2025-09-15T00:00:00Z",
+    "trust_level": "official",
+    "review_state": "approved",
+    "created_by": "internal_editor",
+    "products": [
+      "google-search-console"
+    ],
+    "categories": [
+      "delay",
+      "incident"
+    ],
+    "industries": [
+      "seo"
+    ],
+    "tags": [
+      "gsc",
+      "data-delay",
+      "google"
+    ],
+    "related_plugins": [
+      "google-search-console"
+    ],
+    "related_datasets": [
+      "gsc_performance_raw"
+    ],
+    "sources": [],
+    "seo_title": "Google Search Console Data Delay | Nousviz Annotations",
+    "seo_description": "GSC performance data delayed by 3-5 days for multiple properties.",
+    "published_at": "2026-03-15T16:59:55.441376+00:00",
+    "created_at": "2026-03-15T16:59:55.441376+00:00",
+    "updated_at": "2026-03-15T16:59:55.441376+00:00"
+  },
+  {
+    "id": "7d12d4e4-3ac1-4bde-b081-0104777c3290",
+    "annotation_id": "ann_cloudflare_global_outage",
+    "slug": "cloudflare-global-outage",
+    "title": "Cloudflare Global Outage",
+    "summary": "Cloudflare experienced a global service disruption affecting HTTP proxying and CDN services.",
+    "description": "A widespread Cloudflare outage impacted websites globally for approximately 2 hours. Sites behind Cloudflare returned 500 errors, affecting traffic metrics and potentially masking real user activity during the window.",
+    "scope": "vendor",
+    "vendor": "cloudflare",
+    "status": "published",
+    "visibility": "public",
+    "start_time": "2025-06-21T14:00:00Z",
+    "end_time": "2025-06-21T16:30:00Z",
+    "trust_level": "official",
+    "review_state": "approved",
+    "created_by": "internal_editor",
+    "products": [
+      "cloudflare-cdn",
+      "cloudflare-analytics"
+    ],
+    "categories": [
+      "outage",
+      "incident"
+    ],
+    "industries": [
+      "seo",
+      "ecommerce",
+      "saas"
+    ],
+    "tags": [
+      "cloudflare",
+      "outage",
+      "cdn",
+      "traffic"
+    ],
+    "related_plugins": [
+      "cloudflare"
+    ],
+    "related_datasets": [
+      "cf_http_5m"
+    ],
+    "sources": [
+      {
+        "label": "Cloudflare Status",
+        "source_url": "https://www.cloudflarestatus.com"
+      }
+    ],
+    "seo_title": "Cloudflare Global Outage | Nousviz Annotations",
+    "seo_description": "Cloudflare experienced a global service disruption affecting HTTP proxying and CDN services.",
+    "published_at": "2026-03-15T16:59:55.442598+00:00",
+    "created_at": "2026-03-15T16:59:55.442598+00:00",
+    "updated_at": "2026-03-15T16:59:55.442598+00:00"
+  }
+]

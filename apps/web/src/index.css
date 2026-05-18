@@ -1,0 +1,314 @@
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap');
+
+@tailwind base;
+
+html {
+  scroll-behavior: smooth;
+}
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* ── Light mode ─────────────────────────────────────────── */
+  :root {
+    /* B212 follow-up: hint browsers to render native form controls
+       (date pickers, file inputs, scrollbars) in light mode. The .dark
+       block below switches this to 'dark'. Without it, Chrome's native
+       calendar popover for <input type="date"> renders as a
+       black-on-light icon that stands out on dark backgrounds. */
+    color-scheme: light;
+    --background: 0 0% 98%;
+    --foreground: 240 10% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 10%;
+    --primary: 210 100% 62%;   /* #3f9fff — brand blue, matches favicon */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 5% 93%;
+    --secondary-foreground: 240 5% 35%;
+    --muted: 240 5% 93%;
+    --muted-foreground: 240 5% 45%;
+    --accent: 210 100% 62%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 6% 90%;
+    --input: 240 5% 93%;
+    --ring: 210 100% 45%;
+    --radius: 0.75rem;
+    --sidebar-background: 240 5% 96%;
+    --sidebar-foreground: 240 10% 10%;
+    --sidebar-primary: 210 100% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 5% 90%;
+    --sidebar-accent-foreground: 240 10% 10%;
+    --sidebar-border: 240 6% 90%;
+    --sidebar-ring: 210 100% 45%;
+    --sidebar-w: 224px;
+    --topbar-h: 56px;
+    /* Font family tokens */
+    --font-display: 'Instrument Sans', system-ui, sans-serif;
+    --font-body: 'Instrument Sans', system-ui, sans-serif;
+  }
+
+  /* ── Dark mode ──────────────────────────────────────────── */
+  .dark {
+    color-scheme: dark;
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 6% 6%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 210 100% 60%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 5% 12%;
+    --secondary-foreground: 0 0% 70%;
+    --muted: 240 5% 15%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 210 100% 60%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 0 0% 100% / 0.05;
+    --input: 240 5% 15%;
+    --ring: 210 100% 60%;
+    --sidebar-background: 240 8% 5%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 210 100% 60%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 5% 12%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 0 0% 100% / 0.05;
+    --sidebar-ring: 210 100% 60%;
+  }
+
+  /* ── Sovereign Analyst palette (deep space, premium iGaming) ── */
+  /* Applied via .palette-sovereign on <html>, always dark */
+  .palette-sovereign {
+    /* Surface hierarchy — tonal depth, no hard borders */
+    --background:  240 6% 7%;   /* #131316 */
+    --foreground:  220 14% 91%; /* #e4e1e6 */
+    --card:        240 5% 12%;  /* #1f1f22 — surface-container */
+    --card-foreground: 220 14% 91%;
+    --popover:     240 5% 10%;  /* #1b1b1e — surface-container-low */
+    --popover-foreground: 220 14% 91%;
+
+    /* Primary — liquid blue */
+    --primary:     214 100% 82%; /* #a3c9ff */
+    --primary-foreground: 214 100% 11%; /* #001c39 */
+
+    /* Secondary — elevated surface */
+    --secondary:   240 4% 17%;  /* #2a2a2d — surface-container-high */
+    --secondary-foreground: 218 20% 80%; /* #c0c7d5 — on-surface-variant */
+
+    /* Muted — recessed surface */
+    --muted:       240 4% 11%;  /* #1b1b1e — surface-container-low */
+    --muted-foreground: 218 20% 80%; /* #c0c7d5 */
+
+    --accent:      214 100% 82%;
+    --accent-foreground: 214 100% 11%;
+    --destructive: 5 100% 84%;  /* #ffb4ab */
+    --destructive-foreground: 5 100% 21%;
+    --border:      220 12% 28% / 0.15; /* outline-variant at 15% — ghost border rule */
+    --input:       240 4% 17%;
+    --ring:        214 100% 82%;
+    --radius:      0.75rem;
+
+    /* Sidebar — surface-container-low */
+    --sidebar-background: 240 4% 11%;  /* #1b1b1e */
+    --sidebar-foreground: 220 14% 91%;
+    --sidebar-primary:    214 100% 82%;
+    --sidebar-primary-foreground: 214 100% 11%;
+    --sidebar-accent:     240 4% 17%;
+    --sidebar-accent-foreground: 220 14% 91%;
+    --sidebar-border:     220 12% 28% / 0.10;
+    --sidebar-ring:       214 100% 82%;
+
+    /* Font family override — Manrope display + Inter body */
+    --font-display: 'Manrope', system-ui, sans-serif;
+    --font-body:    'Inter', system-ui, sans-serif;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-body);
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+  }
+  /* Keep the original weight/tracking when not in sovereign palette */
+  :root:not(.palette-sovereign) .font-display {
+    font-weight: 600;
+    letter-spacing: -0.04em;
+  }
+  .font-body {
+    font-family: var(--font-body);
+    font-weight: 400;
+    line-height: 1.6;
+  }
+  .font-mono-deck {
+    font-family: 'Geist Mono', ui-monospace, monospace;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--secondary)) 25%,
+      hsl(var(--muted)) 50%,
+      hsl(var(--secondary)) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+  }
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Sidebar collapsed mode — nav items */
+.sidebar-nav.collapsed a {
+  justify-content: center;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  overflow: hidden;
+}
+/* Hide labels, badges, flex-1 spans */
+.sidebar-nav.collapsed .sidebar-label,
+.sidebar-nav.collapsed .font-body,
+.sidebar-nav.collapsed .flex-1 {
+  display: none;
+}
+/* Section header buttons: hide entirely, show a thin divider instead */
+.sidebar-nav.collapsed > div > button {
+  height: 0;
+  padding: 0;
+  margin: 0.25rem 0;
+  overflow: hidden;
+  pointer-events: none;
+  border-top: 1px solid hsl(var(--border) / 0.4);
+}
+/* Hide plugin sub-items when collapsed */
+.sidebar-nav.collapsed [class*="SubNav"],
+.sidebar-nav.collapsed .pl-7,
+.sidebar-nav.collapsed .pl-10 {
+  display: none;
+}
+/* Hide "No plugins installed" message */
+.sidebar-nav.collapsed .opacity-60 {
+  display: none;
+}
+/* Tooltip on hover for collapsed items */
+.sidebar-nav.collapsed a {
+  position: relative;
+}
+.sidebar-nav.collapsed a:hover::after {
+  content: attr(title);
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-left: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  z-index: 100;
+  pointer-events: none;
+  color: hsl(var(--foreground));
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+/* ── Fusion hero animations ─────────────────────────────────────────── */
+@keyframes fadeScaleIn {
+  0% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--tx, 0px)), -50%) scale(0.6);
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes progress-bar {
+  0%   { transform: scaleX(0); transform-origin: left; }
+  100% { transform: scaleX(1); transform-origin: left; }
+}
+
+.animate-progress-bar {
+  animation: progress-bar 8s linear forwards;
+}
+
+@keyframes progress-indeterminate {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+/* ── react-grid-layout polish (v0.10.1.2) ─────────────────────────────
+   Override the lib's default tiny grey resize handle with a visible
+   corner triangle that shows up on widget hover/selection. */
+
+.react-grid-item > .react-resizable-handle {
+  width: 14px;
+  height: 14px;
+  background: none;
+  cursor: se-resize;
+}
+.react-grid-item > .react-resizable-handle::after {
+  content: "";
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid hsl(var(--muted-foreground));
+  border-bottom: 2px solid hsl(var(--muted-foreground));
+  opacity: 0.5;
+  transition: opacity 0.15s, border-color 0.15s;
+}
+.react-grid-item:hover > .react-resizable-handle::after {
+  opacity: 1;
+  border-color: hsl(var(--primary));
+}
+
+/* While dragging, keep the widget translucent + slightly lifted so the
+   target slot is visible underneath. */
+.react-grid-item.react-draggable-dragging {
+  z-index: 50;
+  opacity: 0.9;
+  cursor: grabbing !important;
+  transition: none;
+}
+
+/* The grid placeholder (visual drop target) — make it look like an
+   actual snap target instead of the default solid red block. */
+.react-grid-placeholder {
+  background: hsl(var(--primary) / 0.15) !important;
+  border: 2px dashed hsl(var(--primary) / 0.5) !important;
+  border-radius: 0.5rem !important;
+  opacity: 1 !important;
+  transition-duration: 100ms !important;
+}

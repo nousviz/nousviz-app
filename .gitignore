@@ -1,0 +1,108 @@
+# Dependencies
+node_modules/
+.venv/
+__pycache__/
+
+# Build output
+dist/
+build/
+.next/
+*.egg-info/
+
+# Runtime data
+storage/cms/uploads/
+logs/
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+api_keys.json
+*.pem
+*.key
+*.p12
+*.pfx
+**/gsc-*.json
+**/service-account*.json
+**/sa-*.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Logs & runtime
+*.log
+.logs/
+.pids/
+
+# Data stores (managed by the app at runtime)
+*_store.json
+*_settings.json
+collective_exports.json
+collective_packets/
+
+# Legacy store names (keeping for safety)
+annotations.json
+alerts.json
+alert_feedback.json
+notes.json
+shared_links.json
+activity_log.json
+overrides.json
+license.json
+
+# Installed plugins — user installs from marketplace, never committed
+plugins/installed/
+!plugins/installed/.gitkeep
+plugins/community/
+!plugins/community/.gitkeep
+
+# ── Local-only / reference files (not part of the product) ──
+
+# Working directories — specs, reference projects, separate codebases
+# (bare names match root-level dirs only; plugin paths are excluded below)
+1engine-cms/
+affiliate-network/
+casino-complaints-kb/
+design-systems/
+fitness-tracker/
+igaming-industry-insights/
+igaming-offers/
+new-cbn-main/
+# Private plugin working-directory patterns (operator-local clones)
+# Add any private plugin slugs here so they never get committed by accident.
+new-newsletter/
+pam/
+
+# Local context files used during plugin development (kept locally only)
+clickhouse-test/
+site-1engine-main/
+notes-from-clickhouse-test.md
+
+# Dev log stays local — private build journal, never push to public repo
+# KEEP THIS DIRECTORY — it contains session-by-session build history
+dev-log/
+
+# Release readiness audit — documents weaknesses, never commit to public repo
+todo/
+
+# Local test files
+embed-test.html
+1engine
+collective_salt.txt
+*_salt.txt
+
+# Backups
+backups/
+
+# P208 (v0.9.0): credential broker socket lives here at runtime.
+# Created with mode 0700; never versioned.
+run/
+
+# Claude Code configuration (developer-specific, not part of OSS)
+.claudeignore
+CLAUDE.md
+.claude/

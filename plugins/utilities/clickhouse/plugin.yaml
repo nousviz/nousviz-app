@@ -1,0 +1,73 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# plugins/utilities/clickhouse/plugin.yaml
+# ClickHouse utility plugin — installs and configures ClickHouse as a platform
+# infrastructure component. Analytics plugins that declare `requires: clickhouse: true`
+# need this utility to be configured first.
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: clickhouse
+display_name: ClickHouse
+version: 1.0.0
+description: >
+  ClickHouse column-oriented database for analytics plugins that need
+  high-performance aggregation over large datasets. Installs and configures
+  ClickHouse (v24.3+) as a platform service. Required by plugins that
+  declare requires.clickhouse: true.
+license: Apache-2.0
+icon: Database
+category: utility
+tags: [infrastructure, analytics, database]
+visibility: public
+homepage: https://clickhouse.com
+
+publisher:
+  slug: nousviz
+  name: NousViz
+  website: https://nousviz.com
+  contact_email: plugins@nousviz.com
+  verified: true
+
+repository: https://github.com/ClickHouse/ClickHouse
+
+# ── Requirements ─────────────────────────────────────────────────────────────
+# Minimum server requirements for the ClickHouse utility plugin.
+# The install script checks these and fails with a clear message if not met.
+requires:
+  min_ram_mb: 4096       # 2GB hangs ClickHouse 26.4 init (schedule pools + background threads); 4GB verified stable
+  min_disk_mb: 2048      # ~700MB binary + working data headroom
+  os: linux              # macOS supported but untested in production
+
+# ── Type ─────────────────────────────────────────────────────────────────────
+# Utility plugins have type: utility and appear in a separate
+# "Utilities" section of the marketplace. They provide platform-level
+# services that other plugins can depend on.
+
+type: utility
+
+# Capability provided — plugins declaring `requires: clickhouse: true` need this
+provides:
+  - clickhouse
+
+# Install/uninstall hooks — run by the platform during plugin lifecycle
+install_hook: scripts/install.sh
+uninstall_hook: scripts/uninstall.sh
+health_check: scripts/health.sh
+
+# ── Connections ───────────────────────────────────────────────────────────────
+# Connection settings that the operator fills in during setup.
+# These become the CLICKHOUSE_* env vars used by all analytics plugins.
+
+connections:
+  - name: clickhouse
+    env_prefix: CLICKHOUSE_
+    label: ClickHouse Configuration
+    description: >
+      Connection settings for the local ClickHouse instance managed by this utility.
+      These are automatically configured during install. Edit only if you need to
+      connect to an external ClickHouse instance instead.
+    fields:
+      - { name: host,     label: "Host",     type: text,     required: true,  default: "localhost" }
+      - { name: port,     label: "HTTP Port", type: number,  required: false, default: 8123 }
+      - { name: user,     label: "Username", type: text,     required: true,  default: "default" }
+      - { name: password, label: "Password", type: password, required: false }
+      - { name: database, label: "Database", type: text,     required: false, default: "default" }

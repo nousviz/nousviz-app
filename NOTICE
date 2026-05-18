@@ -1,0 +1,77 @@
+NOTICE — Third-Party Software
+
+NousViz includes or depends on the following open-source software.
+Each retains its original license. NousViz does not modify or redistribute
+these packages — they are installed by end users via npm and pip.
+
+================================================================================
+JAVASCRIPT / FRONTEND
+================================================================================
+
+React 18.3                  MIT License       Copyright (c) Meta Platforms, Inc.
+React DOM 18.3              MIT License       Copyright (c) Meta Platforms, Inc.
+React Router DOM 6.30       MIT License       Copyright (c) Remix Software, Inc.
+React Markdown 10.1         MIT License       Copyright (c) Espen Hovlandsdal
+Vite 6.4                    MIT License       Copyright (c) Evan You
+Tailwind CSS 3.4            MIT License       Copyright (c) Tailwind Labs, Inc.
+Recharts 2.15               MIT License       Copyright (c) Recharts Group
+Lucide React 0.462+         ISC License       Copyright (c) Lucide Contributors
+clsx 2.1                    MIT License       Copyright (c) Luke Edwards
+tailwind-merge 2.6          MIT License       Copyright (c) Dany Abramov
+class-variance-authority     Apache 2.0       Copyright (c) Joe Bell
+date-fns 3.6                MIT License       Copyright (c) Sasha Koss
+@tailwindcss/typography      MIT License       Copyright (c) Tailwind Labs, Inc.
+tailwindcss-animate 1.0      MIT License       Copyright (c) Jamie Kyle
+@vitejs/plugin-react-swc     MIT License       Copyright (c) Vite Contributors
+rehype-highlight 7.0        MIT License       Copyright (c) Titus Wormer
+rehype-slug 6.0             MIT License       Copyright (c) Titus Wormer
+remark-gfm 4.0              MIT License       Copyright (c) Titus Wormer
+
+================================================================================
+PYTHON / BACKEND
+================================================================================
+
+FastAPI 0.135               MIT License       Copyright (c) Sebastian Ramirez
+uvicorn 0.41                BSD License       Copyright (c) Encode OSS Ltd.
+gunicorn 21.2               MIT License       Copyright (c) Benoit Chesneau
+Pydantic 2.12               MIT License       Copyright (c) Samuel Colvin
+psycopg2 2.9                LGPL License      Copyright (c) Federico Di Gregorio
+httpx 0.28                  BSD License       Copyright (c) Encode OSS Ltd.
+PyYAML 6.0                  MIT License       Copyright (c) Kirill Simonov
+python-dotenv 1.2           BSD License       Copyright (c) Saurabh Kumar
+cryptography 42.0           Apache 2.0        Copyright (c) The cryptography devs
+bcrypt 4.0                  Apache 2.0        Copyright (c) The Python Cryptographic
+                                              Authority developers
+Jinja2 3.1                  BSD License       Copyright (c) Pallets Projects
+Markdown 3.7               BSD License       Copyright (c) Waylan Limberg
+python-multipart 0.0.12     Apache 2.0        Copyright (c) Andrew Frankel
+
+================================================================================
+OPTIONAL RUNTIME DEPENDENCIES (installed on-demand by plugins)
+================================================================================
+
+clickhouse-connect 0.14     Apache 2.0        Copyright (c) ClickHouse, Inc.
+PyMySQL 1.1                 MIT License       Copyright (c) PyMySQL Contributors
+
+================================================================================
+DATABASES (auto-installed by setup.sh)
+================================================================================
+
+PostgreSQL                  PostgreSQL License Copyright (c) The PostgreSQL Global
+                                              Development Group
+
+================================================================================
+INFRASTRUCTURE (optional — user installs independently)
+================================================================================
+
+Cloudflare Tunnel           Proprietary       Copyright (c) Cloudflare, Inc.
+
+================================================================================
+
+All trademarks are the property of their respective owners.
+
+This NOTICE file is provided for informational purposes. The inclusion of
+software in this list does not imply endorsement by the respective copyright
+holders.
+
+For the NousViz license, see the LICENSE file in this repository.

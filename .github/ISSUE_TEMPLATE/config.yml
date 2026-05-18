@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question / usage help
+    url: https://github.com/nousviz/nousviz-app/discussions
+    about: For "how do I…" questions and platform-usage discussion. Issues are reserved for confirmed bugs and feature requests.
+  - name: Documentation
+    url: https://github.com/nousviz/nousviz-app/blob/main/README.md
+    about: Read the README, ROADMAP, and docs/ first — they cover most usage questions.

@@ -1,0 +1,167 @@
+name: Release
+
+# Tag-driven release pipeline. Fires on `git push --tags v*`.
+#
+# Builds:
+#   1. Source tarball + SHA-256 checksum attached to the GitHub Release
+#   2. nousviz-sdk + nousviz-client wheels published to PyPI
+#   3. @nousviz/client published to npm
+#
+# Secrets required (configure in repo Settings → Secrets):
+#   - PYPI_API_TOKEN     — scoped PyPI token for nousviz-sdk + nousviz-client
+#   - NPM_TOKEN          — npm publish token for @nousviz/client
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    name: Build artefacts + GitHub Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # required by softprops/action-gh-release to create the release
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history so git archive can read every file
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          # Tag format: v1.0.0 or v1.0.0-rc1 → version is everything after 'v'.
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Extracted version: $VERSION"
+
+      - name: Extract CHANGELOG section for this version
+        id: changelog
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # Strip rc suffix when looking up CHANGELOG (rcN tags reuse
+          # the prepared section for the version).
+          LOOKUP="${VERSION%-rc*}"
+          BODY=$(python3 - "$LOOKUP" <<'PY'
+          import sys
+          lookup = sys.argv[1]
+          header = f"## [{lookup}]"
+          collected = []
+          found = False
+          with open("CHANGELOG.md", encoding="utf-8") as f:
+              for line in f:
+                  if line.startswith(header):
+                      found = True
+                      continue
+                  if found and line.startswith("## ["):
+                      break
+                  if found:
+                      collected.append(line.rstrip("\n"))
+          sys.stdout.write("\n".join(collected))
+          PY
+          )
+          if [ -z "$BODY" ]; then
+            echo "::error::No CHANGELOG section found for [$LOOKUP]. Add an entry to CHANGELOG.md before tagging."
+            exit 1
+          fi
+          {
+            echo 'body<<RELEASE_BODY_END'
+            echo "$BODY"
+            echo 'RELEASE_BODY_END'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build source tarball + sha256
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          TARBALL="nousviz-${VERSION}.tar.gz"
+          git archive --format=tar.gz --prefix="nousviz-${VERSION}/" \
+              -o "$TARBALL" HEAD
+          sha256sum "$TARBALL" > "${TARBALL}.sha256"
+          ls -la "$TARBALL"*
+          echo "Tarball built: $TARBALL"
+          cat "${TARBALL}.sha256"
+
+      - name: Detect prerelease (rc / alpha / beta tags marked prerelease in GH)
+        id: prerelease
+        run: |
+          if [[ "$GITHUB_REF_NAME" == *-rc* ]] || [[ "$GITHUB_REF_NAME" == *-alpha* ]] || [[ "$GITHUB_REF_NAME" == *-beta* ]]; then
+            echo "value=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          body: ${{ steps.changelog.outputs.body }}
+          files: |
+            nousviz-*.tar.gz
+            nousviz-*.tar.gz.sha256
+          draft: false
+          prerelease: ${{ steps.prerelease.outputs.value }}
+
+  publish-pypi:
+    name: Publish nousviz-sdk + nousviz-client to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    if: "!contains(github.ref_name, '-rc') && !contains(github.ref_name, '-alpha') && !contains(github.ref_name, '-beta')"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install build tooling
+        run: pip install --upgrade build twine
+
+      - name: Build nousviz-sdk wheel + sdist
+        working-directory: sdk
+        run: python -m build
+
+      - name: Build nousviz-client wheel + sdist
+        working-directory: packages/client-py
+        run: python -m build
+
+      - name: Publish nousviz-sdk to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        working-directory: sdk
+        run: twine upload --non-interactive dist/*
+
+      - name: Publish nousviz-client to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        working-directory: packages/client-py
+        run: twine upload --non-interactive dist/*
+
+  publish-npm:
+    name: Publish @nousviz/client to npm
+    needs: build
+    runs-on: ubuntu-latest
+    if: "!contains(github.ref_name, '-rc') && !contains(github.ref_name, '-alpha') && !contains(github.ref_name, '-beta')"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies + build
+        working-directory: packages/client-ts
+        run: |
+          npm ci
+          npm run build
+
+      - name: Publish to npm
+        working-directory: packages/client-ts
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public

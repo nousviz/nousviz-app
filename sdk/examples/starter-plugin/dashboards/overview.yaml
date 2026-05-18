@@ -1,0 +1,93 @@
+# dashboards/overview.yaml — Starter Plugin Overview Dashboard
+#
+# This file defines the Overview tab on the plugin page (/plugins/starter-plugin).
+# The GenericPluginPage renders this via DashboardRenderer — no React code needed.
+#
+# Rules:
+#   - All SQL queries must only read from tables declared in plugin.yaml databases
+#   - Never query tables owned by other plugins
+#   - Use fallback_empty: true on every panel so the dashboard renders even before
+#     the first sync has run
+
+title: Overview
+db_engine: postgres               # REQUIRED for plugins using Postgres tables.
+                                  # Default is "clickhouse". All core NousViz plugins use "postgres".
+refresh_seconds: 60               # Auto-refresh interval in seconds. Remove to disable.
+
+panels:
+
+  # ── Stat panels ─────────────────────────────────────────────────────────────
+  # A 'stat' panel shows a single number with a label.
+
+  - id: total_items
+    type: stat
+    label: Total Items
+    query: >
+      SELECT count(*) AS value
+      FROM starter_items
+    fallback_empty: true          # Return 0 if table doesn't exist yet
+
+  - id: active_items
+    type: stat
+    label: Active Items
+    query: >
+      SELECT count(*) AS value
+      FROM starter_items
+      WHERE status = 'active'
+    fallback_empty: true
+
+  # ── Line chart ──────────────────────────────────────────────────────────────
+  # A 'line_chart' panel plots data over time.
+  # The query must return columns named 'x' (datetime/date) and 'y' (numeric).
+
+  - id: items_over_time
+    type: line_chart
+    label: New Items Over Time
+    query: >
+      SELECT date_trunc('day', created_at) AS x,
+             count(*) AS y
+      FROM starter_items
+      WHERE created_at >= now() - interval '30 days'
+      GROUP BY date_trunc('day', created_at)
+      ORDER BY x
+    x_key: x
+    y_key: y
+    x_label: Date
+    y_label: New Items
+    fallback_empty: true
+
+  # ── Table panel ─────────────────────────────────────────────────────────────
+  # A 'table' panel renders rows with configurable columns.
+
+  - id: recent_items
+    type: table
+    label: Recent Items
+    query: >
+      SELECT name, status, created_at
+      FROM starter_items
+      ORDER BY created_at DESC
+      LIMIT 20
+    columns:
+      - { key: name,       label: Name }
+      - { key: status,     label: Status,  type: badge,
+          values: { active: green, inactive: grey, archived: red } }
+      - { key: created_at, label: Created, type: datetime }
+    fallback_empty: true
+
+  # ── Bar chart ───────────────────────────────────────────────────────────────
+  # A 'bar_chart' panel shows grouped numeric data.
+  # The query must return columns named 'x' (category) and 'y' (numeric).
+
+  - id: status_breakdown
+    type: bar_chart
+    label: Items by Status
+    query: >
+      SELECT status AS x, count(*) AS y
+      FROM starter_items
+      GROUP BY status
+      ORDER BY y DESC
+    x_key: x
+    y_key: y
+    x_label: Status
+    y_label: Count
+    fallback_empty: true

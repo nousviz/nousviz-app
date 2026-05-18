@@ -1,0 +1,5 @@
+# CODEOWNERS for nousviz
+# Per D14 — every PR auto-assigns the maintainer for review.
+# Extend with topic-specific owners as the contributor base grows.
+
+* @JoeHatch

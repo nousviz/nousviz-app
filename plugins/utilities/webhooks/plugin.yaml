@@ -1,0 +1,43 @@
+name: webhooks
+display_name: Webhooks
+version: 1.0.0
+description: >
+  Receive data from external services and send alert notifications via
+  webhooks. Create named inbound endpoints that generate unique URLs for
+  data ingestion, and named outbound endpoints for alert delivery to
+  Slack, Discord, Teams, PagerDuty, or any HTTP service.
+license: MIT
+icon: Zap
+category: utility
+tags: [integrations, data-ingestion, notifications, api]
+visibility: public
+homepage: https://nousviz.com
+
+publisher:
+  slug: nousviz
+  name: NousViz
+  website: https://nousviz.com
+  contact_email: plugins@nousviz.com
+  verified: true
+
+type: utility
+
+provides:
+  - webhooks
+
+health_check: scripts/health.sh
+
+databases:
+  postgres:
+    tables:
+      - webhook_endpoints
+      - webhook_events
+
+navigation:
+  - label: Webhooks
+    path: /plugin/webhooks/overview
+    icon: Zap
+
+dashboards:
+  - name: overview
+    label: Webhooks

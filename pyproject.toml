@@ -1,0 +1,43 @@
+# This file is ruff lint config only. NousViz core is not a pip-installable
+# package — clone the repo and run scripts/setup.sh to install. The
+# pip-publishable SDK lives at sdk/pyproject.toml; the generated API client
+# lives at packages/client-py/pyproject.toml.
+#
+# Lint scope: F-rules (pyflakes — real correctness) + minimal E-rules.
+# E501 (line-too-long) is excluded because the existing codebase has many
+# long-line hits and fixing them would be stylistic churn for zero
+# correctness gain. F-rules catch real bugs (undefined names, unused
+# imports, etc.).
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = [
+    ".venv",
+    "node_modules",
+    "packages/client-py/nousviz_client",  # generated SDK
+    "packages/client-ts",                  # generated TS, no Python anyway
+    "*.backup.*",                          # plugin rollback dirs
+]
+
+[tool.ruff.lint]
+select = [
+    "F",      # pyflakes — undefined names, unused imports, etc. (the real-bug rules)
+    "E401",   # multiple-imports-on-one-line
+    "E702",   # multiple-statements-on-one-line-semicolon
+    "E741",   # ambiguous-variable-name (e.g. `l`, `O`, `I`)
+]
+ignore = [
+    "E501",   # line-too-long — out of scope (1375 existing hits, stylistic)
+    "E402",   # module-import-not-at-top-of-file — many legit cases:
+              # workers do load_dotenv() before importing DB modules;
+              # some routes do lazy imports for circular-dep reasons;
+              # tests sys.path.insert before importing app modules.
+              # Enforcing this rule would mean 39 `# noqa: E402` annotations
+              # and zero correctness gain.
+    "F841",   # unused-variable — many intentional (e.g. unpacked tuples for clarity)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["F401"]                  # tests routinely import-as-needed
+"plugins/**/scripts/**" = ["F401"]     # plugin scripts often re-export

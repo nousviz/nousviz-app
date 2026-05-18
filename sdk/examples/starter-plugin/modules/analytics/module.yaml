@@ -1,0 +1,39 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# module.yaml — NousViz Plugin Module Manifest
+# Modules are self-contained feature units within a plugin.
+# Core discovers, loads, and manages them. Operators can enable/disable
+# individual modules from the plugin Settings tab.
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: analytics
+display_name: Analytics
+description: >
+  Adds time-series analytics dashboards and an aggregation API endpoint.
+  Enable this module to track item trends over time.
+version: 1.0.0
+enabled_by_default: true           # Set to false to require manual activation
+
+# Module-specific tables (migrations run when module is first enabled)
+databases:
+  postgres:
+    tables:
+      - starter_analytics
+
+# Module-specific navigation (merged into parent plugin's tabs)
+navigation:
+  - label: Analytics
+    path: /plugin/starter-plugin/analytics
+    icon: bar-chart-2
+
+# Module-specific dashboards (served via parent plugin's dashboard endpoint)
+dashboards:
+  - name: analytics
+    label: Analytics
+
+# Module-specific settings (merged into parent plugin's settings form)
+settings:
+  - name: analytics_retention_days
+    label: Retention days
+    type: number
+    default: 90
+    description: How many days of analytics data to keep.

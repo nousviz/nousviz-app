@@ -1,0 +1,7 @@
+name: overview
+label: Webhooks
+description: Create and manage inbound webhook endpoints. External services POST data here — queryable in dashboards and alerts.
+
+panels:
+  - type: custom
+    component: WebhookManager

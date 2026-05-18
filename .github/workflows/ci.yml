@@ -1,0 +1,261 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  typecheck:
+    name: TypeScript Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      # B246/B247 fix: apps/web depends on @nousviz/client via
+      # `file:../../packages/client-ts`, which symlinks the package
+      # directory but does NOT trigger its build. Frontend tsc looks
+      # for dist/index.d.ts (per the package's `types` field) — that
+      # only exists after `npm run build` in the linked package.
+      # Install + build the client SDK first so the symlink resolves.
+      - name: Install + build client SDK (apps/web depends on it)
+        working-directory: packages/client-ts
+        run: |
+          npm install
+          npm run build
+
+      - name: Install dependencies
+        working-directory: apps/web
+        run: npm ci
+
+      - name: Type check
+        working-directory: apps/web
+        run: npx tsc --noEmit
+
+      - name: Build
+        working-directory: apps/web
+        run: npm run build
+
+  unit-tests:
+    name: Unit Tests (offline — no DB)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest bcrypt pyyaml fastapi pydantic psycopg2-binary python-dotenv cryptography
+
+      - name: Run unit tests
+        run: pytest tests/test_unit.py -v
+
+  smoke:
+    name: Smoke Test (syntax only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify smoke test script exists and is valid bash
+        run: bash -n scripts/smoke-test.sh
+
+      - name: Verify integration test file exists
+        run: test -f tests/test_api.py
+
+  python-lint:
+    name: Python lint (ruff)
+    runs-on: ubuntu-latest
+    # P209 (v0.9.11.25): replaced the py_compile shim with a real lint.
+    # Config in pyproject.toml; F-rules + minimal E-rules (E501 excluded
+    # — see config comment for rationale).
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: ruff check
+        run: ruff check .
+
+      - name: ruff format check (informational only)
+        # Format consistency is a follow-up cleanup; this step prints
+        # diffs but doesn't fail. Promote to blocking later if/when the
+        # codebase is format-clean.
+        continue-on-error: true
+        run: ruff format --check .
+
+  clean-install:
+    name: Clean install on Postgres 16 (B244 gate)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: ci_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Prepare .env for CI
+        run: |
+          cp .env.example .env
+          # setup.sh writes its own POSTGRES_PASSWORD; the CI service
+          # uses ci_test as the SUPERUSER password. setup.sh creates the
+          # nousviz role itself via psql-as-postgres.
+          echo "POSTGRES_HOST=localhost" >> .env
+          echo "POSTGRES_PORT=5432" >> .env
+          # Tell setup.sh where to reach the CI superuser:
+          export PGPASSWORD=ci_test
+
+      - name: Install psql client
+        run: sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q postgresql-client
+
+      - name: Bootstrap nousviz role + DB via the CI superuser
+        env:
+          PGPASSWORD: ci_test
+        run: |
+          # setup.sh's normal Linux path uses `sudo -u postgres psql`
+          # against a local socket. CI Postgres is a service container
+          # reached over TCP with password auth, so we bootstrap the role
+          # + DB by hand and then let setup.sh skip its postgres-install
+          # path (it detects the running server on localhost:5432).
+          PG_PASS=$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')
+          echo "POSTGRES_PASSWORD=$PG_PASS" >> .env
+          psql -h localhost -U postgres -c "CREATE USER nousviz WITH PASSWORD '$PG_PASS' SUPERUSER"
+          psql -h localhost -U postgres -c "CREATE DATABASE nousviz OWNER nousviz"
+
+      - name: Run setup.sh (local-dev mode is enough for the gate)
+        run: ./scripts/setup.sh
+
+      - name: Verify schema_migrations has no _down.sql rows
+        env:
+          PGPASSWORD: ci_test
+        run: |
+          ROWS=$(psql -h localhost -U postgres -d nousviz -tAc \
+            "SELECT COUNT(*) FROM schema_migrations WHERE filename LIKE '%\\_down.sql' ESCAPE '\\'")
+          if [ "$ROWS" -ne 0 ]; then
+            echo "FAIL: schema_migrations has $ROWS _down.sql rows"
+            psql -h localhost -U postgres -d nousviz -c \
+              "SELECT filename FROM schema_migrations WHERE filename LIKE '%\\_down.sql' ESCAPE '\\'"
+            exit 1
+          fi
+          echo "PASS: 0 _down.sql rows in schema_migrations"
+
+      - name: Verify schema matches expected table list
+        env:
+          PGPASSWORD: ci_test
+        run: |
+          psql -h localhost -U postgres -d nousviz -tAc \
+            "SELECT table_name FROM information_schema.tables \
+             WHERE table_schema='public' ORDER BY table_name" \
+            | sed '/^$/d' > /tmp/actual-tables.txt
+          if ! diff -u .github/expected-tables.txt /tmp/actual-tables.txt; then
+            # v0.9.11.22.3: surface the actionable fix inline. Pre-this,
+            # the diff dumped without a pointer so the failure mode
+            # (operator added a CREATE TABLE migration without updating
+            # this fixture) accumulated silently across .17/.19/.20
+            # before anyone looked.
+            echo ""
+            echo "════════════════════════════════════════════════════════════════"
+            echo "FAIL: schema drift — see diff above."
+            echo ""
+            echo "Lines starting with '+' are tables in the live schema"
+            echo "but missing from the fixture — usually because a migration"
+            echo "added a new table without updating the allow-list."
+            echo ""
+            echo "Lines starting with '-' are tables expected by the fixture"
+            echo "but absent from the live schema — usually because a"
+            echo "migration was renamed/removed without the fixture update."
+            echo ""
+            echo "To fix: update .github/expected-tables.txt to match the"
+            echo "live schema (lexicographic order, one table per line)."
+            echo "Re-run the install locally with scripts/setup.sh against"
+            echo "a clean Postgres to confirm before pushing."
+            echo "════════════════════════════════════════════════════════════════"
+            exit 1
+          fi
+          echo "PASS: schema matches expected-tables.txt"
+
+  dep-audit:
+    name: Dependency Audit (blocking)
+    runs-on: ubuntu-latest
+    # P209 (v0.9.11.25): flipped from continue-on-error: true to
+    # blocking. Allowlist at .github/dep-audit-allowlist.txt — one CVE
+    # id per line + a reason comment. Findings outside the allowlist
+    # break the build.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: Build --ignore-vuln flags from allowlist
+        id: ignored
+        run: |
+          ALLOWLIST=.github/dep-audit-allowlist.txt
+          if [ -s "$ALLOWLIST" ]; then
+            FLAGS=$(grep -v '^#' "$ALLOWLIST" | grep -v '^[[:space:]]*$' | awk '{print "--ignore-vuln " $1}' | tr '\n' ' ')
+          else
+            FLAGS=""
+          fi
+          echo "flags=$FLAGS" >> "$GITHUB_OUTPUT"
+          echo "Computed flags: $FLAGS"
+
+      - name: Audit API dependencies (apps/api/requirements.txt)
+        run: |
+          pip-audit -r apps/api/requirements.txt --desc on ${{ steps.ignored.outputs.flags }}
+
+      - name: Audit SDK dependencies (sdk)
+        run: |
+          pip-audit -e ./sdk --desc on ${{ steps.ignored.outputs.flags }} || true
+          # SDK pip-audit is informational because nousviz-sdk references
+          # a local path that pip-audit can't always resolve in CI.
+          # Production-bundle audit happens via apps/api requirements.
+
+  npm-audit:
+    name: npm audit (apps/web — runtime deps only)
+    runs-on: ubuntu-latest
+    # P209 (v0.9.11.25): blocking gate on production-bundle JS deps.
+    # Dev deps (vite, eslint, etc.) are out of scope — they don't ship
+    # to operators. --audit-level=high so moderate/low warn-only.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Audit production deps (apps/web)
+        working-directory: apps/web
+        run: npm audit --omit=dev --audit-level=high

@@ -1,0 +1,33 @@
+# insights.yaml — Starter Plugin Insight Cards
+#
+# Contributes cards to the core Insights page (/insights).
+# The core insights.py route scans plugins/installed/*/insights.yaml at request time.
+# No core code change is needed when you add or change this file.
+#
+# Rules:
+#   - Only query tables declared in plugin.yaml databases
+#   - Always set fallback_empty: true — the operator may not have synced yet
+#   - Keep queries fast (< 500ms) — they run on every Insights page load
+
+queries:
+  - id: item_summary
+    label: Starter Plugin Summary
+    description: Total and active item counts from the starter plugin
+    sql: >
+      SELECT
+        count(*)                                              AS total_items,
+        count(*) FILTER (WHERE status = 'active')            AS active_items,
+        count(*) FILTER (WHERE created_at > now() - interval '7 days') AS new_this_week
+      FROM starter_items
+    fallback_empty: true
+
+  - id: last_sync
+    label: Last Sync
+    description: When the starter plugin last successfully synced data
+    sql: >
+      SELECT created_at AS last_sync_at, detail->>'rows_synced' AS rows_synced
+      FROM starter_events
+      WHERE event_type = 'sync'
+      ORDER BY created_at DESC
+      LIMIT 1
+    fallback_empty: true

@@ -1,0 +1,41 @@
+name: mysql
+display_name: MySQL
+version: 1.0.0
+description: >
+  MySQL database connection for data plugins that sync from MySQL sources.
+  Install this utility before installing any plugin that declares
+  requires.mysql: true in its manifest.
+license: MIT
+icon: Database
+category: utility
+tags: [infrastructure, database, mysql]
+visibility: public
+homepage: https://nousviz.com
+
+publisher:
+  slug: nousviz
+  name: NousViz
+  website: https://nousviz.com
+  contact_email: plugins@nousviz.com
+  verified: true
+
+type: utility
+
+provides:
+  - mysql
+
+health_check: scripts/health.sh
+
+connections:
+  - name: mysql
+    env_prefix: MYSQL_
+    label: MySQL Configuration
+    description: >
+      Connection settings for your MySQL instance. Data plugins that
+      declare requires.mysql will use these credentials automatically.
+    fields:
+      - { name: host,     label: "Host",     type: text,     required: true,  default: "localhost" }
+      - { name: port,     label: "Port",     type: number,   required: false, default: 3306 }
+      - { name: user,     label: "Username", type: text,     required: true }
+      - { name: password, label: "Password", type: password, required: true }
+      - { name: database, label: "Database", type: text,     required: false }

@@ -1,0 +1,54 @@
+{
+  "name": "nousviz-web",
+  "private": true,
+  "version": "1.0.0",
+  "description": "NousViz web dashboard — React + Vite + Tailwind",
+  "license": "SEE LICENSE IN ../../LICENSE",
+  "author": "NousViz Contributors",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nousviz/nousviz-app",
+    "directory": "apps/web"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@nousviz/client": "file:../../packages/client-ts",
+    "@tanstack/react-query": "^5.100.10",
+    "@types/react-grid-layout": "^1.3.6",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "date-fns": "^3.6.0",
+    "github-slugger": "^2.0.0",
+    "lucide-react": "^0.462.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-grid-layout": "^2.2.3",
+    "react-markdown": "^10.1.0",
+    "react-router-dom": "^6.30.1",
+    "recharts": "^2.15.4",
+    "rehype-highlight": "^7.0.2",
+    "rehype-slug": "^6.0.0",
+    "remark-gfm": "^4.0.1",
+    "tailwind-merge": "^2.6.0",
+    "tailwindcss-animate": "^1.0.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/typography": "^0.5.19",
+    "@types/node": "^22.16.5",
+    "@types/react": "^18.3.23",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react-swc": "^3.11.0",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "react-grab": "^0.1.28",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.8.3",
+    "vite": "^6.4.2"
+  }
+}

@@ -1,0 +1,496 @@
+from __future__ import annotations
+
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any, TypeVar, cast
+
+from attrs import define as _attrs_define
+from attrs import field as _attrs_field
+
+from ..types import UNSET, Unset
+
+if TYPE_CHECKING:
+    from ..models.annotation_row_scope_filters_type_0 import AnnotationRowScopeFiltersType0
+
+
+T = TypeVar("T", bound="AnnotationRow")
+
+
+@_attrs_define
+class AnnotationRow:
+    """A single annotations row.
+
+    The annotation schema has many optional/JSONB fields; extra='allow'
+    keeps the model honest as new columns land (semantic_*, impact_scope,
+    etc. were added across v0.8/v0.9).
+
+        Attributes:
+            id (str):
+            title (str):
+            description (None | str | Unset):
+            source (None | str | Unset):
+            category (None | str | Unset):
+            severity (None | str | Unset):
+            color (None | str | Unset):
+            plugin_id (None | str | Unset):
+            dataset (None | str | Unset):
+            date_start (None | str | Unset):
+            date_end (None | str | Unset):
+            scope_filters (AnnotationRowScopeFiltersType0 | None | Unset):
+            tags (list[str] | None | Unset):
+            pinned (bool | None | Unset):
+            archived (bool | None | Unset):
+            semantic_meaning (None | str | Unset):
+            impact_scope (list[str] | None | Unset):
+            semantic_score (None | str | Unset): 'useful' | 'neutral' | 'useless'.
+            semantic_note (None | str | Unset):
+            created_at (None | str | Unset):
+            updated_at (None | str | Unset):
+    """
+
+    id: str
+    title: str
+    description: None | str | Unset = UNSET
+    source: None | str | Unset = UNSET
+    category: None | str | Unset = UNSET
+    severity: None | str | Unset = UNSET
+    color: None | str | Unset = UNSET
+    plugin_id: None | str | Unset = UNSET
+    dataset: None | str | Unset = UNSET
+    date_start: None | str | Unset = UNSET
+    date_end: None | str | Unset = UNSET
+    scope_filters: AnnotationRowScopeFiltersType0 | None | Unset = UNSET
+    tags: list[str] | None | Unset = UNSET
+    pinned: bool | None | Unset = UNSET
+    archived: bool | None | Unset = UNSET
+    semantic_meaning: None | str | Unset = UNSET
+    impact_scope: list[str] | None | Unset = UNSET
+    semantic_score: None | str | Unset = UNSET
+    semantic_note: None | str | Unset = UNSET
+    created_at: None | str | Unset = UNSET
+    updated_at: None | str | Unset = UNSET
+    additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        from ..models.annotation_row_scope_filters_type_0 import AnnotationRowScopeFiltersType0
+
+        id = self.id
+
+        title = self.title
+
+        description: None | str | Unset
+        if isinstance(self.description, Unset):
+            description = UNSET
+        else:
+            description = self.description
+
+        source: None | str | Unset
+        if isinstance(self.source, Unset):
+            source = UNSET
+        else:
+            source = self.source
+
+        category: None | str | Unset
+        if isinstance(self.category, Unset):
+            category = UNSET
+        else:
+            category = self.category
+
+        severity: None | str | Unset
+        if isinstance(self.severity, Unset):
+            severity = UNSET
+        else:
+            severity = self.severity
+
+        color: None | str | Unset
+        if isinstance(self.color, Unset):
+            color = UNSET
+        else:
+            color = self.color
+
+        plugin_id: None | str | Unset
+        if isinstance(self.plugin_id, Unset):
+            plugin_id = UNSET
+        else:
+            plugin_id = self.plugin_id
+
+        dataset: None | str | Unset
+        if isinstance(self.dataset, Unset):
+            dataset = UNSET
+        else:
+            dataset = self.dataset
+
+        date_start: None | str | Unset
+        if isinstance(self.date_start, Unset):
+            date_start = UNSET
+        else:
+            date_start = self.date_start
+
+        date_end: None | str | Unset
+        if isinstance(self.date_end, Unset):
+            date_end = UNSET
+        else:
+            date_end = self.date_end
+
+        scope_filters: dict[str, Any] | None | Unset
+        if isinstance(self.scope_filters, Unset):
+            scope_filters = UNSET
+        elif isinstance(self.scope_filters, AnnotationRowScopeFiltersType0):
+            scope_filters = self.scope_filters.to_dict()
+        else:
+            scope_filters = self.scope_filters
+
+        tags: list[str] | None | Unset
+        if isinstance(self.tags, Unset):
+            tags = UNSET
+        elif isinstance(self.tags, list):
+            tags = self.tags
+
+        else:
+            tags = self.tags
+
+        pinned: bool | None | Unset
+        if isinstance(self.pinned, Unset):
+            pinned = UNSET
+        else:
+            pinned = self.pinned
+
+        archived: bool | None | Unset
+        if isinstance(self.archived, Unset):
+            archived = UNSET
+        else:
+            archived = self.archived
+
+        semantic_meaning: None | str | Unset
+        if isinstance(self.semantic_meaning, Unset):
+            semantic_meaning = UNSET
+        else:
+            semantic_meaning = self.semantic_meaning
+
+        impact_scope: list[str] | None | Unset
+        if isinstance(self.impact_scope, Unset):
+            impact_scope = UNSET
+        elif isinstance(self.impact_scope, list):
+            impact_scope = self.impact_scope
+
+        else:
+            impact_scope = self.impact_scope
+
+        semantic_score: None | str | Unset
+        if isinstance(self.semantic_score, Unset):
+            semantic_score = UNSET
+        else:
+            semantic_score = self.semantic_score
+
+        semantic_note: None | str | Unset
+        if isinstance(self.semantic_note, Unset):
+            semantic_note = UNSET
+        else:
+            semantic_note = self.semantic_note
+
+        created_at: None | str | Unset
+        if isinstance(self.created_at, Unset):
+            created_at = UNSET
+        else:
+            created_at = self.created_at
+
+        updated_at: None | str | Unset
+        if isinstance(self.updated_at, Unset):
+            updated_at = UNSET
+        else:
+            updated_at = self.updated_at
+
+        field_dict: dict[str, Any] = {}
+        field_dict.update(self.additional_properties)
+        field_dict.update(
+            {
+                "id": id,
+                "title": title,
+            }
+        )
+        if description is not UNSET:
+            field_dict["description"] = description
+        if source is not UNSET:
+            field_dict["source"] = source
+        if category is not UNSET:
+            field_dict["category"] = category
+        if severity is not UNSET:
+            field_dict["severity"] = severity
+        if color is not UNSET:
+            field_dict["color"] = color
+        if plugin_id is not UNSET:
+            field_dict["plugin_id"] = plugin_id
+        if dataset is not UNSET:
+            field_dict["dataset"] = dataset
+        if date_start is not UNSET:
+            field_dict["date_start"] = date_start
+        if date_end is not UNSET:
+            field_dict["date_end"] = date_end
+        if scope_filters is not UNSET:
+            field_dict["scope_filters"] = scope_filters
+        if tags is not UNSET:
+            field_dict["tags"] = tags
+        if pinned is not UNSET:
+            field_dict["pinned"] = pinned
+        if archived is not UNSET:
+            field_dict["archived"] = archived
+        if semantic_meaning is not UNSET:
+            field_dict["semantic_meaning"] = semantic_meaning
+        if impact_scope is not UNSET:
+            field_dict["impact_scope"] = impact_scope
+        if semantic_score is not UNSET:
+            field_dict["semantic_score"] = semantic_score
+        if semantic_note is not UNSET:
+            field_dict["semantic_note"] = semantic_note
+        if created_at is not UNSET:
+            field_dict["created_at"] = created_at
+        if updated_at is not UNSET:
+            field_dict["updated_at"] = updated_at
+
+        return field_dict
+
+    @classmethod
+    def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.annotation_row_scope_filters_type_0 import AnnotationRowScopeFiltersType0
+
+        d = dict(src_dict)
+        id = d.pop("id")
+
+        title = d.pop("title")
+
+        def _parse_description(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        description = _parse_description(d.pop("description", UNSET))
+
+        def _parse_source(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        source = _parse_source(d.pop("source", UNSET))
+
+        def _parse_category(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        category = _parse_category(d.pop("category", UNSET))
+
+        def _parse_severity(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        severity = _parse_severity(d.pop("severity", UNSET))
+
+        def _parse_color(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        color = _parse_color(d.pop("color", UNSET))
+
+        def _parse_plugin_id(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        plugin_id = _parse_plugin_id(d.pop("plugin_id", UNSET))
+
+        def _parse_dataset(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        dataset = _parse_dataset(d.pop("dataset", UNSET))
+
+        def _parse_date_start(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        date_start = _parse_date_start(d.pop("date_start", UNSET))
+
+        def _parse_date_end(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        date_end = _parse_date_end(d.pop("date_end", UNSET))
+
+        def _parse_scope_filters(data: object) -> AnnotationRowScopeFiltersType0 | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                scope_filters_type_0 = AnnotationRowScopeFiltersType0.from_dict(data)
+
+                return scope_filters_type_0
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(AnnotationRowScopeFiltersType0 | None | Unset, data)
+
+        scope_filters = _parse_scope_filters(d.pop("scope_filters", UNSET))
+
+        def _parse_tags(data: object) -> list[str] | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, list):
+                    raise TypeError()
+                tags_type_0 = cast(list[str], data)
+
+                return tags_type_0
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(list[str] | None | Unset, data)
+
+        tags = _parse_tags(d.pop("tags", UNSET))
+
+        def _parse_pinned(data: object) -> bool | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(bool | None | Unset, data)
+
+        pinned = _parse_pinned(d.pop("pinned", UNSET))
+
+        def _parse_archived(data: object) -> bool | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(bool | None | Unset, data)
+
+        archived = _parse_archived(d.pop("archived", UNSET))
+
+        def _parse_semantic_meaning(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        semantic_meaning = _parse_semantic_meaning(d.pop("semantic_meaning", UNSET))
+
+        def _parse_impact_scope(data: object) -> list[str] | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, list):
+                    raise TypeError()
+                impact_scope_type_0 = cast(list[str], data)
+
+                return impact_scope_type_0
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(list[str] | None | Unset, data)
+
+        impact_scope = _parse_impact_scope(d.pop("impact_scope", UNSET))
+
+        def _parse_semantic_score(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        semantic_score = _parse_semantic_score(d.pop("semantic_score", UNSET))
+
+        def _parse_semantic_note(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        semantic_note = _parse_semantic_note(d.pop("semantic_note", UNSET))
+
+        def _parse_created_at(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        created_at = _parse_created_at(d.pop("created_at", UNSET))
+
+        def _parse_updated_at(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        updated_at = _parse_updated_at(d.pop("updated_at", UNSET))
+
+        annotation_row = cls(
+            id=id,
+            title=title,
+            description=description,
+            source=source,
+            category=category,
+            severity=severity,
+            color=color,
+            plugin_id=plugin_id,
+            dataset=dataset,
+            date_start=date_start,
+            date_end=date_end,
+            scope_filters=scope_filters,
+            tags=tags,
+            pinned=pinned,
+            archived=archived,
+            semantic_meaning=semantic_meaning,
+            impact_scope=impact_scope,
+            semantic_score=semantic_score,
+            semantic_note=semantic_note,
+            created_at=created_at,
+            updated_at=updated_at,
+        )
+
+        annotation_row.additional_properties = d
+        return annotation_row
+
+    @property
+    def additional_keys(self) -> list[str]:
+        return list(self.additional_properties.keys())
+
+    def __getitem__(self, key: str) -> Any:
+        return self.additional_properties[key]
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        self.additional_properties[key] = value
+
+    def __delitem__(self, key: str) -> None:
+        del self.additional_properties[key]
+
+    def __contains__(self, key: str) -> bool:
+        return key in self.additional_properties

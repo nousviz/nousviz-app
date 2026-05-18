@@ -1,0 +1,18 @@
+# P209 (v0.9.11.25) dep-audit allowlist.
+#
+# Format: one CVE id per line, with `# reason` after.
+# pip-audit honors GHSA-* and PYSEC-* identifiers (the Advisory IDs
+# returned by the OSV database).
+#
+# Each entry MUST have a comment explaining either:
+#   (a) the upstream fix path + ETA, or
+#   (b) why the finding is not exploitable in our deployment.
+#
+# Allowlist entries are reviewed quarterly; stale ones get removed.
+# If you're adding an entry, also note the CVE in
+# todo/0.9.11/audit-followups/dep-audit-deferrals.md (or wherever
+# the operator-tracking lives) so it's not forgotten.
+
+# (No entries yet — initial baseline. New findings break CI until
+# either the upstream package is bumped or a row is added here with
+# justification.)

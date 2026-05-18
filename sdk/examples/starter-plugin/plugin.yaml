@@ -1,0 +1,318 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# plugin.yaml — NousViz Plugin Manifest
+# Every field is documented below. Required fields are marked REQUIRED.
+# Delete fields that do not apply to your plugin.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Identity ──────────────────────────────────────────────────────────────────
+
+name: starter-plugin              # REQUIRED. Lowercase, hyphenated. Globally unique slug.
+                                  # This becomes the plugin's URL: /plugins/starter-plugin
+                                  # and its directory name: plugins/installed/starter-plugin/
+
+display_name: Starter Plugin      # REQUIRED. Human-readable name shown in the marketplace
+                                  # and in the sidebar navigation.
+
+version: 1.0.0                    # REQUIRED. Semantic versioning: MAJOR.MINOR.PATCH
+                                  # Bump this on every release. The marketplace uses this
+                                  # to show "update available" to operators.
+
+description: >                    # REQUIRED. One paragraph. Shown in the marketplace listing
+  A template plugin that demonstrates the full NousViz plugin contract.  # and on the plugin page.
+  Replace this with a clear explanation of what your plugin does,        # Keep it under 100 words.
+  what data sources it connects to, and what value it provides.
+
+license: MIT                      # REQUIRED. One of: MIT | Apache-2.0 | Sustainable Use | Commercial
+                                  # Use MIT for open-source, Sustainable Use for source-available,
+                                  # Commercial for paid plugins.
+
+icon: package                     # REQUIRED. Any Lucide icon name. Used in the sidebar and marketplace.
+                                  # Full list: https://lucide.dev/icons/
+                                  # Common choices: bar-chart-2, database, globe, zap, settings, users
+
+category: analytics               # REQUIRED. One of:
+                                  #   analytics     — data analysis, reporting, dashboards
+                                  #   content       — CMS, publishing, media
+                                  #   monitoring    — infrastructure and uptime monitoring
+                                  #   integration   — third-party API connectors
+                                  #   productivity  — workflow tools, automation
+                                  #   compliance    — regulatory, audit, reporting
+                                  #   premium       — paid/licensed plugins
+                                  #   community     — community-submitted plugins
+
+tags: [starter, example]          # REQUIRED. Min 1 tag. Used for marketplace search and filtering.
+                                  # Keep tags lowercase and hyphenated.
+
+visibility: public                # REQUIRED. One of:
+                                  #   public          — listed in marketplace, free to install
+                                  #   public_premium  — listed in marketplace, requires license
+                                  #   fully_private   — not listed, install by direct URL only
+
+
+# ── Publisher ─────────────────────────────────────────────────────────────────
+
+publisher:
+  slug: your-slug                 # Your publisher identifier. Used in the marketplace.
+  name: Your Name                 # Displayed as "by Your Name" in the marketplace card.
+  website: https://example.com    # Optional. Linked from the marketplace.
+  contact_email: you@example.com  # Optional. Used for support and plugin issues.
+  verified: false                 # Do not set this. NousViz sets it for official plugins only.
+
+
+# ── Source ────────────────────────────────────────────────────────────────────
+
+repository: https://github.com/your-org/plugin-starter-plugin
+                                  # REQUIRED for public plugins. This is the git URL the
+                                  # marketplace clones when an operator installs your plugin.
+                                  # Convention: github.com/{org}/plugin-{name}
+
+homepage: https://example.com/plugins/starter-plugin
+                                  # Optional. Shown as "Homepage" link on the plugin detail page.
+
+changelog_url: https://github.com/your-org/plugin-starter-plugin/releases
+                                  # Optional. "Changelog" link on the detail page.
+                                  # Typically your GitHub releases page.
+
+support_url: https://github.com/your-org/plugin-starter-plugin/issues
+                                  # Optional. "Support" link on the detail page.
+                                  # Typically your GitHub issues or docs site.
+
+# Optional. Full markdown/plain-text description shown on the plugin
+# detail page under "About this plugin". Use this for setup instructions,
+# screenshots context, or detailed feature explanations beyond the
+# 100-word `description` field.
+long_description: |
+  ## What this plugin does
+  Describe the plugin in more detail here. Markdown is rendered in the UI.
+
+  ## Setup
+  1. Obtain API credentials from your data source
+  2. Configure the connection in Settings → Plugins → Starter Plugin
+  3. Run the initial sync from the plugin page
+
+  ## Data model
+  - `starter_items` — primary data synced from the external source
+  - `starter_events` — audit trail of sync runs
+
+
+# ── Infrastructure requirements ───────────────────────────────────────────────
+# Declare which NousViz infrastructure components your plugin needs.
+# The marketplace checks these before allowing install and shows a clear
+# error if a requirement is not met.
+#
+# This is NOT about other plugins — it is about platform capabilities.
+# Use this to declare: "I need ClickHouse" or "I need Postgres 14+".
+
+requires:
+  clickhouse: true                # Set to true if your plugin uses ClickHouse tables.
+                                  # If the operator has not configured ClickHouse, the
+                                  # marketplace shows: "This plugin requires ClickHouse.
+                                  # Configure it in Settings → Connections first."
+  postgres: true                  # Set to true if your plugin creates Postgres tables.
+                                  # Almost always true. Defaults to true if omitted.
+  postgres_version: "14"          # Optional minimum Postgres version.
+
+
+# ── Connections ───────────────────────────────────────────────────────────────
+# External data sources your plugin connects to.
+# The platform generates a settings form from these fields.
+# Credentials are stored encrypted in Postgres and injected as env vars at runtime.
+#
+# YOUR PLUGIN ONLY CONNECTS TO ITS OWN EXTERNAL SOURCES.
+# Do not add connections to other plugins' databases here.
+
+connections:
+  - name: my_data_source
+    type: mysql                   # One of: mysql | postgres | clickhouse | api_key | oauth2 | http
+    required: true
+    env_prefix: STARTER_          # All env vars for this connection use this prefix.
+                                  # e.g. STARTER_HOST, STARTER_PORT, STARTER_USER
+    label: My Data Source         # Form section heading shown in plugin settings.
+    description: >                # Optional. Shown below the form heading.
+      Connection to the external MySQL database this plugin syncs from.
+    fields:
+      - { name: host,     label: "Host",     type: text,     required: true }
+      - { name: port,     label: "Port",     type: number,   required: false, default: 3306 }
+      - { name: database, label: "Database", type: text,     required: true }
+      - { name: user,     label: "Username", type: text,     required: true }
+      - { name: password, label: "Password", type: password, required: true }
+
+  # Example: API key connection type
+  # - name: my_api
+  #   type: api_key
+  #   required: true
+  #   env_prefix: MYAPI_
+  #   label: My API
+  #   fields:
+  #     - { name: api_key, label: "API Key", type: password, required: true }
+  #     - { name: base_url, label: "Base URL", type: text, required: true,
+  #         default: "https://api.example.com" }
+
+
+# ── Databases ─────────────────────────────────────────────────────────────────
+# Tables this plugin creates and exclusively owns.
+# List every table from your migrations here — no more, no less.
+# Used by: data lineage graph, uninstall confirmation (shows data impact to operator).
+#
+# IMPORTANT: These tables belong to this plugin only.
+# Other plugins must not read from them directly.
+# Cross-plugin data access happens through Fusions created by the operator.
+
+databases:
+  postgres:
+    table_prefix: starter_        # Optional. Used by the backup system to attribute tables to this plugin.
+                                  # Should match the common prefix of all your plugin's Postgres tables.
+    tables:
+      - starter_items             # Created in 001_initial.sql
+      - starter_events            # Created in 001_initial.sql
+  # clickhouse:
+  #   tables:
+  #     - starter.metrics         # Created in ClickHouse during sync setup
+
+
+# ── Navigation ────────────────────────────────────────────────────────────────
+# Sidebar navigation entries this plugin contributes.
+# The core sidebar reads these dynamically from all installed plugins.
+# Do not hardcode plugin nav in Sidebar.tsx.
+
+navigation:
+  - label: Starter Plugin         # Text shown in the sidebar.
+    path: /plugin/starter-plugin  # /plugin/{name} — singular, matches GenericPluginPage route.
+    icon: Puzzle                  # Lucide icon name (PascalCase, must be in Sidebar ICON_MAP).
+
+  # Multi-entry example — uncomment to get a collapsible sidebar group:
+  # - label: Dashboard
+  #   path: /plugin/starter-plugin/dashboards/overview
+  #   icon: LayoutDashboard
+  # - label: Reports
+  #   path: /plugin/starter-plugin/dashboards/reports
+  #   icon: FileText
+
+
+# ── Dashboards ────────────────────────────────────────────────────────────────
+# Tab definitions for the plugin page at /plugins/{name}.
+# Each entry maps to a file in your dashboards/ directory.
+# The GenericPluginPage renders all tabs via DashboardRenderer.
+# No frontend code in this repo is needed.
+
+dashboards:
+  - name: overview
+    label: Overview
+    file: dashboards/overview.yaml
+
+  # Add more tabs as needed:
+  # - name: details
+  #   label: Details
+  #   file: dashboards/details.yaml
+
+
+# ── Sync ──────────────────────────────────────────────────────────────────────
+# Your sync script pulls data from your external source into your plugin's tables.
+
+sync:
+  script: src/sync.py
+  schedule: "0 */6 * * *"        # Cron expression. Run every 6 hours.
+                                  # Common schedules:
+                                  #   "0 * * * *"      — every hour
+                                  #   "0 */4 * * *"    — every 4 hours
+                                  #   "0 0 * * *"      — daily at midnight
+                                  #   "*/15 * * * *"   — every 15 minutes
+  supports_incremental: true      # If true, your run() function accepts a 'since' argument
+                                  # and the worker passes the last successful sync time.
+  timeout_seconds: 1800           # Kill sync if it runs longer than this (30 min default).
+
+
+# ── Modules ──────────────────────────────────────────────────────────────────
+# Optional. Modules are self-contained feature units within your plugin.
+# Each module has its own routes, dashboards, migrations, and settings.
+# Operators can enable/disable modules from the plugin Settings tab.
+# Module files live in modules/{module-name}/ with a module.yaml manifest.
+
+modules:
+  - analytics                     # maps to modules/analytics/module.yaml
+
+
+# ── Lifecycle hooks (v0.8.6 / P118) ──────────────────────────────────────────
+# Optional. Declare Python callbacks to run at plugin lifecycle events.
+# Each target is `<module>:<function>` relative to the plugin's own directory.
+# The function receives a HookContext and returns a HookResult. See
+# docs/plugin-architecture.md for full contract.
+#
+# Hooks run async in the jobs-worker subprocess (except on_uninstall which
+# runs inline because the plugin dir is about to be removed).
+
+# hooks:
+#   on_install:             hooks.lifecycle:on_install
+#   on_credentials_saved:   hooks.lifecycle:on_credentials_saved
+#   on_first_run_success:   hooks.lifecycle:on_first_run_success
+#   on_uninstall:           hooks.lifecycle:on_uninstall
+
+
+# ── Declarative actions (v0.8.6 / P119) ──────────────────────────────────────
+# Optional. Operator-facing buttons that POST to a plugin-owned endpoint.
+# Core renders the button, handles confirmation, fires the request, processes
+# the JSON response ({ toast, enqueue_job, navigate, refetch, message, level }).
+# No plugin-authored JavaScript is loaded — actions are data.
+
+# actions:
+#   - id: test_connection
+#     label: Test Connection
+#     slot: settings_tab_footer
+#     style: primary
+#     endpoint: POST /api/plugins/starter-plugin/test-connection
+#     icon: check-circle
+#     disabled_when: no_credentials
+
+#   - id: start_backfill
+#     label: Start Backfill
+#     slot: settings_tab_footer
+#     style: primary
+#     endpoint: POST /api/plugins/starter-plugin/backfill
+#     confirm: "Backfill ~1M rows? This can take 20–40 minutes."
+#     icon: download
+#     disabled_when: sync_in_progress
+
+
+# ── Setup checklist (v0.8.6 / P121) ──────────────────────────────────────────
+# Optional. Declarative guide for operators after install. Each item's
+# `done_if` predicate is resolved server-side; the checklist auto-hides when
+# all items are done (show_until: all_done).
+
+# setup_checklist:
+#   show_until: all_done          # all_done | credentials_saved | dismissed
+#   items:
+#     - id: save_creds
+#       label: Enter credentials
+#       done_if: credentials_saved
+#     - id: first_sync
+#       label: Run the first sync
+#       done_if: first_sync_success
+#     - id: verify_schedule
+#       label: Confirm automatic sync is scheduled
+#       done_if: schedule_active
+
+
+# ── Built-in field types (v0.8.6 / P120) ─────────────────────────────────────
+# In connections.fields, in addition to text/number/password/toggle/select
+# you can now use:
+#
+#   type: file    — drag-drop file upload with paste-text fallback
+#                   optional: accept: ".pem,.crt"   format_hint: pem
+#   type: port    — number input 1..65535 with "privileged port" badge
+#   type: cron    — cron expression with preview + presets
+#   type: url     — URL input with optional scheme constraint
+#                   optional: scheme: "https"
+
+
+# ── Secret field flag (v0.8.6.2 / B124) ──────────────────────────────────────
+# Any field can be marked `secret: true` to route the saved value to the
+# encrypted credentials table instead of .env. Orthogonal to `type:` —
+# works on `type: file` (PEM certs), `type: text` (tokens pasted in),
+# anything. `type: password` is implicitly secret for backward compat.
+#
+# Example: a PEM cert uploaded via drag-drop, stored encrypted, never on disk:
+#
+#   - name: ssl_ca
+#     type: file
+#     format_hint: pem
+#     secret: true          # ← without this, PEM lands in .env (bad)
