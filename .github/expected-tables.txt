@@ -12,12 +12,13 @@ credential_audit_log
 credentials
 datasets
 deploy_keys
-fusions
 health_log
 job_alert_subscriptions
 job_runs
 notes
+oauth_flows
 password_reset_tokens
+plugin_admin_sessions
 plugin_audit_log
 plugin_modules
 plugin_registry

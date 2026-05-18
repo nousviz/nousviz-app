@@ -16,7 +16,6 @@ which surfaces missing grants as actionable 422s instead of silent
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 import yaml
 from psycopg2 import sql as pg_sql
