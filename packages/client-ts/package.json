@@ -1,6 +1,6 @@
 {
   "name": "@nousviz/client",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Auto-generated TypeScript client for the NousViz API.",
   "license": "MIT",
   "type": "module",

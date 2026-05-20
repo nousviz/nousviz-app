@@ -1,0 +1,47 @@
+name: Publish SDK to npm
+
+# Manual-trigger workflow for publishing @nousviz/client to npm
+# independently of the app-wide tag-driven release pipeline.
+#
+# Use this when the JS SDK has new exports but the app version isn't
+# changing — avoids bumping VERSION/PyPI just to ship an SDK update.
+#
+# Required secret:
+#   NPM_TOKEN — npm publish token for @nousviz/client
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build only, skip npm publish"
+        type: boolean
+        default: false
+
+jobs:
+  publish:
+    name: Build + publish @nousviz/client
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Show package version
+        working-directory: packages/client-ts
+        run: node -p "require('./package.json').version"
+
+      - name: Install + build
+        working-directory: packages/client-ts
+        run: |
+          npm ci
+          npm run build
+
+      - name: Publish to npm
+        if: ${{ inputs.dry_run == false }}
+        working-directory: packages/client-ts
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public

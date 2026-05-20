@@ -13,6 +13,16 @@ import type { OpenAPIConfig } from "./generated";
 // Re-export every model + service.
 export * from "./generated";
 
+// Hand-written helpers (not OpenAPI-generated). Plugin authors building
+// custom widgets get annotation matching here without re-implementing
+// ISO-week math.
+export {
+  annotationsForXValue,
+  xValueToDateRange,
+  annotationStrokeColor,
+  type AnnotationLike,
+} from "./chart-annotations";
+
 /**
  * Configure the shared client.
  *
