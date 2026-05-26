@@ -3,7 +3,13 @@ import { Lock, Loader2, ArrowRight, UserPlus, Mail } from "lucide-react";
 import SidebarLogo from "./SidebarLogo";
 import BootSplash from "./BootSplash";
 import { BootCoordinatorProvider } from "./BootCoordinator";
+import LoadErrorScreen from "./LoadErrorScreen";
 import { loadPluginFrontendComponents } from "@/lib/plugin-component-loader";
+import {
+  getPluginLoaderFailedSnapshot,
+  getPluginLoaderFailureReason,
+  clearPluginLoaderFailure,
+} from "@/widgets/plugin-components";
 import ForgotPasswordModal from "@/components/auth/ForgotPasswordModal";
 
 const API = "/api/auth";
@@ -99,6 +105,14 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     [firstPaintGate, markBootPageReady],
   );
 
+  // v1.0.2: track whether the plugin loader hit a terminal failure (vs.
+  // legitimately completed with zero components). Drives the LoadErrorScreen
+  // render below. `loaderAttempt` lets the user retry from the error screen
+  // without a full window.location.reload() — bumping it re-runs the effect.
+  const [loaderFailed, setLoaderFailed] = useState(false);
+  const [loaderFailureReason, setLoaderFailureReason] = useState<string | null>(null);
+  const [loaderAttempt, setLoaderAttempt] = useState(0);
+
   useEffect(() => {
     if (state !== "authenticated") return;
     if (isPublicPath) { setPluginsLoaded(true); return; }
@@ -109,8 +123,17 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     // leaving dashboard widgets unresolvable. 15s gives headroom; the
     // WidgetRenderer "Loading widget…" placeholder (also v0.10.0.5.1)
     // makes the wait operator-friendly.
+    //
+    // v1.0.2: on timeout, also check whether the loader reported terminal
+    // failure (via notifyPluginLoaderFailed) — if so, render LoadErrorScreen
+    // instead of dumping the user into a half-functional dashboard.
     const timeout = setTimeout(() => {
       if (cancelled) return;
+      if (getPluginLoaderFailedSnapshot()) {
+        setLoaderFailureReason(getPluginLoaderFailureReason());
+        setLoaderFailed(true);
+        return; // don't set pluginsLoaded — error screen replaces the dashboard
+      }
       // eslint-disable-next-line no-console
       console.warn("[AuthGate] plugin loader timeout (15s); rendering anyway");
       setPluginsLoaded(true);
@@ -118,13 +141,33 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     loadPluginFrontendComponents().finally(() => {
       if (cancelled) return;
       clearTimeout(timeout);
+      if (getPluginLoaderFailedSnapshot()) {
+        setLoaderFailureReason(getPluginLoaderFailureReason());
+        setLoaderFailed(true);
+        return;
+      }
+      setLoaderFailed(false);
+      setLoaderFailureReason(null);
       setPluginsLoaded(true);
     });
     return () => {
       cancelled = true;
       clearTimeout(timeout);
     };
-  }, [state, isPublicPath]);
+  }, [state, isPublicPath, loaderAttempt]);
+
+  // v1.0.2: handler the LoadErrorScreen calls when the user clicks Reload.
+  // Cheaper + smoother than window.location.reload() — clears the loader's
+  // failure state, resets local state, bumps `loaderAttempt` to re-run the
+  // effect. If it fails again, the screen comes back; if it works, the
+  // dashboard mounts normally.
+  const handleLoaderRetry = useCallback(async () => {
+    clearPluginLoaderFailure();
+    setLoaderFailed(false);
+    setLoaderFailureReason(null);
+    setPluginsLoaded(false);
+    setLoaderAttempt((n) => n + 1);
+  }, []);
 
   async function checkAuth() {
     try {
@@ -233,6 +276,20 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   // Pre-auth (state === "checking"): show splash only, no children to mount.
   if (showBootSplash && state === "checking") {
     return <BootSplash />;
+  }
+
+  // v1.0.2: plugin loader hit a terminal failure (couldn't fetch
+  // /api/plugins even after retries). Show a recoverable error screen
+  // instead of dumping the user into a dashboard with no widget registry.
+  // The reload button calls handleLoaderRetry which re-runs the loader
+  // effect — no full page reload needed if it works the second time.
+  if (state === "authenticated" && loaderFailed) {
+    return (
+      <LoadErrorScreen
+        reason={loaderFailureReason}
+        onReload={handleLoaderRetry}
+      />
+    );
   }
 
   // Authenticated: render children directly. While the splash is up, layer

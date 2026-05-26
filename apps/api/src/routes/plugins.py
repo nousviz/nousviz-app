@@ -845,12 +845,18 @@ async def list_plugins(request: Request, _: None = Depends(requires("plugins.rea
 
     # B305: per-user plugin allowlist. No-op for admin/superadmin and for
     # viewer/analyst with zero ACL rows.
+    #
+    # GET /api/plugins is in middleware PUBLIC_GET_PATTERNS, so this handler
+    # can be reached without a session token (share-viewer loader, plugin
+    # frontend-component bootstrap before the token attaches, etc.). When
+    # get_me() raises 401 in that case, fall through to the unfiltered list
+    # instead of surfacing a 401 on a public endpoint.
     try:
         current_user = get_me(request)
         plugins = filter_plugins_for_user(plugins, current_user)
-    except HTTPException:
-        # `requires` already enforces auth; this should not be reachable.
-        raise
+    except HTTPException as exc:
+        if exc.status_code != 401:
+            raise
     except Exception:
         logger.exception("list_plugins: B305 filter failed — returning unfiltered list")
     return {"plugins": plugins}

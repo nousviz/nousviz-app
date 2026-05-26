@@ -570,6 +570,22 @@ if [[ -f "${APP_DIR}/scripts/smoke-test.sh" ]]; then
     ssh "${TARGET}" "cd ${REMOTE_DIR} && bash scripts/smoke-test.sh http://127.0.0.1:8000" || warn "Some smoke tests failed"
 fi
 
+# v1.0.2: viewer-role end-to-end smoke. The unauthenticated smoke above
+# proves health endpoints respond; this one proves a real viewer logging
+# in can actually see plugin dashboards — which is the path that the
+# v1.0.1 regression broke. Gated on the credentials being set; deploys
+# without credentials configured just skip it (with a notice).
+if [[ -f "${APP_DIR}/scripts/smoke-test-viewer.sh" ]]; then
+    if [[ -n "${NOUSVIZ_SMOKE_VIEWER_EMAIL:-}" && -n "${NOUSVIZ_SMOKE_VIEWER_PASSWORD:-}" ]]; then
+        step "Running viewer-role end-to-end smoke..."
+        # Pipe credentials through SSH env so they don't appear in the remote
+        # command line / shell history.
+        ssh "${TARGET}" "NOUSVIZ_SMOKE_VIEWER_EMAIL='${NOUSVIZ_SMOKE_VIEWER_EMAIL}' NOUSVIZ_SMOKE_VIEWER_PASSWORD='${NOUSVIZ_SMOKE_VIEWER_PASSWORD}' cd ${REMOTE_DIR} && bash scripts/smoke-test-viewer.sh http://127.0.0.1:8000" || warn "Viewer smoke failed — a real viewer logging in would see breakage"
+    else
+        warn "Skipping viewer smoke — set NOUSVIZ_SMOKE_VIEWER_EMAIL + _PASSWORD to enable (see scripts/smoke-test-viewer.sh)"
+    fi
+fi
+
 # ── 10. Log the deploy ────────────────────────────────────────────────
 
 ssh "${TARGET}" "echo '${TIMESTAMP} v${VERSION} ${COMMIT} ${BRANCH}' >> ${REMOTE_DIR}/logs/deploys.log" 2>/dev/null || true

@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -196,6 +197,13 @@ export default function SyncStatusCard({
   pluginId: string;
   isUtility: boolean;
 }) {
+  // v1.0.2: schedule endpoints require plugins.configure (admin+). Gate
+  // the fetch so viewers/analysts don't generate console-noise 403s on
+  // every plugin page mount. The schedule UI is also hidden for them
+  // anyway, so there's nothing to render with the response.
+  const { hasPermission } = useCurrentUser();
+  const canConfigure = hasPermission("plugins.configure");
+
   const [status, setStatus] = useState<SyncStatus | null>(null);
   const [schedule, setSchedule] = useState<ScheduleData | null>(null);
   const [triggerError, setTriggerError] = useState<string | null>(null);
@@ -246,6 +254,11 @@ export default function SyncStatusCard({
   }, [pluginId]);
 
   const refreshSchedule = useCallback(async () => {
+    // v1.0.2: skip the fetch entirely for non-configure roles — the
+    // backend would 403 us, the schedule UI is hidden anyway, and the
+    // 403 generates misleading console noise that triggered support
+    // reports during the v1.0.1 incident.
+    if (!canConfigure) return;
     try {
       const r = await apiFetch(`/api/plugins/${pluginId}/sync-schedule`);
       if (r.ok) {
@@ -255,7 +268,7 @@ export default function SyncStatusCard({
     } catch {
       /* idem */
     }
-  }, [pluginId]);
+  }, [pluginId, canConfigure]);
 
   // Initial fetch.
   useEffect(() => {

@@ -1007,7 +1007,7 @@ async def fire_now(
         # Build a request for incremental mode. Reuse the existing handler
         # so we get async enqueue / sync subprocess behavior for free.
         sync_req = SyncRequest(mode="incremental")
-        resp = await trigger_sync(plugin_id, sync_req, request)
+        resp = await trigger_sync(plugin_id, request=request, req=sync_req)
         # Return the sync response verbatim; client already knows how to
         # read {status, run_id, enqueued, ...}.
         return resp

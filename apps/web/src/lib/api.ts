@@ -129,13 +129,50 @@ export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Pr
   }
 
   // Session expired — clear stale token and redirect to login.
-  // Skip for public endpoints that legitimately return 401 (share access, etc.)
-  if (res.status === 401 && token && !window.location.pathname.startsWith("/shared/")) {
+  //
+  // Scoped to the canonical session-check endpoints only: /api/auth/me and
+  // /api/auth/me/permissions. Those are the routes that *definitively* mean
+  // "your session is invalid" when they return 401 — every other endpoint's
+  // 401 could be a per-endpoint bug, a transient, a not-yet-implemented
+  // public-route classification, etc., and a single such 401 should NOT
+  // be allowed to nuke the user's session for the whole app. The
+  // `useCurrentUser` hook calls /api/auth/me on every page mount, so a
+  // legitimately-expired session still triggers the logout/redirect on
+  // the very next navigation — just not from arbitrary endpoint failures.
+  //
+  // Also skip /shared/ paths — viewer landing pages legitimately receive
+  // 401s when probing password-protected shares without credentials.
+  if (
+    res.status === 401 &&
+    token &&
+    !window.location.pathname.startsWith("/shared/") &&
+    _isSessionProbe(input)
+  ) {
     localStorage.removeItem(TOKEN_KEY);
     const returnTo = encodeURIComponent(window.location.pathname);
     window.location.href = `/?return=${returnTo}`;
   }
   return res;
+}
+
+/**
+ * Test whether the given fetch input targets the canonical session-check
+ * endpoints (`/api/auth/me` or `/api/auth/me/permissions`). Exported only
+ * so unit tests can exercise the URL-extraction logic directly.
+ */
+export function _isSessionProbe(input: RequestInfo | URL): boolean {
+  let raw: string;
+  if (typeof input === "string") raw = input;
+  else if (input instanceof URL) raw = input.pathname;
+  else raw = input.url;
+  // Strip query string + protocol/host so we compare paths only.
+  let path: string;
+  try {
+    path = new URL(raw, "http://_").pathname;
+  } catch {
+    path = raw.split("?")[0];
+  }
+  return path === "/api/auth/me" || path === "/api/auth/me/permissions";
 }
 
 /**

@@ -10,6 +10,31 @@ _Nothing yet — see [ROADMAP.md](ROADMAP.md) for what's planned._
 
 ---
 
+## [1.0.2] — 2026-05-26
+
+### Fixed — defence-in-depth against the v1.0.1 outage pattern
+
+v1.0.1 fixed the one-line bug, but the *reason* a single backend 401 became
+a multi-day team-wide outage was that three frontend layers happily amplified
+it: `apiFetch` auto-logged-out on any 401, the plugin loader silently swallowed
+errors, and the boot splash's timeout fallback dropped the user into a
+permanently-broken dashboard. v1.0.2 closes each of those amplifiers.
+
+- **`apiFetch` 401 auto-logout is now scoped to `/api/auth/me` and `/api/auth/me/permissions` only.** Previously, any 401 from any endpoint cleared the session token from `localStorage` and redirected to the login page. That meant a single bug on one endpoint could log out everyone on the platform. Now only the canonical session-check endpoints trigger the logout flow — a 401 from any other endpoint is returned to the caller as a normal response. A legitimately-expired session still gets caught on the next page-load `/api/auth/me` call. New unit test `apps/web/src/lib/api.test.ts` exercises the scoping.
+- **The plugin-component loader now retries `/api/plugins` with exponential backoff (3 attempts, <2s total) before giving up.** Previously the loader had a single try-catch that silently `return`ed on any error — failure was indistinguishable from "no trusted plugins exist," and the dashboard fell through to a broken render with no signal that anything was wrong. On terminal failure, the loader now logs to the console and calls `notifyPluginLoaderFailed(reason)` so `AuthGate` can show the user a recoverable error screen instead.
+- **New `LoadErrorScreen` replaces the "render anyway" fallback in `AuthGate`.** When the plugin loader hits terminal failure (or the 15-second splash timeout fires with the loader still failed), the user now sees a clear card with the failure reason and a one-click Reload button. The reload re-runs the loader in-app without a full page reload — a transient API hiccup recovers in two clicks instead of cascading into a refresh-and-relogin loop.
+- **New `scripts/smoke-test-viewer.sh` exercises the user-visible path end-to-end after every deploy.** Logs in as a configured test-viewer account (`NOUSVIZ_SMOKE_VIEWER_EMAIL` + `_PASSWORD`), then verifies `/api/auth/me`, `/api/auth/me/permissions`, `/api/plugins`, and a plugin dashboard spec all return 2xx as a real viewer. Asserts the `/api/auth/me` response role is `viewer` (defends against accidentally pointing the smoke at an admin account). The v1.0.0 → v1.0.1 outage would have failed this smoke in <5 seconds.
+
+---
+
+## [1.0.1] — 2026-05-26
+
+### Fixed
+
+- **`GET /api/plugins` no longer returns 401 for unauthenticated callers on a public route.** The middleware whitelists `/api/plugins` (share-viewer loader, plugin-frontend-component bootstrap), but the handler bubbled up an `HTTPException(401)` from `get_me()` when applying the B305 per-user plugin allowlist filter, masquerading a public endpoint as auth-required. The handler now tolerates a 401 from `get_me` and returns the unfiltered list — the correct semantics for an unauthenticated caller on a public route. Non-401 `HTTPException`s still propagate. Regression test in `tests/test_list_plugins_public_no_token.py`.
+
+---
+
 ## [1.0.0] — 2026-05-18
 
 First public release.

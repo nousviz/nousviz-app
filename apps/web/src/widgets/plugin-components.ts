@@ -44,6 +44,15 @@ const listeners = new Set<() => void>();
 // surface for operators after a fresh install / Trust.
 let pluginLoaderCompleted = false;
 
+// v1.0.2: distinct "the loader actually failed" state — separate from
+// "completed with zero components" (which happens legitimately when no
+// plugins are trusted). Set by notifyPluginLoaderFailed() when the
+// /api/plugins fetch couldn't be salvaged by the loader's retry loop.
+// AuthGate reads this to render a recoverable error screen instead of
+// dumping the user into a permanently-broken dashboard.
+let pluginLoaderFailed = false;
+let pluginLoaderFailureReason: string | null = null;
+
 function emit() {
   for (const listener of listeners) listener();
 }
@@ -79,6 +88,46 @@ export function notifyPluginLoaderCompleted(): void {
 
 export function getPluginLoaderCompletedSnapshot(): boolean {
   return pluginLoaderCompleted;
+}
+
+/**
+ * v1.0.2: signal that loadPluginFrontendComponents() exhausted its retry
+ * budget without ever getting a usable /api/plugins response. This is
+ * DIFFERENT from completing-with-zero-components — that's a legitimate
+ * outcome when no plugins are trusted. This is "the host could not even
+ * find out what plugins exist." Used by AuthGate to render a recoverable
+ * error screen instead of dropping the user into a dashboard with no
+ * widget registry.
+ *
+ * `reason` is a short operator-readable string for the error screen
+ * (e.g., "Server returned 503 after 3 retries").
+ */
+export function notifyPluginLoaderFailed(reason: string): void {
+  pluginLoaderFailed = true;
+  pluginLoaderFailureReason = reason;
+  // Failure implies completion — clear the "still loading" placeholder
+  // state too so callers don't double-display.
+  pluginLoaderCompleted = true;
+  emit();
+}
+
+export function getPluginLoaderFailedSnapshot(): boolean {
+  return pluginLoaderFailed;
+}
+
+export function getPluginLoaderFailureReason(): string | null {
+  return pluginLoaderFailureReason;
+}
+
+/**
+ * Reset failure state. Called by the LoadErrorScreen's reload action so
+ * an in-app retry can re-attempt cleanly without a full page reload.
+ */
+export function clearPluginLoaderFailure(): void {
+  pluginLoaderFailed = false;
+  pluginLoaderFailureReason = null;
+  pluginLoaderCompleted = false;
+  emit();
 }
 
 /**

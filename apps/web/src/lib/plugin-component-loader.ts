@@ -37,6 +37,7 @@ import {
 import {
   registerPluginComponent,
   notifyPluginLoaderCompleted,
+  notifyPluginLoaderFailed,
   type CustomWidgetProps,
 } from "@/widgets/plugin-components";
 
@@ -109,11 +110,83 @@ interface PluginListResponse {
 }
 
 /**
+ * v1.0.2: retry the `/api/plugins` fetch a few times before giving up.
+ * `/api/plugins` is whitelisted as a public route in the auth middleware
+ * (see B160), so a 401 here means the handler itself or a downstream
+ * filter failed — usually transient (worker just restarted, brief race
+ * during deploy). Worth a couple of quick retries before we tell the
+ * user "the platform couldn't list plugins."
+ *
+ * Returns the parsed plugin list on success, or null on terminal
+ * failure. On terminal failure, the caller is responsible for calling
+ * notifyPluginLoaderFailed so AuthGate can surface the LoadErrorScreen.
+ */
+async function fetchPluginsWithRetry(): Promise<
+  { plugins: PluginListEntry[] } | { error: string }
+> {
+  // Delays before each attempt: 0ms, 500ms, 1500ms (total < 2s, capped so
+  // we never blow past AuthGate's 15s splash window).
+  const delaysMs = [0, 500, 1500];
+  let lastStatus: number | null = null;
+  let lastDetail: string | null = null;
+
+  for (let attempt = 0; attempt < delaysMs.length; attempt++) {
+    if (delaysMs[attempt] > 0) {
+      await new Promise((r) => setTimeout(r, delaysMs[attempt]));
+    }
+    try {
+      const res = await apiFetch("/api/plugins");
+      if (res.ok) {
+        const data = (await res.json()) as PluginListResponse;
+        return { plugins: Array.isArray(data?.plugins) ? data.plugins : [] };
+      }
+      lastStatus = res.status;
+      // Try to capture the response body's `detail` field for the operator-
+      // facing error reason. Best-effort; don't fail the retry on parse error.
+      try {
+        const body = await res.clone().json();
+        if (body && typeof body.detail === "string") lastDetail = body.detail;
+      } catch {
+        /* non-JSON body — skip */
+      }
+      // 4xx other than 401/408/429 won't get better with a retry — give up
+      // immediately so we surface failure fast rather than burning the budget.
+      if (
+        res.status >= 400 &&
+        res.status < 500 &&
+        res.status !== 401 &&
+        res.status !== 408 &&
+        res.status !== 429
+      ) {
+        break;
+      }
+    } catch (e) {
+      lastStatus = null;
+      lastDetail = e instanceof Error ? e.message : String(e);
+    }
+  }
+
+  const reason = lastStatus
+    ? `Server returned ${lastStatus} after ${delaysMs.length} attempts${
+        lastDetail ? `: ${lastDetail}` : ""
+      }`
+    : `Network error fetching plugins after ${delaysMs.length} attempts${
+        lastDetail ? `: ${lastDetail}` : ""
+      }`;
+  return { error: reason };
+}
+
+/**
  * Load and register every trusted plugin's frontend components.
  * Idempotent — calling twice re-registers the same components, no harm.
  *
  * Call once at app boot, before the router renders, so DashboardRenderer
  * can resolve plugin-shipped components on first paint.
+ *
+ * v1.0.2: now retries on transient /api/plugins failures (3 attempts,
+ * <2s total) and surfaces terminal failure to AuthGate via
+ * notifyPluginLoaderFailed so the user sees a recoverable error screen
+ * instead of a permanently-broken dashboard.
  */
 export async function loadPluginFrontendComponents(): Promise<void> {
   // B151.1: publish host SDK BEFORE any plugin widget executes. Plugin
@@ -121,24 +194,16 @@ export async function loadPluginFrontendComponents(): Promise<void> {
   // it has to exist when their module evaluates.
   publishHostSDK();
 
-  let plugins: PluginListEntry[] = [];
-  try {
-    const res = await apiFetch("/api/plugins");
-    if (!res.ok) {
-      // Not authenticated yet, or API down — silently skip; we'll
-      // re-attempt on next page load. Don't block the host app.
-      // v0.10.0.5.1: still notify completion so the dashboard renderer
-      // can transition from "Loading widget…" placeholder to
-      // "Unknown component" error if a widget is missing.
-      notifyPluginLoaderCompleted();
-      return;
-    }
-    const data = (await res.json()) as PluginListResponse;
-    plugins = Array.isArray(data?.plugins) ? data.plugins : [];
-  } catch {
-    notifyPluginLoaderCompleted();
+  const result = await fetchPluginsWithRetry();
+  if ("error" in result) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `[plugin-component-loader] giving up after retries: ${result.error}`,
+    );
+    notifyPluginLoaderFailed(result.error);
     return;
   }
+  const plugins = result.plugins;
 
   // Fan out: each plugin's components load in parallel; failures are
   // isolated to that one component.
