@@ -10,6 +10,14 @@ _Nothing yet — see [ROADMAP.md](ROADMAP.md) for what's planned._
 
 ---
 
+## [1.0.1] — 2026-05-26
+
+### Fixed
+
+- **`GET /api/plugins` no longer returns 401 for unauthenticated callers on a public route.** The middleware whitelists `/api/plugins` (share-viewer loader, plugin-frontend-component bootstrap), but the handler bubbled up an `HTTPException(401)` from `get_me()` when applying the B305 per-user plugin allowlist filter, masquerading a public endpoint as auth-required. The handler now tolerates a 401 from `get_me` and returns the unfiltered list — the correct semantics for an unauthenticated caller on a public route. Non-401 `HTTPException`s still propagate. Regression test in `tests/test_list_plugins_public_no_token.py`.
+
+---
+
 ## [1.0.0] — 2026-05-18
 
 First public release.
