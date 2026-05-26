@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { cn } from "@/lib/utils";
 import { useBootCoordinator } from "@/components/layout/BootCoordinator";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import DashboardRenderer from "@/widgets/DashboardRenderer";
 import PluginAlerts from "@/widgets/PluginAlerts";
 import PluginModulesTab from "@/components/plugins/PluginModulesTab";
@@ -212,6 +213,16 @@ interface SettingField {
 }
 
 function PluginSettingsTab({ pluginId }: { pluginId: string }) {
+  // v1.0.2: the entire Settings tab is admin-only — all its data fetches
+  // (`/api/plugins/{slug}/settings`, `/api/plugins/{slug}/sync-schedule`,
+  // `/api/plugins/{slug}/connections`) require plugins.configure. A viewer
+  // navigating here by URL would generate a wave of 403s in the console
+  // (which is exactly what surfaced in the v1.0.1 post-mortem reports).
+  // Bail before any of those fetches fire, and show a clear "you don't
+  // have access" message instead of an empty form.
+  const { hasPermission, loading: userLoading } = useCurrentUser();
+  const canConfigure = hasPermission("plugins.configure");
+
   const [fields, setFields] = useState<SettingField[]>([]);
   const [values, setValues] = useState<Record<string, unknown>>({});
   const [isUtility, setIsUtility] = useState(false);
@@ -241,6 +252,13 @@ function PluginSettingsTab({ pluginId }: { pluginId: string }) {
   const [connectionFieldNames, setConnectionFieldNames] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    // v1.0.2: skip the entire load chain for non-configure roles. Each of
+    // the calls below (`/connections`, `/settings`) requires plugins.configure
+    // and would 403 — generating the console noise that misdirected the
+    // v1.0.1 triage. The page renders a permission-denied screen instead
+    // (see early return below), so there's nothing to populate.
+    if (userLoading) return; // wait for permissions to load before deciding
+    if (!canConfigure) return;
     let cancelled = false;
     apiFetch(`/api/plugins/${pluginId}`)
       .then(r => r.json())
@@ -295,7 +313,7 @@ function PluginSettingsTab({ pluginId }: { pluginId: string }) {
       .catch(() => {});
 
     return () => { cancelled = true; };
-  }, [pluginId, actionsTick]);
+  }, [pluginId, actionsTick, userLoading, canConfigure]);
 
   async function save() {
     setSaving(true);
@@ -352,6 +370,32 @@ function PluginSettingsTab({ pluginId }: { pluginId: string }) {
     }
   }
 
+
+  // v1.0.2: viewer/analyst landed on /plugin/{slug}/settings — render a
+  // permission-denied card instead of an empty/broken form. Done AFTER the
+  // hooks above so we don't violate the rules-of-hooks order; renders
+  // before any of the admin-only data has been requested or used.
+  if (!userLoading && !canConfigure) {
+    return (
+      <div className="max-w-[600px]">
+        <div className="bg-card border border-border rounded-xl p-6 space-y-3">
+          <div className="flex items-center gap-2">
+            <Lock className="w-4 h-4 text-muted-foreground" />
+            <h2 className="font-display text-sm text-foreground">Settings are admin-only</h2>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Editing plugin settings (credentials, sync schedule, connections)
+            requires the <code className="bg-secondary px-1 rounded">plugins.configure</code>{" "}
+            permission, which is granted to <strong>admin</strong> and{" "}
+            <strong>superadmin</strong> roles. Your role doesn&apos;t hold it.
+          </p>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            If you need to change something here, ask an admin on your team.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // Split fields into settings vs credentials
   const settingsFields = fields.filter(f => !connectionFieldNames.has(f.name));
