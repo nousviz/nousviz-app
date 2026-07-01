@@ -19,6 +19,7 @@ from .db import get_pg_conn, dict_cursor, DictCursor
 from .routing import router_for_plugin
 from .credentials import (
     get_credential,
+    store_credential,
     CredentialBrokerUnavailable,
     CredentialBrokerError,
 )
@@ -60,13 +61,21 @@ from .oauth import OAuthCallbackResult, start_flow as start_oauth_flow
 # (B312 hotfix) — pairs with migration 079 which grants nousviz_plugin
 # the CRUD needed to persist state rows. Pre-079, every start failed
 # silently with InsufficientPrivilege and the callback hit invalid_state.
-__version__ = "0.6.7"
+# B308 → 0.6.8: credentials.store_credential — plugin route handlers can
+# persist an encrypted credential they captured in-route (e.g. an OAuth
+# token from a paste-back-code flow the core callback can't handle).
+# Symmetric to get_credential's in-process resolver: the api process
+# registers a privileged writer at startup; subprocess context raises.
+# Field names may be namespaced (access_token:<user_id>) for per-user
+# storage with no schema change.
+__version__ = "0.6.8"
 __all__ = [
     "get_pg_conn",
     "dict_cursor",
     "DictCursor",
     "router_for_plugin",
     "get_credential",
+    "store_credential",
     "CredentialBrokerUnavailable",
     "CredentialBrokerError",
     "jobs",
