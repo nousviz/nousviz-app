@@ -93,12 +93,35 @@ try:
         }
         return creds
 
+    # B308: register the symmetric in-process credential *writer*. Plugin
+    # route handlers that capture a secret in-route (e.g. an OAuth token
+    # from a paste-back-code flow core's callback can't handle) call
+    # nousviz_sdk.store_credential(...), which dispatches here. The api
+    # process holds the encryption key, so it stores directly via the same
+    # privileged path the operator Settings form uses. Subprocesses don't
+    # run main.py, so no writer is registered there and store_credential
+    # raises — sync scripts read credentials, they don't mint them.
+    def _api_credential_writer(
+        plugin_id: str, field_name: str, plaintext: str, credential_type: str
+    ) -> None:
+        from .plugin_credentials import store_plugin_credential
+        store_plugin_credential(
+            plugin_id,
+            field_name,
+            plaintext,
+            credential_type=credential_type,
+            performed_by="plugin",
+        )
+
     try:
-        from nousviz_sdk._broker_client import register_resolver
+        from nousviz_sdk._broker_client import register_resolver, register_writer
         register_resolver(_api_credential_resolver)
-        logger.info("registered in-process credential resolver for plugin route handlers")
+        register_writer(_api_credential_writer)
+        logger.info(
+            "registered in-process credential resolver + writer for plugin route handlers"
+        )
     except Exception as _res_err:
-        logger.warning(f"could not register API credential resolver: {_res_err}")
+        logger.warning(f"could not register API credential resolver/writer: {_res_err}")
 
 except ImportError as _sdk_err:
     SDK_IMPORT_ERROR = str(_sdk_err)
