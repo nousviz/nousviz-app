@@ -443,3 +443,92 @@ def test_subprocess_path_used_when_no_resolver(monkeypatch, broker_with_stub_dec
     creds = get_cached()
     # Came from broker → has stub's password
     assert creds["password"] == "s3cret-pw"
+
+
+# ── In-process credential writer (B308) ──────────────────────────────
+
+
+def test_store_dispatches_to_registered_writer():
+    """store() forwards to the registered in-process writer verbatim.
+    This is the api-process path: a plugin route captures a secret and
+    calls store_credential, the writer encrypts + persists directly."""
+    from sdk.nousviz_sdk._broker_client import (
+        store, register_writer, reset_writer_for_tests,
+    )
+
+    reset_writer_for_tests()
+    calls = []
+
+    def fake_writer(plugin_id, field_name, plaintext, credential_type):
+        calls.append((plugin_id, field_name, plaintext, credential_type))
+
+    register_writer(fake_writer)
+    store("nousviz-agent", "access_token:user-42", "sk-ant-oat01-xyz", "oauth2")
+    assert calls == [("nousviz-agent", "access_token:user-42", "sk-ant-oat01-xyz", "oauth2")]
+
+    reset_writer_for_tests()
+
+
+def test_store_raises_without_writer(monkeypatch):
+    """No writer registered (subprocess context) → CredentialBrokerUnavailable,
+    not a silent no-op. Sync scripts read credentials but don't mint them."""
+    from sdk.nousviz_sdk._broker_client import (
+        store, reset_writer_for_tests, CredentialBrokerUnavailable,
+    )
+
+    reset_writer_for_tests()
+    with pytest.raises(CredentialBrokerUnavailable, match="only supported from plugin route"):
+        store("nousviz-agent", "access_token:user-42", "tok", "oauth2")
+
+
+def test_store_credential_public_api():
+    """End-to-end: plugin code calls the documented public store_credential(),
+    which reaches the registered writer with the default credential_type."""
+    from sdk.nousviz_sdk import store_credential
+    from sdk.nousviz_sdk._broker_client import register_writer, reset_writer_for_tests
+
+    reset_writer_for_tests()
+    calls = []
+    register_writer(lambda *a: calls.append(a))
+
+    # Default credential_type is "oauth2"
+    store_credential("nousviz-agent", "refresh_token:user-7", "rt-abc")
+    assert calls == [("nousviz-agent", "refresh_token:user-7", "rt-abc", "oauth2")]
+
+    reset_writer_for_tests()
+
+
+def test_store_credential_raises_in_subprocess_context():
+    """Public API surfaces the subprocess-context error too."""
+    from sdk.nousviz_sdk import store_credential
+    from sdk.nousviz_sdk._broker_client import reset_writer_for_tests, CredentialBrokerUnavailable
+
+    reset_writer_for_tests()
+    with pytest.raises(CredentialBrokerUnavailable):
+        store_credential("nousviz-agent", "access_token:user-1", "tok")
+
+
+def test_writer_independent_of_resolver():
+    """Registering a writer must not disturb the read resolver, and vice
+    versa — they're separate registries."""
+    from sdk.nousviz_sdk._broker_client import (
+        register_resolver, register_writer,
+        reset_resolver_for_tests, reset_writer_for_tests,
+        get_cached, store,
+    )
+
+    reset_resolver_for_tests()
+    reset_writer_for_tests()
+
+    register_resolver(lambda pid: {"password": "r", "__db__": {"user": "u", "password": "p"}})
+    writes = []
+    register_writer(lambda *a: writes.append(a))
+
+    # Read path still works…
+    assert get_cached(plugin_id="p")["password"] == "r"
+    # …and write path works independently.
+    store("p", "k", "v", "api_key")
+    assert writes == [("p", "k", "v", "api_key")]
+
+    reset_resolver_for_tests()
+    reset_writer_for_tests()

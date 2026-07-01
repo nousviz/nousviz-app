@@ -55,6 +55,14 @@ _CACHE: dict[str, Any] | None = None
 # When None (default), subprocess broker path is used.
 _RESOLVER: Optional[Callable[[str], dict[str, Any]]] = None
 
+# Writer registry (B308) — the API process registers an in-process
+# credential *writer* at startup, the symmetric counterpart to the
+# resolver above. Signature: writer(plugin_id, field_name, plaintext,
+# credential_type) -> None. Encrypts + persists via core's privileged
+# store_plugin_credential. When None (default — e.g. subprocess context),
+# credential writes are unsupported and store() raises.
+_WRITER: Optional[Callable[[str, str, str, str], None]] = None
+
 
 def register_resolver(resolver: Callable[[str], dict[str, Any]]) -> None:
     """Register an in-process credential resolver.
@@ -72,10 +80,55 @@ def register_resolver(resolver: Callable[[str], dict[str, Any]]) -> None:
     _RESOLVER = resolver
 
 
+def register_writer(writer: Callable[[str, str, str, str], None]) -> None:
+    """Register an in-process credential writer (B308).
+
+    Used by the NousViz API process at startup so plugin route handlers
+    can persist an encrypted credential they captured themselves (e.g. an
+    OAuth access/refresh token exchanged in-route, where the provider
+    can't redirect through core's callback). The writer encrypts + stores
+    via core's privileged path; the credential never lands anywhere the
+    ``nousviz_plugin`` role can read raw.
+
+    Signature: ``writer(plugin_id, field_name, plaintext, credential_type)``.
+
+    Plugin authors should NOT call this. Subprocess contexts don't register
+    a writer, so :func:`store` raises there — credential writes are only
+    supported from plugin route handlers (api-process context).
+    """
+    global _WRITER
+    _WRITER = writer
+
+
+def store(plugin_id: str, field_name: str, plaintext: str, credential_type: str) -> None:
+    """Persist a credential via the registered in-process writer (B308).
+
+    Only supported in api-process (plugin route) context. Raises
+    :class:`CredentialBrokerUnavailable` in subprocess context, where no
+    writer is registered — sync scripts read credentials, they don't mint
+    them.
+    """
+    if _WRITER is None:
+        raise CredentialBrokerUnavailable(
+            "Credential writes are only supported from plugin route handlers "
+            "(api-process context). No in-process credential writer is "
+            "registered here — this usually means the call is happening in a "
+            "worker-spawned subprocess (sync script / hook), which can read "
+            "credentials but not store them."
+        )
+    _WRITER(plugin_id, field_name, plaintext, credential_type)
+
+
 def reset_resolver_for_tests() -> None:
     """Test-only: unregister any resolver."""
     global _RESOLVER
     _RESOLVER = None
+
+
+def reset_writer_for_tests() -> None:
+    """Test-only: unregister any writer."""
+    global _WRITER
+    _WRITER = None
 
 
 class CredentialBrokerUnavailable(RuntimeError):
