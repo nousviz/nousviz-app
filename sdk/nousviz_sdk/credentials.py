@@ -44,6 +44,7 @@ import logging
 
 from ._broker_client import (
     get_cached,
+    store as _store,
     CredentialBrokerUnavailable,
     CredentialBrokerError,
 )
@@ -85,8 +86,48 @@ def get_credential(plugin_id: str, key: str, env_prefix: str | None = None) -> s
     return value
 
 
+def store_credential(
+    plugin_id: str,
+    field_name: str,
+    plaintext: str,
+    credential_type: str = "oauth2",
+) -> None:
+    """Persist an encrypted credential for this plugin (B308, v0.6.8).
+
+    The complement to :func:`get_credential`. Use it when a plugin
+    **route handler** captures a secret it must store — most commonly an
+    OAuth access/refresh token exchanged in-route, where the provider
+    can't redirect through core's ``/api/oauth/callback/<slug>`` (e.g. a
+    device / paste-back-code flow). Core encrypts and writes the value via
+    the same privileged path the operator Settings form uses; it never
+    lands anywhere the ``nousviz_plugin`` role can read raw.
+
+    Args:
+        plugin_id: Your plugin's declared id (e.g., "nousviz-agent").
+        field_name: The credential key. May be namespaced for per-user
+            storage — e.g. ``f"access_token:{user_id}"`` — since the
+            underlying store keys on an arbitrary name. Read it back with
+            ``get_credential(plugin_id, field_name)``.
+        plaintext: The secret value to encrypt and store. Upserts.
+        credential_type: Audit-trail classification. Defaults to
+            ``"oauth2"``; use ``"api_key"`` / ``"api_token"`` as fitting.
+
+    Raises:
+        CredentialBrokerUnavailable: called outside api-process (plugin
+            route) context — e.g. from a worker-spawned sync subprocess,
+            which can read credentials but not store them.
+
+    Note:
+        Available only from plugin **route** handlers (api-process). Sync
+        scripts and hooks run in subprocesses that read credentials but
+        do not mint them, so this raises there by design.
+    """
+    _store(plugin_id, field_name, plaintext, credential_type)
+
+
 __all__ = [
     "get_credential",
+    "store_credential",
     "CredentialBrokerUnavailable",
     "CredentialBrokerError",
 ]

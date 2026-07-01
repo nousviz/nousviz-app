@@ -6,7 +6,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Nou
 
 ## [Unreleased]
 
-_Nothing yet — see [ROADMAP.md](ROADMAP.md) for what's planned._
+### Added
+
+- **B308 — Plugins can persist a credential they capture in-route (`nousviz_sdk.store_credential`, SDK 0.6.8).** Until now the plugin SDK could only *read* credentials (`get_credential`); the only encrypted-write path was core's OAuth redirect callback. Plugins that capture a secret directly in a route handler — e.g. an OAuth access/refresh token from a device / paste-back-code flow the provider can't redirect through core's callback — had nowhere contract-legal to store it. `store_credential(plugin_id, field_name, plaintext, credential_type="oauth2")` closes that gap: it dispatches to a privileged in-process writer the API registers at startup (symmetric to the existing read resolver), reusing the same encrypted-credentials path the operator Settings form uses. Field names may be namespaced (`access_token:<user_id>`) for per-user storage with no schema change. Available only from plugin route handlers (api-process); sync subprocesses raise `CredentialBrokerUnavailable` — they read credentials, they don't mint them.
 
 ---
 
