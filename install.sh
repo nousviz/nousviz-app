@@ -41,7 +41,7 @@ if [ -d "$INSTALL_DIR" ]; then
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         cd "$INSTALL_DIR"
-        git pull
+        git fetch --tags --quiet origin
     else
         echo "Aborted."
         exit 0
@@ -50,6 +50,14 @@ else
     echo "Cloning NousViz..."
     git clone "$REPO" "$INSTALL_DIR"
     cd "$INSTALL_DIR"
+fi
+
+# Pin to the newest release tag — main may carry unreleased work, and a
+# previous pinned install leaves HEAD detached, where `git pull` would fail.
+LATEST_TAG=$(git tag --sort=-v:refname | head -1)
+if [ -n "$LATEST_TAG" ]; then
+    echo "Checking out release $LATEST_TAG..."
+    git checkout --quiet "$LATEST_TAG"
 fi
 
 # ── Run setup.sh (installs Postgres, creates DB, runs migrations) ──────
