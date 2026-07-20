@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "tier": "business",
+  "limits": { "max_users": 100, "max_plugins": 50 },
+  "plugins": "*",
+  "smtp": null,
+  "ssl": "wildcard",
+  "features": { "mcp": true, "embedding": true, "sso": true }
+}

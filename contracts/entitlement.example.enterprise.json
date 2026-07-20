@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "tier": "enterprise",
+  "limits": { "max_users": null, "max_plugins": null },
+  "plugins": "*",
+  "smtp": {
+    "host": "smtp.relay.example",
+    "port": 587,
+    "username": "managed-relay",
+    "password": "<delivered-over-hmac-channel-at-provision>",
+    "from_address": "no-reply@managed.nousviz.app",
+    "from_name": "NousViz",
+    "use_tls": true
+  },
+  "ssl": "wildcard",
+  "features": { "mcp": true, "embedding": true, "sso": true }
+}

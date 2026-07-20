@@ -56,10 +56,10 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest bcrypt pyyaml fastapi pydantic psycopg2-binary python-dotenv cryptography
+          pip install pytest bcrypt pyyaml fastapi pydantic psycopg2-binary python-dotenv cryptography jsonschema
 
       - name: Run unit tests
-        run: pytest tests/test_unit.py -v
+        run: pytest tests/test_unit.py tests/test_entitlement_contract.py -v
 
   smoke:
     name: Smoke Test (syntax only)
