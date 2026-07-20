@@ -394,6 +394,75 @@ def _is_module_enabled(plugin_slug: str, module_name: str, module_dir: Path) -> 
         return True  # Default to enabled
 
 
+def signal_workers_to_reload(reason: str = "plugin-install") -> bool:
+    """B306: send SIGHUP to the gunicorn master so every worker cycles
+    and picks up newly-installed plugin routes.
+
+    Why: the install handler runs in exactly one worker. Its in-process
+    `load_plugin_routes(app)` only mutates *that* worker's app.routes —
+    sibling workers serve 404s for the new plugin's endpoints until they
+    restart. SIGHUP triggers gunicorn's graceful reload: new workers
+    re-import the app (which re-runs `load_plugin_routes` at module
+    init) and old workers drain. Call this from a FastAPI BackgroundTask
+    so the response is sent before our own worker is cycled.
+
+    Safety: PID 1, or any parent whose cmdline doesn't contain
+    "gunicorn", is treated as "not running under gunicorn" and skipped.
+    We'd rather miss a reload than `kill -HUP` an unrelated process
+    (systemd, dev uvicorn, a pytest harness, etc.). Returns True iff a
+    signal was actually delivered.
+    """
+    import signal as _signal
+
+    ppid = os.getppid()
+    if ppid <= 1:
+        logger.info(
+            "signal_workers_to_reload(%s): no usable parent (ppid=%s); skipping.",
+            reason, ppid,
+        )
+        return False
+
+    cmdline = ""
+    try:
+        with open(f"/proc/{ppid}/cmdline", "rb") as f:
+            cmdline = f.read().replace(b"\0", b" ").decode("utf-8", "ignore")
+    except (FileNotFoundError, PermissionError, OSError):
+        # /proc unavailable (macOS dev, locked-down container) — try ps
+        try:
+            r = subprocess.run(
+                ["ps", "-p", str(ppid), "-o", "command="],
+                capture_output=True, text=True, timeout=2, check=False,
+            )
+            cmdline = r.stdout or ""
+        except Exception:
+            cmdline = ""
+
+    if "gunicorn" not in cmdline:
+        logger.info(
+            "signal_workers_to_reload(%s): parent PID %s is not gunicorn "
+            "(cmdline=%r); skipping signal.",
+            reason, ppid, cmdline[:120],
+        )
+        return False
+
+    try:
+        os.kill(ppid, _signal.SIGHUP)
+    except (ProcessLookupError, PermissionError) as e:
+        logger.warning(
+            "signal_workers_to_reload(%s): kill -HUP %s failed: %s. "
+            "Operator may need to restart the API manually.",
+            reason, ppid, e,
+        )
+        return False
+
+    logger.info(
+        "signal_workers_to_reload(%s): SIGHUP delivered to gunicorn master "
+        "PID %s; workers will cycle gracefully.",
+        reason, ppid,
+    )
+    return True
+
+
 def load_plugin_routes(app: FastAPI) -> list[str]:
     """Load and register routes from all installed plugins. Returns list of loaded plugin slugs."""
     loaded = []
