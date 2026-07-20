@@ -59,7 +59,7 @@ jobs:
           pip install pytest bcrypt pyyaml fastapi pydantic psycopg2-binary python-dotenv cryptography
 
       - name: Run unit tests
-        run: pytest tests/test_unit.py -v
+        run: pytest tests/test_unit.py tests/test_edition.py -v
 
   smoke:
     name: Smoke Test (syntax only)
