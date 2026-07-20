@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nousviz.io/contracts/entitlement.schema.json",
+  "title": "NousViz Entitlement Contract",
+  "description": "Versioned, additive-only document describing what a managed customer is allowed. Produced by nousviz-cloud (the control panel); consumed by the app's enterprise entitlement client (MC-601). The CONSUMER MUST TOLERATE UNKNOWN FIELDS for forward-compatibility — additionalProperties is true throughout so a newer producer never breaks an older consumer.",
+  "type": "object",
+  "required": ["version", "tier", "limits", "plugins", "ssl", "features"],
+  "additionalProperties": true,
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Contract schema version. Bumped ONLY for breaking shape changes (removing/repurposing a field). Additive changes — new optional fields, new feature flags — do NOT bump it."
+    },
+    "tier": {
+      "type": "string",
+      "enum": ["free", "starter", "team", "business", "enterprise"],
+      "description": "Plan tier. Informational + the key for one-off overrides. The limits below are authoritative — never infer limits from the tier name."
+    },
+    "limits": {
+      "type": "object",
+      "required": ["max_users", "max_plugins"],
+      "additionalProperties": true,
+      "properties": {
+        "max_users": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "Maximum users. null = unlimited. Enforced at invite/accept (MC-602). Existing users over a lowered limit are GRANDFATHERED, never deleted."
+        },
+        "max_plugins": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "Maximum installed plugins. null = unlimited. Enforced at install (MC-603). Already-installed plugins grandfathered. Backup dirs (B276) must not count toward this."
+        }
+      }
+    },
+    "plugins": {
+      "description": "Allowed plugins. \"*\" = unrestricted; otherwise an allowlist of plugin slugs. Enforced at install (MC-603), INDEPENDENT of B305 per-user visibility (this is what the PLAN permits; B305 is what a USER may see).",
+      "oneOf": [
+        { "type": "string", "const": "*" },
+        { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+      ]
+    },
+    "smtp": {
+      "description": "Managed mail relay. null = the instance uses the customer's own SMTP config (default fallback). When present, outbound mail routes through these credentials instead (MC-604). Delivered over the HMAC-signed channel; treat password as a secret.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["host", "port"],
+          "additionalProperties": true,
+          "properties": {
+            "host": { "type": "string" },
+            "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+            "username": { "type": "string" },
+            "password": { "type": "string" },
+            "from_address": { "type": "string", "format": "email" },
+            "from_name": { "type": "string" },
+            "use_tls": { "type": "boolean" }
+          }
+        }
+      ]
+    },
+    "ssl": {
+      "type": "string",
+      "enum": ["wildcard", "customer"],
+      "description": "\"wildcard\" = cloud auto-issues a wildcard cert; the managed instance SKIPS the SSL wizard (MC-104). \"customer\" = the customer manages their own certificate."
+    },
+    "features": {
+      "type": "object",
+      "description": "Optional feature flags. ADDITIVE: unknown flags are tolerated and treated as off. Consumed via features.has_*() (MC-605). Community edition ignores this block entirely (everything is on).",
+      "additionalProperties": { "type": "boolean" },
+      "properties": {
+        "mcp": { "type": "boolean", "description": "MCP utility availability (MC-701)." },
+        "embedding": { "type": "boolean", "description": "Auth-checked widget embedding (MC-402)." },
+        "sso": { "type": "boolean", "description": "Single sign-on." }
+      }
+    }
+  }
+}

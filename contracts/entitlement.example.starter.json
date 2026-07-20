@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "tier": "starter",
+  "limits": { "max_users": 5, "max_plugins": 10 },
+  "plugins": "*",
+  "smtp": null,
+  "ssl": "wildcard",
+  "features": { "mcp": false, "embedding": true, "sso": false }
+}
