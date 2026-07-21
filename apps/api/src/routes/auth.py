@@ -20,6 +20,7 @@ import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
+from .. import hooks
 from ..db import get_pg_conn, dict_cursor
 from ..rbac import requires, register_route
 from ..models import ErrorDetail, RBACErrorDetail, StepUpRequiredDetail
@@ -418,6 +419,12 @@ def accept_invite(req: AcceptInviteRequest, request: Request):
         cur.execute("SELECT id FROM users WHERE email = %s", (invite["email"].lower(),))
         if cur.fetchone():
             raise HTTPException(409, "A user with this email already exists. Try logging in instead.")
+
+    # Edition seam (MC-203): the user count may have changed between the
+    # invite and its acceptance — re-check at creation time.
+    decision = hooks.user_invite_allowed()
+    if not decision.allowed:
+        raise HTTPException(403, decision.reason or "User limit reached for this plan.")
 
     pw_hash = _hash_password(req.password)
 
@@ -1919,6 +1926,12 @@ def invite_user(
         cur.execute("SELECT id FROM users WHERE email = %s", (req.email.lower(),))
         if cur.fetchone():
             raise HTTPException(409, "A user with this email already exists.")
+
+    # Edition seam (MC-203): may this installation add one more user?
+    # Community default always allows; managed enforcement lands in WS6.
+    decision = hooks.user_invite_allowed()
+    if not decision.allowed:
+        raise HTTPException(403, decision.reason or "User limit reached for this plan.")
 
     # B305: validate the optional plugin_access payload up-front and
     # normalise it for storage. Admins/superadmins are unrestricted by

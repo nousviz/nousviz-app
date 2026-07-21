@@ -370,6 +370,11 @@ except Exception as e:
 loaded_plugins = load_plugin_routes(app)
 logger.info(f"Loaded {len(loaded_plugins)} plugin(s): {loaded_plugins}")
 
+# Managed-edition add-on (MC-203). Community boots never import it —
+# load_enterprise() returns before any import unless NOUSVIZ_EDITION=managed.
+from .enterprise_loader import load_enterprise
+enterprise_loaded = load_enterprise(app)
+
 # Refresh utility plugin capability registry
 from .routes.plugins import refresh_capabilities
 refresh_capabilities()

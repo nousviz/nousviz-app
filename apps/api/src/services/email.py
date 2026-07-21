@@ -21,6 +21,8 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
+from .. import hooks
+
 logger = logging.getLogger("nousviz.email")
 
 
@@ -48,7 +50,9 @@ def is_configured() -> bool:
 
 def _send(to: str, subject: str, html: str, plain: str) -> tuple[bool, str]:
     """Send an email. Returns (ok, error_message)."""
-    cfg = _get_smtp_config()
+    # Edition seam (MC-203): managed may substitute a relay transport per
+    # the entitlement (WS6/MC-604); community passes through unchanged.
+    cfg = hooks.resolve_smtp_config(_get_smtp_config())
     if not cfg:
         return False, "SMTP not configured. Set SMTP_HOST in .env or configure via Settings."
 

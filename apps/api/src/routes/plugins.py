@@ -20,6 +20,7 @@ import yaml
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from pydantic import BaseModel
 
+from .. import hooks
 from .auth import get_me
 from ..db import get_pg_conn
 from ..rbac import requires, register_route
@@ -1534,6 +1535,13 @@ async def install_plugin(
     admin = get_me(request)
     actor_user_id = str(admin.get("id")) if admin.get("id") else None
     _validate_plugin_id(plugin_id)
+
+    # Edition seam (MC-203): may this installation install another plugin?
+    # Community default always allows; managed enforcement lands in WS6.
+    decision = hooks.plugin_install_allowed(plugin_id)
+    if not decision.allowed:
+        raise HTTPException(403, decision.reason or "Plugin limit reached for this plan.")
+
     import shutil
     import subprocess as sp
 
