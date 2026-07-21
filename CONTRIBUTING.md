@@ -85,6 +85,6 @@ See the SDK in `sdk/` for full documentation.
 
 ## License
 
-The platform is licensed under the [Sustainable Use License](LICENSE) — free to self-host and modify.
+The platform is licensed under the [Sustainable Use License](LICENSE) — fair-code / source-available, free to self-host and modify. In plain English: you may self-host freely, modify for your own use, build and sell plugins, and use NousViz in client work; you may not resell NousViz as a hosted service or as your own product.
 
 Plugin examples, the SDK, and community plugins are MIT licensed.

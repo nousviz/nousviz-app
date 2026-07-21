@@ -52,7 +52,7 @@ The **licensor** is the entity offering these terms, and the **software** is the
 
 This license applies to all code in this repository on the `main` branch, except:
 
-1. **Enterprise features** — Files containing `.ee.` or located in directories named `enterprise/` are licensed under a separate NousViz Enterprise License. Contact hello@nousviz.com for details.
+1. **Enterprise features** — The managed-edition add-on is developed in a separate private repository (`nousviz-enterprise`) and appears in this repository only as an unfetchable git submodule pointer at `enterprise/`. Its source code is not part of this repository or of public builds, and is licensed under a separate proprietary NousViz Enterprise License. Contact hello@nousviz.com for details.
 
 2. **Third-party components** — Components included from other open-source projects retain their original licenses (MIT, Apache 2.0, etc.).
 
