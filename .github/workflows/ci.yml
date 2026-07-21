@@ -61,6 +61,81 @@ jobs:
       - name: Run unit tests
         run: pytest tests/test_unit.py tests/test_edition.py tests/test_hooks.py -v
 
+  public-build-clean:
+    name: Public build clean (MC-204/205 — proof gate 2)
+    runs-on: ubuntu-latest
+    steps:
+      # Deliberately NO submodule init: a public build gets an empty
+      # enterprise/ dir by construction. This job proves the community
+      # product stands entirely alone, with the add-on physically absent.
+      - uses: actions/checkout@v4
+
+      - name: Edition guards (leak + import)
+        run: bash scripts/edition-guards.sh --public
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest bcrypt pyyaml fastapi pydantic psycopg2-binary python-dotenv cryptography jsonschema
+
+      - name: Unit suite with enterprise absent
+        run: pytest tests/test_unit.py tests/test_edition.py tests/test_hooks.py -v
+
+  managed-build:
+    name: Managed build (MC-204 — with enterprise add-on)
+    runs-on: ubuntu-latest
+    # Push events only: fork PRs have no access to secrets. Org policy
+    # disables deploy keys, so submodule auth uses a fine-grained PAT
+    # (ENTERPRISE_TOKEN: read-only Contents on nousviz-enterprise).
+    # Until the secret exists the job skips cleanly rather than failing;
+    # the private repo's own Managed CI workflow provides coverage
+    # meanwhile (it clones this public repo without credentials).
+    if: github.event_name == 'push'
+    steps:
+      - name: Check for enterprise token
+        id: token
+        env:
+          ENTERPRISE_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
+        run: |
+          if [ -n "$ENTERPRISE_TOKEN" ]; then
+            echo "Token present — running managed build."
+            echo "have=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ENTERPRISE_TOKEN secret not set — skipping managed build (see managed CI in nousviz-enterprise)"
+            echo "have=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.token.outputs.have == 'true'
+        with:
+          submodules: true
+          token: ${{ secrets.ENTERPRISE_TOKEN }}
+
+      - name: Verify add-on present
+        if: steps.token.outputs.have == 'true'
+        run: test -f enterprise/nousviz_enterprise/__init__.py
+
+      - uses: actions/setup-python@v5
+        if: steps.token.outputs.have == 'true'
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        if: steps.token.outputs.have == 'true'
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest bcrypt pyyaml fastapi pydantic psycopg2-binary python-dotenv cryptography jsonschema
+
+      - name: Unit suite in managed mode (add-on loads + registers)
+        if: steps.token.outputs.have == 'true'
+        env:
+          NOUSVIZ_EDITION: managed
+        run: pytest tests/test_unit.py tests/test_edition.py tests/test_hooks.py -v
+
   smoke:
     name: Smoke Test (syntax only)
     runs-on: ubuntu-latest
