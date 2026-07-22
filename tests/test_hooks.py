@@ -61,6 +61,14 @@ class TestLoader:
         assert enterprise_loader.load_enterprise(_FakeApp()) is False
         assert "nousviz_enterprise" not in sys.modules
 
+    @pytest.mark.skipif(
+        not (
+            Path(__file__).resolve().parent.parent
+            / "enterprise" / "nousviz_enterprise" / "__init__.py"
+        ).exists(),
+        reason="enterprise add-on not present — public builds have no submodule "
+        "by design; the managed-build pipeline runs this test with it mounted",
+    )
     def test_managed_loads_and_registers(self, monkeypatch):
         monkeypatch.setenv("NOUSVIZ_EDITION", "managed")
         sys.modules.pop("nousviz_enterprise", None)
