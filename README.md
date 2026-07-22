@@ -1,6 +1,6 @@
 # NousViz
 
-**The open-source data intelligence platform.**
+**The source-available data intelligence platform.**
 
 Browse any data source, build dashboards on top of it, get alerted when the numbers move — all through a plugin ecosystem. Runs natively on Postgres. No Docker required.
 
@@ -182,9 +182,13 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
-[Sustainable Use License](LICENSE) — free to self-host and modify. See [LICENSE](LICENSE) for full terms.
+[Sustainable Use License](LICENSE) (fair-code / source-available) — free to self-host and modify. See [LICENSE](LICENSE) for full terms.
 
-Community plugins, examples, and the SDK are licensed under MIT.
+**In plain English — you may:** self-host NousViz for your company or personal use, free forever · modify it for your own use · build and sell plugins for it · use it in client and consulting work.
+
+**You may not:** offer NousViz as a hosted service to others, or sell NousViz or a near-copy of it as your own product.
+
+Community plugins, examples, and the SDK are licensed under MIT — build freely.
 
 ## Links
 

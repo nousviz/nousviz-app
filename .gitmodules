@@ -1,0 +1,3 @@
+[submodule "enterprise"]
+	path = enterprise
+	url = https://github.com/nousviz/nousviz-enterprise.git
