@@ -7,6 +7,7 @@ Reads plugin.yaml files and serves dashboard/dataset/alert specs to the frontend
 import ipaddress
 import os
 import re
+import sys
 import time
 import logging
 from collections import defaultdict
@@ -16,9 +17,10 @@ from typing import Optional
 from urllib.parse import urlparse
 
 import yaml
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from pydantic import BaseModel
 
+from .. import hooks
 from .auth import get_me
 from ..db import get_pg_conn
 from ..rbac import requires, register_route
@@ -1392,6 +1394,106 @@ async def test_install_connection(
     }
 
 
+def _install_plugin_requirements(
+    plugin_id: str,
+    installed_dest: Path,
+    actor_user_id: Optional[str] = None,
+) -> bool:
+    """Install a plugin's pip dependencies into the host venv.
+
+    Uses ``sys.executable`` so pip always targets the *current* process's
+    venv — guaranteed correct regardless of ecosystem layout (pm2,
+    Docker, systemd, bare uvicorn). Previously guessed ``REPO_ROOT/.venv``
+    and fell back to ``"python3"``, which silently mis-targets when the
+    venv lives elsewhere or PATH resolves to a different interpreter.
+
+    Logs an info-level ``deps_install`` event on success (with pip stdout
+    tail) so operators can verify in /system/logs *which* packages pip
+    actually touched — important for diagnosing "rc=0 but the import
+    still fails" cases where pip silently no-ops (cached wheel, malformed
+    requirements.txt, already-satisfied stale spec).
+
+    Returns True if there's no requirements.txt OR pip succeeded. Returns
+    False on non-zero rc, timeout, or launch failure — surfaced as an
+    error event and reflected in the install response as
+    ``deps_installed: false``.
+
+    P22-G5: strips NOUSVIZ_* env so the subprocess can't read the
+    encryption key, DB creds, or API tokens.
+    """
+    req_file = installed_dest / "requirements.txt"
+    if not req_file.exists():
+        return True
+
+    import subprocess as sp
+    python_bin = sys.executable
+    safe_env = {k: v for k, v in os.environ.items() if not k.startswith("NOUSVIZ_")}
+
+    try:
+        result = sp.run(
+            [python_bin, "-m", "pip", "install", "-r", str(req_file)],
+            capture_output=True,
+            text=True,
+            env=safe_env,
+            timeout=300,
+            check=False,
+        )
+    except (OSError, sp.TimeoutExpired) as exc:
+        try:
+            from ..log_events import log_plugin_event
+            log_plugin_event(
+                "error",
+                plugin_id,
+                "deps_install",
+                f"pip install failed to run: {type(exc).__name__}: {str(exc)[:300]}",
+                detail={"python_bin": python_bin},
+                source="plugin_install",
+                actor_user_id=actor_user_id,
+            )
+        except Exception:
+            pass
+        return False
+
+    if result.returncode != 0:
+        try:
+            from ..log_events import log_plugin_event
+            log_plugin_event(
+                "error",
+                plugin_id,
+                "deps_install",
+                f"pip install returned rc={result.returncode}",
+                detail={
+                    "python_bin": python_bin,
+                    "stderr": (result.stderr or "")[-500:],
+                    "stdout": (result.stdout or "")[-500:],
+                },
+                source="plugin_install",
+                actor_user_id=actor_user_id,
+            )
+        except Exception:
+            pass
+        return False
+
+    try:
+        from ..log_events import log_plugin_event
+        log_plugin_event(
+            "info",
+            plugin_id,
+            "deps_install",
+            "pip install succeeded",
+            detail={
+                "python_bin": python_bin,
+                "stdout": (result.stdout or "")[-1000:],
+            },
+            source="plugin_install",
+            actor_user_id=actor_user_id,
+        )
+    except Exception:
+        pass
+
+    return True
+
+
 @router.post(
     "/plugins/{plugin_id}/install",
     operation_id="plugins.install",
@@ -1408,6 +1510,7 @@ async def test_install_connection(
 async def install_plugin(
     plugin_id: str,
     request: Request,
+    background_tasks: BackgroundTasks,
     body: PluginInstallRequest | None = None,
     _: None = Depends(requires("plugins.install")),
 ):
@@ -1418,7 +1521,10 @@ async def install_plugin(
     - Tier 2 (community): no repository_url — reads URL from plugins/community/{slug}/plugin.yaml
     - Tier 3 (private): explicit repository_url in request body
 
-    Idempotent if already installed. Restart the API after installing to activate routes.
+    Idempotent if already installed. Routes activate without a manual restart:
+    the handling worker hot-reloads its own `app.routes` in-process, and a
+    background `SIGHUP` to the gunicorn master cycles sibling workers so they
+    pick up the new routes too (B306). No API restart needed.
 
     Security (P22):
     - Rate limited: 5 installs per 5 minutes per IP (G3)
@@ -1429,6 +1535,13 @@ async def install_plugin(
     admin = get_me(request)
     actor_user_id = str(admin.get("id")) if admin.get("id") else None
     _validate_plugin_id(plugin_id)
+
+    # Edition seam (MC-203): may this installation install another plugin?
+    # Community default always allows; managed enforcement lands in WS6.
+    decision = hooks.plugin_install_allowed(plugin_id)
+    if not decision.allowed:
+        raise HTTPException(403, decision.reason or "Plugin limit reached for this plan.")
+
     import shutil
     import subprocess as sp
 
@@ -1677,19 +1790,7 @@ async def install_plugin(
     except Exception as e:
         logger.warning(f"Plugin {plugin_id}: could not record install in registry — {e}")
 
-    # Install Python deps if present.
-    # P22-G5: strip NOUSVIZ_* environment variables so the subprocess cannot
-    # read the encryption key, database credentials, or API tokens.
-    req_file = installed_dest / "requirements.txt"
-    if req_file.exists():
-        venv_python = REPO_ROOT / ".venv" / "bin" / "python3"
-        python_bin = str(venv_python) if venv_python.exists() else "python3"
-        safe_env = {k: v for k, v in os.environ.items() if not k.startswith("NOUSVIZ_")}
-        sp.run(
-            [python_bin, "-m", "pip", "install", "-q", "-r", str(req_file)],
-            capture_output=True,
-            env=safe_env,
-        )
+    deps_installed = _install_plugin_requirements(plugin_id, installed_dest, actor_user_id)
 
     # Run SQL migrations (idempotent — skips already-applied files)
     migrations_applied = []
@@ -1887,14 +1988,23 @@ async def install_plugin(
             except Exception:
                 pass
 
-    # Hot-reload plugin routes without restart
+    # Hot-reload plugin routes without restart.
+    #
+    # Two-step refresh — load_plugin_routes only mutates *this* worker's
+    # app.routes; B306: schedule a SIGHUP to the gunicorn master via a
+    # BackgroundTask so sibling workers cycle and pick up the new routes
+    # after the response is delivered. The background task is a no-op in
+    # single-worker dev mode (parent isn't gunicorn).
     routes_loaded = False
     routes_file = installed_dest / "api" / "routes.py"
     if routes_file.exists():
         try:
-            from ..plugin_loader import load_plugin_routes
+            from ..plugin_loader import load_plugin_routes, signal_workers_to_reload
             load_plugin_routes(request.app)
             routes_loaded = True
+            background_tasks.add_task(
+                signal_workers_to_reload, reason=f"install:{plugin_id}"
+            )
         except Exception as e:
             logger.warning(f"Plugin {plugin_id}: hot-reload failed — {e}")
             # B203: hot-reload failures mean operator's plugin endpoints
@@ -1926,6 +2036,7 @@ async def install_plugin(
         "plugin": meta,
         "migrations_applied": migrations_applied,
         "routes_active": routes_loaded,
+        "deps_installed": deps_installed,
     }
 
 

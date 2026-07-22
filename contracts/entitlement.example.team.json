@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "tier": "team",
+  "limits": { "max_users": 25, "max_plugins": 25 },
+  "plugins": "*",
+  "smtp": null,
+  "ssl": "wildcard",
+  "features": { "mcp": true, "embedding": true, "sso": false }
+}
