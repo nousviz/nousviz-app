@@ -11,3 +11,5 @@ records the people behind the project.
 - **Darrell Helyar** ([@darrell-helyar](https://github.com/darrell-helyar)) —
   development and product feedback across the v0.x–v1.0 line, including
   admin UI work.
+- **John Wright** ([@statsdroneadmin](https://github.com/statsdroneadmin)) —
+  product direction, testing, and operations across the v0.x–v1.0 line.
