@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "tier": "free",
+  "limits": { "max_users": 2, "max_plugins": 3 },
+  "plugins": ["webhooks", "mysql"],
+  "smtp": null,
+  "ssl": "wildcard",
+  "features": { "mcp": false, "embedding": false, "sso": false }
+}
