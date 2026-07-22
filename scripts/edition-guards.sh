@@ -52,7 +52,10 @@ if [ "$MODE" = "--public" ]; then
   # With a git index available, the only tracked entry under enterprise
   # must be the gitlink itself (mode 160000) — no blobs.
   if [ -d .git ] || git rev-parse --git-dir >/dev/null 2>&1; then
-    TRACKED=$(git ls-files enterprise/ 2>/dev/null || true)
+    # The gitlink entry itself lists as bare "enterprise" on checkouts
+    # where the submodule is uninitialised (every public CI build) —
+    # that pointer is legitimate. Only blobs UNDER enterprise/ are leaks.
+    TRACKED=$(git ls-files enterprise/ 2>/dev/null | grep '^enterprise/' || true)
     if [ -n "$TRACKED" ]; then
       echo "FAIL leak-guard: tracked files under enterprise/ (must be gitlink only):"
       echo "$TRACKED"
