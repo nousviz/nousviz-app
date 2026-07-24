@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation, Link, NavLink } from "react-router-dom";
 import SidebarLogo from "./SidebarLogo";
+import { fetchLicence, type Licence } from "@/lib/api";
 import { Search, Github, MessageSquare, RefreshCw, Menu, Shield, X, CheckCircle2, AlertTriangle, XCircle, LogOut, User } from "lucide-react";
 import SslSetupModal from "@/components/SslSetupModal";
 import SetupWizard from "@/components/SetupWizard";
@@ -224,6 +225,7 @@ export default function Topbar({ sidebarCollapsed, onMenuClick }: { sidebarColla
 
         {/* Right actions */}
         <div className="flex items-center gap-3">
+          <LicencePill />
           {/* Search */}
           <button
             onClick={() => setSearchOpen(true)}
@@ -412,5 +414,49 @@ export default function Topbar({ sidebarCollapsed, onMenuClick }: { sidebarColla
       {/* Command palette */}
       <CommandPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
     </>
+  );
+}
+
+/** MC-608: global plan indicator — managed instances only. Shows the
+ * tier, active-seat usage, and licence health everywhere in the app,
+ * linking to user management. Hidden entirely when the licence endpoint
+ * is absent (community installs) or the viewer lacks admin access
+ * (the endpoint is users.manage-gated, so non-admins get null). */
+function LicencePill() {
+  const [licence, setLicence] = useState<Licence | null>(null);
+  useEffect(() => {
+    fetchLicence().then(setLicence);
+  }, []);
+  if (!licence) return null;
+
+  const limit = licence.limits?.max_users ?? null;
+  const used = licence.usage?.users;
+  const healthy = licence.status === "live";
+  const cached = licence.status === "cached";
+  const statusText = healthy
+    ? "Licence up to date"
+    : cached
+      ? "Running on cached licence"
+      : "Licence unavailable — free-tier limits apply";
+
+  return (
+    <NavLink
+      to="/system/users"
+      title={statusText}
+      className="hidden sm:flex h-9 px-3 rounded-md bg-secondary hover:bg-secondary/80 items-center gap-2 text-sm text-muted-foreground transition-colors"
+    >
+      <span
+        className={
+          "inline-block w-2 h-2 rounded-full " +
+          (healthy ? "bg-emerald-500" : cached ? "bg-amber-500" : "bg-red-500")
+        }
+      />
+      <span className="capitalize">{licence.tier}</span>
+      {limit !== null && used !== null && (
+        <span className="text-xs text-muted-foreground/70">
+          {used}/{limit}
+        </span>
+      )}
+    </NavLink>
   );
 }
