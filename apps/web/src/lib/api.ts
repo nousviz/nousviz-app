@@ -227,6 +227,29 @@ export async function getDashboardSpec(
   return res.json();
 }
 
+// ── Managed licence (MC-608 plan visibility) ─────────────────────────
+
+export interface Licence {
+  tier: string;
+  status: "live" | "cached" | "grace_expired" | "no_cache_default";
+  fetched_at: number | null;
+  limits: { max_users: number | null; max_plugins: number | null };
+  features: Record<string, boolean>;
+  usage: { users: number | null; plugins: number | null };
+}
+
+/** Managed instances only — community installs have no licence endpoint
+ * (404) and get null, which hides every plan-related UI element. */
+export async function fetchLicence(): Promise<Licence | null> {
+  try {
+    const res = await apiFetch(`${API_BASE}/enterprise/licence`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 // ── Health ────────────────────────────────────────────────────────────
 
 export async function getHealth(): Promise<HealthStatus> {
