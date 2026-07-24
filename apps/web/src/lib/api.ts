@@ -235,6 +235,7 @@ export interface Licence {
   fetched_at: number | null;
   limits: { max_users: number | null; max_plugins: number | null };
   features: Record<string, boolean>;
+  email_relay?: boolean;
   usage: { users: number | null; plugins: number | null };
 }
 
