@@ -10,6 +10,27 @@ _Nothing yet — see [ROADMAP.md](ROADMAP.md) for what's planned._
 
 ---
 
+## [1.0.4] — 2026-09-14
+
+### Changed
+
+- **NousViz is now MIT licensed (B322).** The core moves from the Sustainable Use License to MIT — one licence for the whole public repository. You may self-host, modify, redistribute, embed, and offer NousViz as a hosted service; the only condition is that the copyright and permission notice stay with the code. The SDK, examples, bundled utility plugins and community plugins were already MIT. The `enterprise/` directory is a git submodule pointing at a private, separately licensed repository (the managed-edition add-on); its source is not in this repository or in any public build, and community installs never load it. README, CONTRIBUTING, DECISIONS, the glossary, the `/openapi.json` licence metadata and the web package manifest now say MIT.
+
+### Fixed
+
+- **Plugin installs: dependency installation is no longer silent, and a new plugin's routes are live without an API restart (B306).** A plugin's `requirements.txt` is pip-installed via `sys.executable` (always the running venv). The install response carries `deps_installed`, and success or failure is written to the plugin event log with the tail of pip's output — closing the silent-pip-failure gap noted in v1.0.3. After an install the API sends SIGHUP to the gunicorn master so sibling workers pick up the new routes; non-gunicorn parents are left alone. Recovered from production, where it had been running uncommitted.
+- **`npm audit` high advisory cleared in `apps/web` runtime dependencies (B314).** PostCSS path-traversal (GHSA-r28c-9q8g-f849) and a react-router open-redirect moderate resolved by lockfile bumps within semver. Two moderates remain that need the react-router 7.x major (B316, open).
+- **CI TypeScript check is green again.** `apps/web/src/lib/api.test.ts` (shipped in v1.0.2) imported vitest, which was never a dependency; the typecheck job had been red on every public run since v1.0.1 and the test had never executed. vitest + jsdom are now devDependencies with a minimal config, and all 17 tests run.
+
+### Added
+
+- **Edition switch (community by default) and the enterprise boundary (MC-201–MC-205).** `NOUSVIZ_EDITION` is read in one place (`apps/api/src/edition.py`); unset or unknown values mean community, the full self-hosted product. Core exposes four hook seams — user invite, plugin install, SMTP config, feature flag — with community no-op defaults; there is no entitlement logic in core. The managed-edition add-on lives in a private repository mounted as an unfetchable submodule pointer at `enterprise/`; it is imported only when the edition is `managed`, and a missing or broken add-on logs an error and the instance keeps community behaviour. CI now runs a public-build-clean job (no submodule, leak and import guards via `scripts/edition-guards.sh`) alongside the managed build. Self-hosters have nothing to do: leave `NOUSVIZ_EDITION` unset.
+- **Entitlement contract schema and DRAFT tier fixtures (MC-001)** under `contracts/`, with schema and fixture tests. Tier numbers are placeholders pending pricing review; versioning is additive-only (see `contracts/README.md`).
+- **`CONTRIBUTORS.md`** restores the attribution flattened by the v1.0 squash.
+- **`scripts/audit_users.py`** — operator script recovered from production (see its docstring for usage).
+
+---
+
 ## [1.0.3] — 2026-07-17
 
 ### Fixed
