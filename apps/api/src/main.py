@@ -220,7 +220,7 @@ app = FastAPI(
         "url": "https://github.com/nousviz/nousviz-app",
     },
     license_info={
-        "name": "Sustainable Use License v1.0",
+        "name": "MIT License",
         "url": "https://github.com/nousviz/nousviz-app/blob/main/LICENSE",
     },
     servers=[
