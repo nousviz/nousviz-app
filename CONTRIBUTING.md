@@ -85,6 +85,6 @@ See the SDK in `sdk/` for full documentation.
 
 ## License
 
-The platform is licensed under the [Sustainable Use License](LICENSE) — fair-code / source-available, free to self-host and modify. In plain English: you may self-host freely, modify for your own use, build and sell plugins, and use NousViz in client work; you may not resell NousViz as a hosted service or as your own product.
+NousViz is licensed under the [MIT License](LICENSE). The SDK, examples, bundled utility plugins, and community plugins are MIT too. The `enterprise/` submodule points at a private, separately licensed repository; contributions to this repository never touch it.
 
-Plugin examples, the SDK, and community plugins are MIT licensed.
+By contributing, you agree that your contribution is licensed under the MIT License, the same terms as the project.
