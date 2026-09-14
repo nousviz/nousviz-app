@@ -1,6 +1,6 @@
 # NousViz
 
-**The source-available data intelligence platform.**
+**The open-source data intelligence platform.**
 
 Browse any data source, build dashboards on top of it, get alerted when the numbers move — all through a plugin ecosystem. Runs natively on Postgres. No Docker required.
 
@@ -182,13 +182,13 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
-[Sustainable Use License](LICENSE) (fair-code / source-available) — free to self-host and modify. See [LICENSE](LICENSE) for full terms.
+[MIT License](LICENSE) — open source. See [LICENSE](LICENSE) for the full text.
 
-**In plain English — you may:** self-host NousViz for your company or personal use, free forever · modify it for your own use · build and sell plugins for it · use it in client and consulting work.
+**In plain English — you may:** self-host NousViz for your company or personal use, free forever · modify it · redistribute it · embed it in your own product · offer it as a hosted service · build and sell plugins for it · use it in client and consulting work. The only condition is that the copyright and permission notice stay with the code.
 
-**You may not:** offer NousViz as a hosted service to others, or sell NousViz or a near-copy of it as your own product.
+The SDK, examples, bundled utility plugins, and community plugins are MIT too — build freely.
 
-Community plugins, examples, and the SDK are licensed under MIT — build freely.
+The `enterprise/` directory is a git submodule that points at a private, separately licensed repository (the managed-edition add-on). Its source is not in this repository, not in any public build, and not covered by the MIT License. Community installs never load it.
 
 ## Links
 

@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "description": "NousViz web dashboard — React + Vite + Tailwind",
-  "license": "SEE LICENSE IN ../../LICENSE",
+  "license": "MIT",
   "author": "NousViz Contributors",
   "repository": {
     "type": "git",

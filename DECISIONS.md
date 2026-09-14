@@ -151,10 +151,18 @@ A free-form grid (drag-to-resize, inline heading and text edits) allows both to 
 
 ## 9. License Model
 
-### Decision: Core under Sustainable Use License; SDK and plugins under MIT
+### Decision (2026-09-11): Everything in this repository is MIT
+
+**Supersedes** the decision below. The core moves from the Sustainable Use License to MIT. The SDK, examples, bundled utility plugins and community plugins were already MIT and stay MIT. One licence for the whole public repository.
+
+**Why:** Operator decision (Joe, 11 Sep 2026): the community edition is open source under an OSI-approved licence. Commercial protection for the managed edition comes from the private `enterprise/` add-on, which is not in this repository and not in any public build, not from restrictions in the core licence.
+
+**Consequence:** the former restriction on offering NousViz as a hosted service is gone. Anyone may host it.
+
+See [LICENSE](LICENSE) for the text. See [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md) for dependency licenses.
+
+### Previous decision (superseded 2026-09-11): Core under Sustainable Use License; SDK and plugins under MIT
 
 **Why:** Two audiences with different needs:
 - **Operators** — should be free to self-host, modify, and run NousViz. The SUL permits all non-commercial-resale uses.
 - **Plugin authors and SDK consumers** — need permissive reuse. Anything under `sdk/`, `plugins/community/`, `plugins/examples/`, and the bundled utility plugins under `plugins/utilities/` is MIT.
-
-See [LICENSE](LICENSE) for the full scope. See [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md) for dependency licenses.

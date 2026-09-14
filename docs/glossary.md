@@ -6,7 +6,7 @@ End-to-end reference for every concept, component, and term in the NousViz platf
 
 ## Platform Overview
 
-**NousViz** is a source-available (fair-code) data intelligence platform that enables users to explore, alert on, and visualize data from any source through a plugin ecosystem. It runs natively on PostgreSQL (no Docker required for core setup) and uses a modular architecture: React/Vite frontend, FastAPI backend, and a Python plugin SDK.
+**NousViz** is an open-source (MIT) data intelligence platform that enables users to explore, alert on, and visualize data from any source through a plugin ecosystem. It runs natively on PostgreSQL (no Docker required for core setup) and uses a modular architecture: React/Vite frontend, FastAPI backend, and a Python plugin SDK.
 
 ---
 
