@@ -1,0 +1,9 @@
+# ML runtime — pinned set, installed into the NousViz venv by the platform
+# on utility install. Verified together on Python 3.12 (2026-09-26).
+# Bumping a version: see README.md "Upgrading the libraries".
+lightgbm==4.7.0
+numpy==2.5.3
+scikit-learn==1.9.1
+scipy==1.18.1
+joblib==1.6.0
+threadpoolctl==3.7.0
