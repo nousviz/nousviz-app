@@ -621,7 +621,7 @@ export default function MaintenancePanel() {
 
       {/* B284 (v0.9.11.23): per-job-run failure alert subscriptions —
           fires a webhook with error excerpt + suggested-fix whenever a
-          plugin sync run terminates with error/timeout/cancelled. */}
+          plugin sync run terminates with error/timeout/cancelled, or a scheduled run is missed. */}
       <JobRunAlertsSection />
     </div>
   );
@@ -942,7 +942,7 @@ function DiagnosticAlertSubscriptionsSection() {
 
 // ── B284 (v0.9.11.23): per-job-run failure alert subscriptions ──────
 
-const ALERTABLE_STATUSES = ["error", "timeout", "cancelled"] as const;
+const ALERTABLE_STATUSES = ["error", "timeout", "cancelled", "missed"] as const;
 type AlertableStatus = (typeof ALERTABLE_STATUSES)[number];
 
 interface JobAlertSubscription {
@@ -977,7 +977,7 @@ function JobRunAlertsSection() {
   const [confirmDelete, setConfirmDelete] = useState<JobAlertSubscription | null>(null);
   const [formPluginId, setFormPluginId] = useState("*");
   const [formStatuses, setFormStatuses] = useState<Set<AlertableStatus>>(
-    new Set(["error", "timeout"]),
+    new Set(["error", "timeout", "missed"]),
   );
   const [formWebhookId, setFormWebhookId] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
@@ -1015,7 +1015,7 @@ function JobRunAlertsSection() {
 
   const resetForm = () => {
     setFormPluginId("*");
-    setFormStatuses(new Set(["error", "timeout"]));
+    setFormStatuses(new Set(["error", "timeout", "missed"]));
     setFormWebhookId("");
     setFormError(null);
   };
@@ -1170,7 +1170,8 @@ function JobRunAlertsSection() {
           </h3>
           <p className="text-[11px] text-muted-foreground mt-0.5">
             Fire a webhook with the error excerpt + suggested fix whenever a plugin sync run
-            terminates with error / timeout / cancelled. Use <code className="font-mono-deck">*</code> for "any plugin".
+            terminates with error / timeout / cancelled, or a scheduled run never starts
+            (missed). Use <code className="font-mono-deck">*</code> for "any plugin".
           </p>
         </div>
         <div className="flex items-center gap-2">

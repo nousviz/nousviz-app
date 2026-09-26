@@ -3969,7 +3969,7 @@ async def get_sync_status(
                 SELECT id, completed_at, status, error, source
                 FROM job_runs
                 WHERE job_id = %s
-                  AND status IN ('error', 'timeout', 'cancelled')
+                  AND status IN ('error', 'timeout', 'cancelled', 'missed')
                   AND completed_at IS NOT NULL
                 ORDER BY completed_at DESC
                 LIMIT 1

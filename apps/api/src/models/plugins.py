@@ -203,7 +203,7 @@ class SyncRunSuccess(BaseModel):
 
 
 class SyncRunFailure(BaseModel):
-    """Most recent failed run (status IN ('error','timeout','cancelled'))."""
+    """Most recent failed run (status IN ('error','timeout','cancelled','missed'))."""
     run_id: int
     completed_at: Optional[str] = None
     status: str = Field(..., description="'error' | 'timeout' | 'cancelled'.")

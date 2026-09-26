@@ -666,7 +666,7 @@ from fastapi import HTTPException, Request  # noqa: E402  (late import to
                                               # avoid reshuffling existing imports)
 
 # Terminal statuses — cannot be cancelled/paused/resumed further.
-_TERMINAL_STATUSES = frozenset({"success", "error", "timeout", "cancelled", "skipped"})
+_TERMINAL_STATUSES = frozenset({"success", "error", "timeout", "cancelled", "skipped", "missed"})
 
 
 def _get_run(run_id: int) -> dict | None:
@@ -821,7 +821,7 @@ async def cancel_job_run(
                             'force-cancelled (orphan cleanup) — worker confirmed gone'
                         )
                     WHERE id = %s
-                      AND status NOT IN ('success','error','timeout','cancelled','skipped')
+                      AND status NOT IN ('success','error','timeout','cancelled','skipped','missed')
                     """,
                     (run_id,),
                 )

@@ -520,6 +520,9 @@ def _process_plugin(plugin_id: str) -> None:
 
 _running = True
 
+WATCHDOG_INTERVAL_SEC = 300
+_last_watchdog = float("-inf")
+
 
 def _handle_signal(signum, frame):
     global _running
@@ -528,6 +531,7 @@ def _handle_signal(signum, frame):
 
 
 def main():
+    global _last_watchdog
     import signal
     signal.signal(signal.SIGINT, _handle_signal)
     signal.signal(signal.SIGTERM, _handle_signal)
@@ -550,6 +554,18 @@ def main():
                 logger.info("reaped %d uninstalled plugins from registry", reaped)
         except Exception as exc:
             logger.error("scheduler loop error: %s", exc, exc_info=True)
+
+        # A fire that never produced a run never reaches the worker's
+        # failure alert, so the scheduler checks for them itself.
+        if time.monotonic() - _last_watchdog >= WATCHDOG_INTERVAL_SEC:
+            _last_watchdog = time.monotonic()
+            try:
+                from apps.api.src.services.job_alerts import check_missed_runs
+                for run in check_missed_runs():
+                    logger.warning("scheduled run missed: %s (run %s)",
+                                   run["job_id"], run["id"])
+            except Exception as exc:
+                logger.warning("missed-run watchdog failed: %s", exc, exc_info=True)
 
         # Sleep with jitter; check _running between sub-sleeps so SIGTERM
         # is responsive.

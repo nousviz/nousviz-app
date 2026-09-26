@@ -13,7 +13,7 @@ Covers:
 from __future__ import annotations
 
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -186,12 +186,13 @@ def _install_fake(monkeypatch, *, subs: list[dict], capture: list, fail_urls=Non
 
 
 def test_no_matching_subscriptions_no_op(monkeypatch):
+    monkeypatch.delenv("JOB_ALERT_EMAIL_TO", raising=False)
     captured: list = []
     bridge = _install_fake(monkeypatch, subs=[], capture=captured)
     out = bridge.process_run_failure({
         "id": 1, "job_id": "sync:foo", "status": "error", "error": "boom",
     }, ts=TS)
-    assert out == {"matched": 0, "delivered": 0, "failed": 0}
+    assert out == {"matched": 0, "delivered": 0, "failed": 0, "emailed": 0}
     assert captured == []
 
 
@@ -363,3 +364,197 @@ def test_diagnostic_alerts_uses_shared_dispatcher():
     # And the shared module has the function.
     wd = importlib.import_module("apps.api.src.services.webhook_dispatch")
     assert callable(wd.post_webhook)
+
+
+# ── Operator email (JOB_ALERT_EMAIL_TO) ─────────────────────────────
+
+
+def _install_fake_email(monkeypatch, *, configured=True, fail_to=()):
+    from apps.api.src.services import email as email_mod
+    sent: list = []
+
+    def fake_send(to, subject, html, plain):
+        sent.append({"to": to, "subject": subject, "plain": plain})
+        return (False, "simulated") if to in fail_to else (True, "")
+
+    monkeypatch.setattr(email_mod, "_send", fake_send)
+    monkeypatch.setattr(email_mod, "is_configured", lambda: configured)
+    return sent
+
+
+def test_validate_on_status_accepts_missed():
+    from apps.api.src.services.job_alerts import _validate_on_status
+    assert _validate_on_status(["error", "missed"]) == ["error", "missed"]
+
+
+def test_email_sent_without_any_subscription(monkeypatch):
+    """Email is operator-level: it must fire on an install with no
+    webhooks plugin and no subscriptions."""
+    monkeypatch.setenv("JOB_ALERT_EMAIL_TO", "a@example.com, b@example.com")
+    bridge = _install_fake(monkeypatch, subs=[], capture=[])
+    sent = _install_fake_email(monkeypatch)
+    out = bridge.process_run_failure({
+        "id": 29, "job_id": "sync:foo", "status": "error",
+        "error": "Integrity check failed: Recorded SHA: f662c0d",
+    }, ts=TS)
+    assert out["emailed"] == 2
+    assert [m["to"] for m in sent] == ["a@example.com", "b@example.com"]
+    assert "sync:foo error" in sent[0]["subject"]
+    assert "Integrity check failed" in sent[0]["plain"]
+
+
+def test_email_and_webhook_both_fire(monkeypatch):
+    monkeypatch.setenv("JOB_ALERT_EMAIL_TO", "a@example.com")
+    captured: list = []
+    bridge = _install_fake(monkeypatch, subs=[
+        {"id": "s1", "plugin_id": "foo", "on_status": ["error"],
+         "url": "http://h/1", "secret": "k", "name": "n1", "enabled": True},
+    ], capture=captured)
+    sent = _install_fake_email(monkeypatch)
+    out = bridge.process_run_failure({
+        "id": 1, "job_id": "sync:foo", "status": "error", "error": "boom",
+    }, ts=TS)
+    assert out["delivered"] == 1 and out["emailed"] == 1
+    assert len(captured) == 1 and len(sent) == 1
+
+
+def test_email_skipped_when_smtp_unconfigured(monkeypatch):
+    monkeypatch.setenv("JOB_ALERT_EMAIL_TO", "a@example.com")
+    bridge = _install_fake(monkeypatch, subs=[], capture=[])
+    sent = _install_fake_email(monkeypatch, configured=False)
+    out = bridge.process_run_failure({
+        "id": 1, "job_id": "sync:foo", "status": "error", "error": "boom",
+    }, ts=TS)
+    assert out["emailed"] == 0 and sent == []
+
+
+def test_one_failing_email_doesnt_stop_others(monkeypatch):
+    monkeypatch.setenv("JOB_ALERT_EMAIL_TO", "bad@example.com,good@example.com")
+    bridge = _install_fake(monkeypatch, subs=[], capture=[])
+    sent = _install_fake_email(monkeypatch, fail_to={"bad@example.com"})
+    out = bridge.process_run_failure({
+        "id": 1, "job_id": "sync:foo", "status": "error", "error": "boom",
+    }, ts=TS)
+    assert out["emailed"] == 1 and len(sent) == 2
+
+
+def test_email_not_sent_for_success(monkeypatch):
+    monkeypatch.setenv("JOB_ALERT_EMAIL_TO", "a@example.com")
+    bridge = _install_fake(monkeypatch, subs=[], capture=[])
+    sent = _install_fake_email(monkeypatch)
+    bridge.process_run_failure({
+        "id": 1, "job_id": "sync:foo", "status": "success", "error": None,
+    }, ts=TS)
+    assert sent == []
+
+
+# ── Missed-run watchdog (needs Postgres; skipped without one) ───────
+#
+# The decision is SQL over job_runs, so it is tested against a real
+# database rather than a fake cursor. Each test uses its own job id and
+# deletes its rows afterwards.
+
+import uuid  # noqa: E402
+
+import pytest  # noqa: E402
+
+FIRE = datetime(2026, 1, 10, 10, 0, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 1, 10, 15, 0, 0, tzinfo=timezone.utc)   # fire + 5h
+CRON = "0 10 * * *"
+
+
+@pytest.fixture
+def watchdog(monkeypatch):
+    from apps.api.src.services import job_alerts as bridge
+    try:
+        with bridge.get_pg_conn() as conn:
+            conn.cursor().execute("SELECT 1 FROM job_runs LIMIT 1")
+    except Exception as exc:  # noqa: BLE001
+        pytest.skip(f"no Postgres with job_runs: {exc}")
+    monkeypatch.delenv("JOB_ALERT_MISSED_GRACE_MINUTES", raising=False)
+    alerts: list = []
+    monkeypatch.setattr(bridge, "process_run_failure",
+                        lambda run, ts=None: alerts.append(run))
+    plugin = f"zz-watchdog-{uuid.uuid4().hex[:8]}"
+    job_id = f"sync:{plugin}"
+
+    def add_run(status, started, completed=None):
+        with bridge.get_pg_conn() as conn:
+            conn.cursor().execute(
+                "INSERT INTO job_runs (job_id, status, source, started_at, completed_at) "
+                "VALUES (%s, %s, 'cron', %s, %s)",
+                (job_id, status, started, completed))
+
+    def check(now=NOW):
+        return bridge._check_one(plugin, CRON, now=now)
+
+    def rows():
+        with bridge.get_pg_conn() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT status, started_at FROM job_runs "
+                        "WHERE job_id = %s AND status = 'missed'", (job_id,))
+            return cur.fetchall()
+
+    yield {"add": add_run, "check": check, "rows": rows, "alerts": alerts}
+    with bridge.get_pg_conn() as conn:
+        conn.cursor().execute("DELETE FROM job_runs WHERE job_id = %s", (job_id,))
+
+
+YESTERDAY = FIRE - timedelta(days=1, minutes=-1)
+
+
+def test_watchdog_skips_plugin_with_no_history(watchdog):
+    assert watchdog["check"]() is None
+    assert watchdog["alerts"] == [] and watchdog["rows"]() == []
+
+
+def test_watchdog_records_and_alerts_once_for_missed_fire(watchdog):
+    watchdog["add"]("success", YESTERDAY, YESTERDAY + timedelta(minutes=2))
+    run = watchdog["check"]()
+    assert run and run["status"] == "missed"
+    assert [a["status"] for a in watchdog["alerts"]] == ["missed"]
+    recorded = watchdog["rows"]()
+    assert len(recorded) == 1 and recorded[0][1] == FIRE
+    # Called again (next scheduler poll, or a second scheduler): no repeat.
+    assert watchdog["check"]() is None
+    assert len(watchdog["alerts"]) == 1 and len(watchdog["rows"]()) == 1
+
+
+def test_watchdog_quiet_when_fire_ran(watchdog):
+    watchdog["add"]("success", YESTERDAY, YESTERDAY + timedelta(minutes=2))
+    watchdog["add"]("success", FIRE + timedelta(seconds=30), FIRE + timedelta(minutes=2))
+    assert watchdog["check"]() is None
+
+
+def test_watchdog_quiet_when_fire_failed(watchdog):
+    """A failed run already alerted through _finalize_run; the watchdog
+    must not add a second alert for the same fire."""
+    watchdog["add"]("success", YESTERDAY, YESTERDAY + timedelta(minutes=2))
+    watchdog["add"]("error", FIRE + timedelta(seconds=20), FIRE + timedelta(seconds=21))
+    assert watchdog["check"]() is None
+
+
+def test_watchdog_flags_run_stuck_in_queue(watchdog):
+    """Worker down: the scheduler enqueued the run but nothing claimed it."""
+    watchdog["add"]("success", YESTERDAY, YESTERDAY + timedelta(minutes=2))
+    watchdog["add"]("queued", FIRE + timedelta(seconds=5))
+    assert watchdog["check"]()["status"] == "missed"
+
+
+def test_watchdog_quiet_while_previous_run_in_flight(watchdog):
+    """The scheduler skips a fire while a run is active, so a long run
+    that spans the fire is not a miss."""
+    watchdog["add"]("success", YESTERDAY, YESTERDAY + timedelta(minutes=2))
+    watchdog["add"]("running", FIRE - timedelta(minutes=30))
+    assert watchdog["check"]() is None
+
+
+def test_watchdog_quiet_inside_grace_period(watchdog):
+    """At fire + 1h with a 2h grace, today's fire is not due yet, so the
+    fire under test is yesterday's, which ran."""
+    # History before yesterday's fire, so the no-history skip is not what
+    # keeps this quiet.
+    watchdog["add"]("success", YESTERDAY - timedelta(days=1), YESTERDAY - timedelta(days=1))
+    watchdog["add"]("success", YESTERDAY, YESTERDAY + timedelta(minutes=2))
+    assert watchdog["check"](now=FIRE + timedelta(hours=1)) is None
+    assert watchdog["check"]()["status"] == "missed"   # and at +5h, today's is

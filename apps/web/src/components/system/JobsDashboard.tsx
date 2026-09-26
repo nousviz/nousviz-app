@@ -901,6 +901,7 @@ function statusGlyph(status: string): { ch: string; tone: string } {
   if (status === "timeout") return { ch: "■", tone: "text-red-400/70" };
   if (status === "cancelled" || status === "skipped") return { ch: "□", tone: "text-muted-foreground" };
   if (status === "paused") return { ch: "▣", tone: "text-yellow-400" };
+  if (status === "missed") return { ch: "■", tone: "text-amber-400" };
   if (status === "running" || status === "cancelling") return { ch: "▸", tone: "text-blue-400" };
   return { ch: "■", tone: "text-muted-foreground" };
 }

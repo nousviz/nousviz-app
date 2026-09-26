@@ -138,7 +138,7 @@ class CreateJobAlertSubscriptionBody(BaseModel):
     plugin_id: str = Field(..., description="'*' for any plugin, or a specific plugin slug.")
     on_status: list[str] = Field(
         ...,
-        description="Statuses to alert on. Allowed values: 'error', 'timeout', 'cancelled'.",
+        description="Statuses to alert on. Allowed values: 'error', 'timeout', 'cancelled', 'missed'.",
         min_length=1,
     )
     webhook_id: str = Field(..., description="UUID of an outbound webhook_endpoints row.")

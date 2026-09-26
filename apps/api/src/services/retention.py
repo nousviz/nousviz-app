@@ -107,9 +107,9 @@ POLICIES: list[RetentionPolicy] = [
         key="job_runs:failure",
         table="job_runs",
         field="started_at",
-        additional_where="status IN ('error','cancelled','timeout','skipped')",
+        additional_where="status IN ('error','cancelled','timeout','skipped','missed')",
         default_days=30,
-        description="Failed / cancelled / timed-out job runs",
+        description="Failed / cancelled / timed-out / missed job runs",
     ),
     RetentionPolicy(
         key="share_access_log",

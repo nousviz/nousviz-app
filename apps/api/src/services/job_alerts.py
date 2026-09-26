@@ -15,11 +15,12 @@ roll back the run finalization (try/except in the worker hook).
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import re
 import urllib.error
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from ..db import get_pg_conn
@@ -95,7 +96,12 @@ def derive_suggested_fix(error_text: Optional[str]) -> str:
 # excluded — we never alert on success (way too noisy). `running` /
 # `queued` / `cancelling` are not terminal, so they're not meaningful
 # for failure alerts either.
-ALERTABLE_STATUSES = frozenset({"error", "timeout", "cancelled"})
+#
+# `missed` is not written by a run. The scheduler's watchdog records it
+# when a scheduled fire produced no run at all (worker down, run stuck in
+# the queue), because a run that never starts never reaches
+# `_finalize_run` and so could never alert on its own.
+ALERTABLE_STATUSES = frozenset({"error", "timeout", "cancelled", "missed"})
 
 
 def _validate_on_status(on_status: list[str]) -> list[str]:
@@ -372,6 +378,7 @@ def _build_payload(run: dict, *, suggested_fix: str, now: datetime) -> dict:
         "error": ":rotating_light:",
         "timeout": ":hourglass:",
         "cancelled": ":no_entry_sign:",
+        "missed": ":warning:",
     }.get(status, "")
     base = (_DASHBOARD_BASE_URL.rstrip("/") + "/") if _DASHBOARD_BASE_URL else "/"
     dashboard_url = f"{base}system/jobs"
@@ -483,17 +490,72 @@ def _dispatch_to_subscription(sub: dict, payload: dict) -> bool:
         return False
 
 
+# ── Operator email ──────────────────────────────────────────────────
+
+
+def _email_recipients() -> list[str]:
+    """`JOB_ALERT_EMAIL_TO`, comma-separated. Empty means no email.
+
+    Email is an operator-level channel rather than a subscription: it
+    needs no webhooks plugin, and the watchdog's `missed` alert has to
+    reach someone even on an install with no subscriptions at all.
+    """
+    raw = os.environ.get("JOB_ALERT_EMAIL_TO", "")
+    return [a.strip() for a in raw.split(",") if a.strip()]
+
+
+def _send_email_alert(payload: dict, recipients: list[str]) -> int:
+    """Send the alert to each recipient. Returns how many were sent.
+
+    Failures are logged and swallowed, like webhook delivery: an
+    unreachable SMTP server must not affect the run it reports on.
+    """
+    from html import escape
+
+    from .email import _send, is_configured
+    if not is_configured():
+        logger.warning("job_alerts: JOB_ALERT_EMAIL_TO is set but SMTP is not configured")
+        return 0
+    title = f"{payload.get('job_id') or 'job'} {payload.get('status')}"
+    subject = f"[NousViz] {title}"
+    lines = [
+        payload.get("text") or title,
+        "",
+        f"Run: {payload.get('run_id')}",
+        f"Error: {payload.get('error_excerpt') or '(none)'}",
+        f"Suggested: {payload.get('suggested_fix')}",
+        f"Logs: {payload.get('logs_url')}",
+    ]
+    plain = "\n".join(lines)
+    html = (
+        '<div style="font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',sans-serif;'
+        'max-width:560px;margin:0 auto;padding:24px;">'
+        f'<h2 style="font-size:18px;margin:0 0 12px;">{escape(title)}</h2>'
+        f'<pre style="font-size:12px;white-space:pre-wrap;">{escape(plain)}</pre>'
+        "</div>"
+    )
+    sent = 0
+    for to in recipients:
+        ok, err = _send(to, subject, html, plain)
+        if ok:
+            sent += 1
+        else:
+            logger.warning("job_alerts: email to %s failed: %s", to, err)
+    return sent
+
+
 def process_run_failure(run: dict, *, ts: Optional[datetime] = None) -> dict:
-    """Main entry — called from worker after a terminal-status commit.
+    """Main entry — called from worker after a terminal-status commit,
+    and from the scheduler's missed-run watchdog.
 
     Args:
       run: dict with id, job_id, status, error, duration_ms?, started_at?
 
     Returns a summary:
-      {matched: int, delivered: int, failed: int}
+      {matched: int, delivered: int, failed: int, emailed: int}
     """
     now = ts or datetime.now(timezone.utc)
-    summary = {"matched": 0, "delivered": 0, "failed": 0}
+    summary = {"matched": 0, "delivered": 0, "failed": 0, "emailed": 0}
 
     status = run.get("status") or ""
     if status not in ALERTABLE_STATUSES:
@@ -507,7 +569,8 @@ def process_run_failure(run: dict, *, ts: Optional[datetime] = None) -> dict:
 
     subs = _load_matching_subscriptions(plugin_id, status)
     summary["matched"] = len(subs)
-    if not subs:
+    recipients = _email_recipients()
+    if not subs and not recipients:
         return summary
 
     suggested_fix = derive_suggested_fix(run.get("error"))
@@ -518,7 +581,143 @@ def process_run_failure(run: dict, *, ts: Optional[datetime] = None) -> dict:
             summary["delivered"] += 1
         else:
             summary["failed"] += 1
+    if recipients:
+        try:
+            summary["emailed"] = _send_email_alert(payload, recipients)
+        except Exception as exc:
+            logger.warning("job_alerts: email dispatch failed for run %s: %s",
+                           run.get("id"), exc)
     return summary
+
+
+# ── Missed-run watchdog ─────────────────────────────────────────────
+
+# Statuses that prove a scheduled fire was acted on. `queued` is absent on
+# purpose: a run that sits in the queue past the grace period is exactly
+# the dead-worker case this exists to catch.
+_ACTED_ON_STATUSES = ("success", "error", "timeout", "cancelled",
+                      "running", "cancelling")
+
+# How long after a scheduled fire before its absence is called missed.
+DEFAULT_MISSED_GRACE_MINUTES = 120
+
+
+def _missed_grace_minutes() -> int:
+    raw = os.environ.get("JOB_ALERT_MISSED_GRACE_MINUTES", "")
+    try:
+        return max(5, int(raw)) if raw.strip() else DEFAULT_MISSED_GRACE_MINUTES
+    except ValueError:
+        return DEFAULT_MISSED_GRACE_MINUTES
+
+
+def _prev_fire(cron: str, before: datetime) -> Optional[datetime]:
+    from croniter import croniter
+    try:
+        prev = croniter(cron, before).get_prev(datetime)
+    except Exception:
+        return None
+    return prev if prev.tzinfo else prev.replace(tzinfo=timezone.utc)
+
+
+def check_missed_runs(*, now: Optional[datetime] = None) -> list[dict]:
+    """Record and alert on scheduled syncs that never ran.
+
+    For each cron-scheduled plugin, take the most recent fire that is at
+    least the grace period old and check it with `_check_one`. Returns
+    the missed runs recorded on this call.
+    """
+    now = now or datetime.now(timezone.utc)
+    with get_pg_conn() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT plugin_id, cron_expression FROM sync_schedule_registry")
+        schedules = cur.fetchall()
+    recorded: list[dict] = []
+    for plugin_id, cron in schedules:
+        run = _check_one(plugin_id, cron, now=now)
+        if run:
+            recorded.append(run)
+    return recorded
+
+
+def _check_one(plugin_id: str, cron: str, *, now: datetime) -> Optional[dict]:
+    """Decide whether one plugin's most recent due fire was missed.
+
+    If no run was acted on since that fire, write a `missed` row to
+    job_runs (so it shows in job history) and send it through
+    `process_run_failure`. The row doubles as the dedupe key: one alert
+    per missed fire, however often this is called or by how many
+    schedulers.
+
+    A plugin with no run before that fire is skipped: it was installed
+    or scheduled after the fire, so nothing was missed.
+    """
+    grace = _missed_grace_minutes()
+    fire = _prev_fire(cron, now - timedelta(minutes=grace))
+    if fire is None:
+        return None
+    job_id = f"sync:{plugin_id}"
+    with get_pg_conn() as conn:
+        cur = conn.cursor()
+        # Serialise per (job, fire) so two schedulers cannot both record
+        # the same miss.
+        cur.execute("SELECT pg_advisory_xact_lock(hashtext(%s))",
+                    (f"{job_id}|{fire.isoformat()}",))
+        cur.execute(
+            "SELECT EXISTS (SELECT 1 FROM job_runs WHERE job_id = %s AND started_at < %s)",
+            (job_id, fire),
+        )
+        if not cur.fetchone()[0]:
+            conn.commit()
+            return None
+        cur.execute(
+            """
+            SELECT EXISTS (
+                SELECT 1 FROM job_runs
+                WHERE job_id = %s
+                  AND (
+                    -- Acted on: started for this fire, still in flight
+                    -- (the scheduler skips a fire while a run is
+                    -- active), or finished after it.
+                    (status = ANY(%s)
+                     AND (started_at >= %s - interval '5 minutes'
+                          OR completed_at IS NULL
+                          OR completed_at >= %s))
+                    -- Already recorded as missed.
+                    OR (status = 'missed'
+                        AND details->>'scheduled_fire_at' = %s))
+            )
+            """,
+            (job_id, list(_ACTED_ON_STATUSES), fire, fire, fire.isoformat()),
+        )
+        if cur.fetchone()[0]:
+            conn.commit()
+            return None
+        error = (
+            f"Scheduled run for {fire.isoformat()} ({cron}) did not start "
+            f"within {grace} minutes. Check that the job worker and "
+            f"scheduler are running (/system/jobs)."
+        )
+        cur.execute(
+            """
+            INSERT INTO job_runs (job_id, status, source, started_at,
+                                  completed_at, error, details)
+            VALUES (%s, 'missed', 'watchdog', %s, now(), %s, %s::jsonb)
+            RETURNING id
+            """,
+            (job_id, fire, error, json.dumps({
+                "scheduled_fire_at": fire.isoformat(),
+                "cron_expression": cron,
+                "grace_minutes": grace,
+            })),
+        )
+        run_id = cur.fetchone()[0]
+        conn.commit()
+    run = {"id": run_id, "job_id": job_id, "status": "missed", "error": error}
+    try:
+        process_run_failure(run, ts=now)
+    except Exception as exc:
+        logger.warning("job_alerts: missed-run alert failed for %s: %s", job_id, exc)
+    return run
 
 
 def fire_test_alert_for_subscription(

@@ -104,7 +104,7 @@ class JobRunRow(BaseModel):
     job_id: str
     started_at: Optional[str] = None
     completed_at: Optional[str] = None
-    status: str = Field(..., description="'queued' | 'running' | 'success' | 'error' | 'timeout' | 'cancelled' | 'cancelling' | 'paused' | 'skipped'.")
+    status: str = Field(..., description="'queued' | 'running' | 'success' | 'error' | 'timeout' | 'cancelled' | 'cancelling' | 'paused' | 'skipped' | 'missed'.")
     duration_ms: Optional[int] = None
     rows_written: Optional[int] = None
     error: Optional[str] = None

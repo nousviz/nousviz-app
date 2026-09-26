@@ -184,7 +184,7 @@ def get_recent_runs(hours: int = 12) -> list[RecentItem]:
                         END AS error_short
             FROM job_runs
             WHERE started_at > now() - (%s || ' hours')::interval
-              AND status IN ('success', 'error', 'cancelled', 'timeout', 'skipped', 'paused')
+              AND status IN ('success', 'error', 'cancelled', 'timeout', 'skipped', 'paused', 'missed')
             ORDER BY started_at DESC
             LIMIT 100
             """,
