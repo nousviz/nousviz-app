@@ -347,6 +347,10 @@ plugins/utilities/
 ├── clickhouse/
 │   ├── plugin.yaml          # type: utility. Declares install/uninstall/health hooks and provides: [clickhouse].
 │   └── scripts/             # install.sh, uninstall.sh, health.sh
+├── ml-runtime/
+│   ├── plugin.yaml          # type: utility, provides: [ml_runtime]. No service; installs pinned ML libraries.
+│   ├── requirements.txt     # LightGBM, scikit-learn, numpy — pip-installed into the platform venv on install
+│   └── scripts/             # install.sh (proves imports), uninstall.sh, health.sh (versions + drift)
 └── redis/                   # Future example
     └── plugin.yaml
 ```
