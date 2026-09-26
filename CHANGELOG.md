@@ -6,7 +6,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Nou
 
 ## [Unreleased]
 
-_Nothing yet — see [ROADMAP.md](ROADMAP.md) for what's planned._
+### Fixed
+
+- **Updating a plugin now installs its `requirements.txt`.** Install has done this since B306; update did not, so an update that added or re-pinned a library shipped code that could not import it, and the failure only appeared later as an ImportError. The update now pip-installs the new requirements after the swap and before the API reload. As with install, a pip failure does not roll the update back: it is written to the plugin event log and reported as `deps_installed: false` in the update response, so the operator can fix the cause and update again.
 
 ---
 
