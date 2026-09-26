@@ -3379,6 +3379,17 @@ async def update_plugin(
             f"Update post-swap step failed; rolled back to v{pre_version}. Cause: {rollback_reason}",
         )
 
+    # ── Phase 3b: dependencies ────────────────────────────────────────
+    # Install the updated plugin's requirements.txt, as install_plugin does
+    # (B306). Without this, an update that adds or re-pins a library ships
+    # code that cannot import it, and the failure surfaces later as an
+    # ImportError in the plugin's routes or sync job. Runs after the swap so
+    # pip reads the NEW requirements, and before the PM2 reload so the
+    # reloaded workers can import them. Non-fatal, matching install: the
+    # helper logs a deps_install event either way, the response carries
+    # deps_installed, and the operator can fix the cause and update again.
+    deps_installed = _install_plugin_requirements(plugin_id, plugin_dir)
+
     # ── Phase 4: cleanup + audit ──────────────────────────────────────
     if swap_completed and not rollback_triggered:
         shutil.rmtree(backup_dir, ignore_errors=True)
@@ -3393,6 +3404,7 @@ async def update_plugin(
                 "source_class": source_class,
                 "resolved_tag": resolved_tag,
                 "migrations_applied": migrations_applied,
+                "deps_installed": deps_installed,
             },
         )
     except Exception:
@@ -3431,6 +3443,7 @@ async def update_plugin(
         "source_class": source_class,
         "source_url": source_url,
         "migrations_applied": migrations_applied,
+        "deps_installed": deps_installed,
         "note": "API is reloading automatically to pick up new routes.",
     }
 
