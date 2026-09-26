@@ -24,6 +24,15 @@ Key dependencies: React (MIT), Vite (MIT), Tailwind CSS (MIT), Lucide React (ISC
 | Apache-2.0 | bcrypt, cryptography |
 | PSF | Python standard library |
 
+## ML Runtime utility (installed on demand)
+
+Installed only when an operator installs the ML Runtime utility (`plugins/utilities/ml-runtime/`); not part of a default install.
+
+| License | Package |
+|---------|---------|
+| MIT | LightGBM |
+| BSD-3-Clause | scikit-learn, numpy, scipy, joblib, threadpoolctl |
+
 ## Full Dependency Lists
 
 - **Frontend:** Run `npx license-checker --summary` in `apps/web/`
