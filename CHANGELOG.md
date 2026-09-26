@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Nou
 
 ## [Unreleased]
 
+### Added
+
+- **ML Runtime utility plugin.** Installs pinned open-source machine learning libraries — LightGBM 4.7.0, scikit-learn 1.9.1, numpy 2.5.3 — into the NousViz Python environment, so plugins that declare `requires: ml_runtime: true` can train and score models in their sync jobs on the install's own data. The install hook proves the libraries import (including LightGBM's OpenMP runtime) and prints the exact fix when they do not; the health check reports installed versions and drift from the pins. Operators have nothing extra to do on a standard Linux server. Libraries are shared with core and every plugin by design; see `plugins/utilities/ml-runtime/README.md` for the decision and upgrade procedure.
+
 ### Fixed
 
 - **Updating a plugin now installs its `requirements.txt`.** Install has done this since B306; update did not, so an update that added or re-pinned a library shipped code that could not import it, and the failure only appeared later as an ImportError. The update now pip-installs the new requirements after the swap and before the API reload. As with install, a pip failure does not roll the update back: it is written to the plugin event log and reported as `deps_installed: false` in the update response, so the operator can fix the cause and update again.

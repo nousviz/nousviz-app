@@ -1,0 +1,50 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# plugins/utilities/ml-runtime/plugin.yaml
+# ML runtime utility plugin — installs a pinned set of open-source machine
+# learning libraries (LightGBM, scikit-learn, numpy) into the NousViz Python
+# environment. Plugins that declare `requires: ml_runtime: true` can import
+# them from their sync scripts. See README.md for the decision record.
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: ml-runtime
+display_name: ML Runtime
+version: 1.0.0
+description: >
+  Machine learning libraries for analytics plugins: LightGBM (gradient
+  boosting, quantile forecasting), scikit-learn (anomaly detection,
+  metrics) and numpy, at pinned versions. Installed into the NousViz Python
+  environment so plugin sync jobs can train and score models on the
+  install's own data. Required by plugins that declare
+  requires.ml_runtime: true.
+license: MIT
+icon: Brain
+category: utility
+tags: [infrastructure, machine-learning, analytics]
+visibility: public
+homepage: https://lightgbm.readthedocs.io
+
+publisher:
+  slug: nousviz
+  name: NousViz
+  website: https://nousviz.com
+  contact_email: plugins@nousviz.com
+  verified: true
+
+# ── Requirements ─────────────────────────────────────────────────────────────
+# Checked by scripts/install.sh, not by the platform.
+requires:
+  min_disk_mb: 600       # numpy + scipy + scikit-learn + lightgbm wheels, with headroom
+  os: linux              # LightGBM wheels need the OpenMP runtime (libgomp)
+
+type: utility
+
+# Plugins declaring `requires: ml_runtime: true` need this utility installed.
+provides:
+  - ml_runtime
+
+# The libraries themselves are in requirements.txt, which the platform
+# pip-installs into the running venv before install_hook runs (B306).
+# install.sh then proves they import, so a broken install fails loudly.
+install_hook: scripts/install.sh
+uninstall_hook: scripts/uninstall.sh
+health_check: scripts/health.sh
