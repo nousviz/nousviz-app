@@ -173,7 +173,8 @@ All icons from **Lucide React**. Standard sizes:
 - **Topbar** shows: burger button (md:hidden) → NousViz N lettermark (md:hidden) → page title (hidden on `< sm`, visible `sm:+`)
 - **Page title** hidden on very small screens (`< sm`) to prevent crowding the topbar
 - **Sub-nav tab strips** (Settings tabs, Plugin tabs) get `overflow-x-auto scrollbar-hide` so tabs scroll horizontally inside their row rather than pushing the page wider. Tab items get `whitespace-nowrap shrink-0`.
-- **Main content area** has `overflow-x-hidden` to contain any child that tries to exceed viewport width.
+- **Main content area** (`AppLayout.tsx`) has `overflow-x: clip` to contain any child that tries to exceed viewport width. `clip`, not `hidden`: `hidden` makes the pane a scroll container, which breaks `position: sticky` descendants such as the plugin tab strip (B197). Do not change it to `auto` to rescue an overflowing widget; fix the widget's container instead.
+- **Dashboard row grids** (`DashboardRenderer.tsx`) use `minmax(0, Nfr)` tracks, never bare `Nfr`, so a widget can't widen its row (B324). A widget that needs horizontal room scrolls inside its own `overflow-x-auto` wrapper, with `overflow-hidden` on the widget root if the root is not already a scroll container (see `TableWidget.tsx`).
 - **Scroll-to-top** on every route change — a `<ScrollToTop />` component inside `<BrowserRouter>` calls `window.scrollTo(0, 0)` on `pathname` change. Prevents landing mid-page after navigation.
 - **No `user-scalable=no`** — pinch-zoom preserved for accessibility.
 - **Touch targets** ≥ 44×44 px (iOS HIG minimum) on all primary interactive elements in the topbar.
