@@ -8,6 +8,7 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import { useTheme } from "@/hooks/useTheme";
 import type { ColorPalette, CustomColors } from "@/hooks/useTheme";
 import { useCompactNumbers } from "@/hooks/useCompactNumbers";
+import PlanSection from "@/widgets/PlanSection";
 import { cn, formatRelativeTime, formatAbsoluteTime } from "@/lib/utils";
 import { useMarkBootReadyOnMount } from "@/components/layout/BootCoordinator";
 import SetupWizard, { SETUP_KEY } from "@/components/SetupWizard";
@@ -1273,6 +1274,9 @@ export default function SettingsPage() {
       {/* ── General ──────────────────────────────────────────────────── */}
       {tab === "general" && (
         <div className="space-y-4">
+          {/* MC-608: full plan & licence picture — managed installs only
+              (renders nothing on community). */}
+          <PlanSection />
           <Section icon={Server} label="Instance">
             <Field label="Instance name" desc="Shown in the browser title and share links">
               <div className="flex items-center gap-2">
