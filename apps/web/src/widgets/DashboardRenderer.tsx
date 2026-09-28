@@ -735,8 +735,14 @@ export default function DashboardRenderer({ pluginId, dashboardName, preloadedSp
               key={rowNum}
               className="grid gap-4"
               style={{
+                // B324: minmax(0, Nfr), not bare Nfr. A bare fr track is
+                // minmax(auto, Nfr) and lets a widget with wide content
+                // (a nowrap table in a plain-div root) push the whole row
+                // past the pane, where AppLayout clips it. With a 0 minimum
+                // the widget stays in its column and its own overflow-x-auto
+                // wrapper scrolls.
                 gridTemplateColumns: widgets
-                  .map((w) => `${w.position?.width ?? 1}fr`)
+                  .map((w) => `minmax(0, ${w.position?.width ?? 1}fr)`)
                   .join(" "),
               }}
             >
