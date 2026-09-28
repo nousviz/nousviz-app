@@ -3512,8 +3512,16 @@ async def get_plugin_settings(
             # B130 (v0.8.6.5): exclude `_conn.*` rows — those are connection
             # fields stored via plugin_config; they belong to /connections,
             # not the plugin-declared /settings surface.
+            #
+            # B201: generalised to every underscore-prefixed key. This table
+            # also holds core's own `_trust_frontend` consent flag, and a
+            # plugin manifest can never declare a reserved key, so returning
+            # one here hands the settings form a value it will post straight
+            # back and the validator will then reject. Underscore is the
+            # existing marker for core-owned keys; this makes it the rule.
             cur.execute(
-                "SELECT key, value FROM plugin_settings WHERE plugin_id = %s AND key NOT LIKE '_conn.%%'",
+                "SELECT key, value FROM plugin_settings "
+                "WHERE plugin_id = %s AND left(key, 1) <> '_'",
                 (plugin_id,)
             )
             rows = cur.fetchall()
@@ -3546,7 +3554,15 @@ async def save_plugin_settings(
     if not plugin:
         raise HTTPException(404, f"Plugin '{plugin_id}' not found")
     declared = {s["name"] for s in (plugin.get("settings") or [])}
-    for s in body.settings:
+    # B201: core-owned keys (`_trust_frontend`, `_conn.*`) live in this same
+    # table and are round-tripped by any client that seeds a form from GET
+    # /settings. They can never appear in a plugin manifest, so validating
+    # them against it rejected the whole batch — one reserved key discarded
+    # every legitimate change in the same submission, and because the flag
+    # only exists once frontend trust is granted, the settings form became
+    # permanently unsaveable at that moment. Ignore them; do not store them.
+    incoming = [s for s in body.settings if not s.key.startswith("_")]
+    for s in incoming:
         if declared and s.key not in declared:
             raise HTTPException(422, f"Unknown setting key '{s.key}' for plugin '{plugin_id}'")
     try:
@@ -3554,7 +3570,7 @@ async def save_plugin_settings(
         from ..db import get_pg_conn
         with get_pg_conn() as conn:
             cur = conn.cursor()
-            for s in body.settings:
+            for s in incoming:
                 cur.execute(
                     """
                     INSERT INTO plugin_settings (plugin_id, key, value, updated_at)
