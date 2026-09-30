@@ -123,7 +123,9 @@ export default function InstallPluginPage() {
     setResult(null);
     try {
       const body: Record<string, string> = {};
-      if (method !== "public") body.repository_url = repoUrl.trim();
+      // Send whatever URL the operator typed, in every mode. Registry-listed
+      // installs submit no URL, so Tier 1/Tier 2 resolution is unchanged.
+      if (repoUrl.trim()) body.repository_url = repoUrl.trim();
       const res = await apiFetch(`/api/plugins/${pluginId.trim()}/install`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
