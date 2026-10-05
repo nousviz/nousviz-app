@@ -323,6 +323,13 @@ function PluginSettingsTab({ pluginId }: { pluginId: string }) {
       const connValues: Record<string, unknown> = {};
       const settingsValues: Record<string, unknown> = {};
       for (const [key, val] of Object.entries(values)) {
+        // B327: never post core-owned keys back. `plugin_settings` also
+        // holds core's `_trust_frontend` consent flag and `_conn.*` rows,
+        // and this form seeds its state from GET /settings. Posting one
+        // back used to reject the entire submission as an undeclared key.
+        // The server ignores them now too; this keeps them out of the
+        // request in the first place.
+        if (key.startsWith("_")) continue;
         if (connectionFieldNames.has(key)) {
           connValues[key] = val;
         } else {

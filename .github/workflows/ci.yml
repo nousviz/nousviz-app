@@ -60,7 +60,7 @@ jobs:
           pip install pytest bcrypt pyyaml fastapi pydantic psycopg2-binary python-dotenv cryptography jsonschema
 
       - name: Run unit tests
-        run: pytest tests/test_unit.py tests/test_edition.py tests/test_hooks.py tests/test_entitlement_contract.py -v
+        run: pytest tests/test_unit.py tests/test_edition.py tests/test_hooks.py tests/test_entitlement_contract.py tests/test_plugin_settings_reserved_keys.py -v
 
   public-build-clean:
     name: Public build clean (MC-204/205 — proof gate 2)
@@ -84,7 +84,7 @@ jobs:
           pip install pytest bcrypt pyyaml fastapi pydantic psycopg2-binary python-dotenv cryptography jsonschema
 
       - name: Unit suite with enterprise absent
-        run: pytest tests/test_unit.py tests/test_edition.py tests/test_hooks.py tests/test_entitlement_contract.py -v
+        run: pytest tests/test_unit.py tests/test_edition.py tests/test_hooks.py tests/test_entitlement_contract.py tests/test_plugin_settings_reserved_keys.py -v
 
   managed-build:
     name: Managed build (MC-204 — with enterprise add-on)
@@ -135,7 +135,7 @@ jobs:
         if: steps.token.outputs.have == 'true'
         env:
           NOUSVIZ_EDITION: managed
-        run: pytest tests/test_unit.py tests/test_edition.py tests/test_hooks.py tests/test_entitlement_contract.py -v
+        run: pytest tests/test_unit.py tests/test_edition.py tests/test_hooks.py tests/test_entitlement_contract.py tests/test_plugin_settings_reserved_keys.py -v
 
   smoke:
     name: Smoke Test (syntax only)
