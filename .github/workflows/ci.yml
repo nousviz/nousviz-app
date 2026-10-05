@@ -335,3 +335,36 @@ jobs:
       - name: Audit production deps (apps/web)
         working-directory: apps/web
         run: npm audit --omit=dev --audit-level=high
+
+  pr-commits:
+    name: PR commits (none already on the base — P211)
+    # P211: a PR cut from a rewritten or stale copy of main is still
+    # "mergeable" to GitHub, and merging it duplicates history (PR #14,
+    # 2026-10-03). Pull requests only: a push to main has nothing to compare.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Fetch the base branch
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: git fetch --no-tags origin "+refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
+
+      - name: Check the PR's commits against the base
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          # Prefer the base branch's copy of the check, so a PR cannot weaken
+          # the check it is subject to. Fall back to the PR's copy only while
+          # the script does not exist on the base yet.
+          if git show "origin/${BASE_REF}:scripts/ci/check-pr-commits.sh" > "${RUNNER_TEMP}/check-pr-commits.sh" 2>/dev/null; then
+            echo "Using the check script from ${BASE_REF}"
+          else
+            cp scripts/ci/check-pr-commits.sh "${RUNNER_TEMP}/check-pr-commits.sh"
+            echo "Using the check script from the PR (not on ${BASE_REF} yet)"
+          fi
+          bash "${RUNNER_TEMP}/check-pr-commits.sh" "origin/${BASE_REF}" HEAD
