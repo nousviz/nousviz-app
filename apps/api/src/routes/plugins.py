@@ -3513,7 +3513,7 @@ async def get_plugin_settings(
             # fields stored via plugin_config; they belong to /connections,
             # not the plugin-declared /settings surface.
             #
-            # B201: generalised to every underscore-prefixed key. This table
+            # B327: generalised to every underscore-prefixed key. This table
             # also holds core's own `_trust_frontend` consent flag, and a
             # plugin manifest can never declare a reserved key, so returning
             # one here hands the settings form a value it will post straight
@@ -3554,7 +3554,7 @@ async def save_plugin_settings(
     if not plugin:
         raise HTTPException(404, f"Plugin '{plugin_id}' not found")
     declared = {s["name"] for s in (plugin.get("settings") or [])}
-    # B201: core-owned keys (`_trust_frontend`, `_conn.*`) live in this same
+    # B327: core-owned keys (`_trust_frontend`, `_conn.*`) live in this same
     # table and are round-tripped by any client that seeds a form from GET
     # /settings. They can never appear in a plugin manifest, so validating
     # them against it rejected the whole batch — one reserved key discarded

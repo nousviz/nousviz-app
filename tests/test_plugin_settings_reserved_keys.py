@@ -1,4 +1,4 @@
-"""B201: core-owned keys must not make a plugin's settings unsaveable.
+"""B327: core-owned keys must not make a plugin's settings unsaveable.
 
 `plugin_settings` holds core's own `_trust_frontend` consent flag and
 `_conn.*` rows alongside the plugin-declared settings. The settings form
