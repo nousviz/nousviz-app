@@ -1,0 +1,38 @@
+# Dependabot (P211).
+# Version updates run on the schedules below. Security updates are a
+# repository setting and are raised as soon as an advisory has a fix; they are
+# not limited by these schedules.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /apps/web
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      web-minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # react-router 7 is a planned migration (B316), not a routine bump.
+      - dependency-name: react-router-dom
+        update-types: ["version-update:semver-major"]
+      # Tailwind 4 changes the configuration model.
+      - dependency-name: tailwindcss
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: pip
+    directory: /apps/api
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      api-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
