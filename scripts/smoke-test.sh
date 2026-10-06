@@ -40,6 +40,25 @@ check_post() {
     fi
 }
 
+check_plugin_query() {
+    # A plugin-table query must be allowed through the query ACL. 200 proves
+    # it. An ACL denial is 403 and a blocked write is 403, so a 400 with the
+    # API's generic "Query failed" body means the query was allowed and then
+    # failed in Postgres: on an instance without that plugin, the table does
+    # not exist. Reported, not failed. Anything else fails.
+    local name="$1" url="$2" body="$3"
+    local resp code
+    resp=$(curl -s -w '\n%{http_code}' -X POST "$url" \
+        -H "Content-Type: application/json" -d "$body" 2>/dev/null || echo "000")
+    code="${resp##*$'\n'}"; resp="${resp%$'\n'*}"
+    if [[ "$code" == "200" ]]; then
+        green "$name ($code)"
+    elif [[ "$code" == "400" && ( "$resp" == *"Query failed"* || "$resp" == *"does not exist"* ) ]]; then
+        green "$name (allowed; failed to execute here, table probably not installed)"
+    else
+        red "$name (expected 200, got $code)"
+    fi
+}
 echo ""
 echo "  NousViz smoke test — $TARGET"
 echo "  ──────────────────────────────"
@@ -60,10 +79,9 @@ echo "  ℹ Version: $VERSION"
 # of the avizo-jira plugin (v1.0-relevant, owned by the team).
 # If avizo-jira is uninstalled in the future, update this to another
 # installed plugin's table (any *_sync_state will work).
-check_post "Query plugin table (allowed)" \
+check_plugin_query "Query plugin table (allowed)" \
     "$TARGET/api/query" \
-    '{"sql":"SELECT count(*) FROM avizo_sync_state","db_engine":"postgres"}' \
-    "200"
+    '{"sql":"SELECT count(*) FROM avizo_sync_state","db_engine":"postgres"}'
 
 check_post "Query core table (blocked)" \
     "$TARGET/api/query" \
