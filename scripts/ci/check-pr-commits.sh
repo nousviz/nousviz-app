@@ -6,11 +6,9 @@
 #
 # `git cherry` compares patch ids, so it finds commits whose change is already
 # on the base under a different hash: the signature of a branch cut from a
-# rewritten or stale copy of the base. Merging such a branch duplicates those
-# commits in the base's history, and GitHub still reports it as mergeable.
-#
-# P211. Background: PR #14 (2026-10-03) was merged from a branch cut off a
-# rewritten copy of main and brought 31 duplicate commits into main.
+# stale or rewritten copy of the base. Merging such a branch duplicates those
+# commits in the base's history, and the hosting service may still report
+# it as mergeable. (P211)
 #
 # Exit codes: 0 clean, 1 duplicates found, 2 usage or repository problem.
 set -euo pipefail
