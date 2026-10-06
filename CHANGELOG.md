@@ -6,13 +6,27 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Nou
 
 ## [Unreleased]
 
+_Nothing yet — see [ROADMAP.md](ROADMAP.md) for what's planned._
+
+---
+
+## [1.0.5] — 2026-10-06
+
+### Fixed
+
+- **Wide custom plugin widgets scroll instead of being cut off (B324).** A `type: custom` plugin widget whose root element was a plain `div` wrapping a table wider than the page forced its whole dashboard row out to the table's width. The content pane then clipped the extra columns, and the widget's own `overflow-x-auto` wrapper had nothing to scroll. Dashboard row tracks are now `minmax(0, Nfr)` instead of `Nfr`, so a widget can never widen its row and its scroll wrapper works as written. Column proportions are unchanged. On earlier versions, add `overflow-hidden` to the widget's root element. Reported by Darrell Helyar.
+- **Public Repository installs send the repository URL (B325).** On the Install Plugin page, Public Repository mode dropped the URL from the install request, so a public plugin that is not in the official or community registry could not be installed. The URL is now sent in every mode. On earlier versions, use Private (Token) mode with a read-only token. Found and fixed by John Wright.
+- **Plugin settings can be saved again after frontend trust is granted (B327).** Granting trust stores a core-owned key next to the plugin's settings. The settings form posted that key back and the server rejected the whole submission as an undeclared key, so from that moment the plugin's settings could not be saved. The settings endpoint no longer returns or accepts core-owned (underscore-prefixed) keys. Sync schedules and frontend trust have their own endpoints and are unaffected. Found and fixed by John Wright.
+- **Updating a plugin now installs its `requirements.txt`.** Install has done this since B306; update did not, so an update that added or re-pinned a library shipped code that could not import it, and the failure only appeared later as an ImportError. The update now pip-installs the new requirements after the swap and before the API reload. As with install, a pip failure does not roll the update back: it is written to the plugin event log and reported as `deps_installed: false` in the update response, so the operator can fix the cause and update again.
+- **Runtime dependency audit is clean again (B323).** `tailwindcss-animate`, a build-time Tailwind plugin, was listed as a runtime dependency and pulled Tailwind's build toolchain into the runtime audit, where two advisories (nanoid, braces) flagged it. It is now a dev dependency, like Tailwind itself. The built bundle is byte-identical. Both advisories remain visible in the dev-inclusive audit; braces has no patched release yet.
+
 ### Added
 
 - **ML Runtime utility plugin.** Installs pinned open-source machine learning libraries — LightGBM 4.7.0, scikit-learn 1.9.1, numpy 2.5.3 — into the NousViz Python environment, so plugins that declare `requires: ml_runtime: true` can train and score models in their sync jobs on the install's own data. The install hook proves the libraries import (including LightGBM's OpenMP runtime) and prints the exact fix when they do not; the health check reports installed versions and drift from the pins. Operators have nothing extra to do on a standard Linux server. Libraries are shared with core and every plugin by design; see `plugins/utilities/ml-runtime/README.md` for the decision and upgrade procedure.
 
-### Fixed
+### Changed
 
-- **Updating a plugin now installs its `requirements.txt`.** Install has done this since B306; update did not, so an update that added or re-pinned a library shipped code that could not import it, and the failure only appeared later as an ImportError. The update now pip-installs the new requirements after the swap and before the API reload. As with install, a pip failure does not roll the update back: it is written to the plugin event log and reported as `deps_installed: false` in the update response, so the operator can fix the cause and update again.
+- **Pull requests are checked for commits already on `main` (P211).** A pull request whose branch was cut from a rewritten or out-of-date copy of `main` now fails CI with a "rebase first" message instead of duplicating history when merged. `scripts/ci/check-pr-commits.sh` runs the same check locally. Dependabot now raises dependency and security updates as pull requests.
 
 ---
 
