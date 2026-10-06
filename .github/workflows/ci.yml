@@ -338,9 +338,9 @@ jobs:
 
   pr-commits:
     name: PR commits (none already on the base — P211)
-    # P211: a PR cut from a rewritten or stale copy of main is still
-    # "mergeable" to GitHub, and merging it duplicates history (PR #14,
-    # 2026-10-03). Pull requests only: a push to main has nothing to compare.
+    # P211: a branch cut from a stale or rewritten copy of its base can still
+    # be reported as mergeable, and merging it duplicates history. Pull
+    # requests only: a push to main has nothing to compare against.
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
