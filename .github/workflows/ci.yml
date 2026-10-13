@@ -12,7 +12,7 @@ jobs:
     name: TypeScript Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v4
         with:
@@ -48,7 +48,7 @@ jobs:
     name: Unit Tests (offline — no DB)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v5
         with:
@@ -69,7 +69,7 @@ jobs:
       # Deliberately NO submodule init: a public build gets an empty
       # enterprise/ dir by construction. This job proves the community
       # product stands entirely alone, with the add-on physically absent.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Edition guards (leak + import)
         run: bash scripts/edition-guards.sh --public
@@ -110,7 +110,7 @@ jobs:
             echo "have=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: steps.token.outputs.have == 'true'
         with:
           submodules: true
@@ -141,7 +141,7 @@ jobs:
     name: Smoke Test (syntax only)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Verify smoke test script exists and is valid bash
         run: bash -n scripts/smoke-test.sh
@@ -156,7 +156,7 @@ jobs:
     # Config in pyproject.toml; F-rules + minimal E-rules (E501 excluded
     # — see config comment for rationale).
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v5
         with:
@@ -191,7 +191,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v5
         with:
@@ -285,7 +285,7 @@ jobs:
     # id per line + a reason comment. Findings outside the allowlist
     # break the build.
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v5
         with:
@@ -324,7 +324,7 @@ jobs:
     # Dev deps (vite, eslint, etc.) are out of scope — they don't ship
     # to operators. --audit-level=high so moderate/low warn-only.
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v4
         with:
@@ -344,7 +344,7 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
