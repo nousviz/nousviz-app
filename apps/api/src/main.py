@@ -356,6 +356,14 @@ app.include_router(resource_acls_routes.router)  # /api/resource-acls prefix bui
 app.include_router(maintenance.router)  # /api/maintenance prefix built-in (B279)
 app.include_router(oauth_routes.router)  # /api/oauth prefix built-in (B312)
 
+# B330: serve avatar images on installs without nginx (dev, vite). nginx
+# serves /uploads/ itself in production and never reaches this. Read-only;
+# public only for <user uuid>.<ext> (PUBLIC_GET_PATTERNS in middleware/auth.py).
+from fastapi.staticfiles import StaticFiles  # noqa: E402
+from .routes.auth import UPLOAD_DIR as _AVATAR_DIR  # noqa: E402
+os.makedirs(_AVATAR_DIR, exist_ok=True)
+app.mount("/uploads/avatars", StaticFiles(directory=_AVATAR_DIR), name="avatars")
+
 # ── Plugin routes (dynamically loaded) ────────────────────────────────
 # Scans plugins/installed/*/api/routes.py and registers their routers.
 # Install a plugin → restart → its routes are live.

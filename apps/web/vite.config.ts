@@ -15,6 +15,9 @@ export default defineConfig({
     proxy: {
       "/api": `http://localhost:${process.env.API_PORT || "8000"}`,
       "/site": `http://localhost:${process.env.API_PORT || "8000"}`,
+      // B330: avatars. nginx serves /uploads/ in production; without nginx
+      // the API does, and the SPA fallback would otherwise return index.html.
+      "/uploads": `http://localhost:${process.env.API_PORT || "8000"}`,
       "/openapi.json": `http://localhost:${process.env.API_PORT || "8000"}`,
       "/openapi.yaml": `http://localhost:${process.env.API_PORT || "8000"}`,
     },

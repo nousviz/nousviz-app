@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api";
+import { UserAvatar } from "@/components/ui/UserAvatar";
 import { useState, useEffect, useRef } from "react";
 import { Database, Key, Globe, Server, Sun, Moon, BarChart3, Pipette, Eye, EyeOff, Rocket, Copy, Check, Trash2, Plus, Shield, Mail, ChevronRight, User, BookOpen, ExternalLink, Wrench } from "lucide-react";
 import LogsPanel from "@/components/settings/LogsPanel";
@@ -521,13 +522,7 @@ function ProfilePanel() {
         <h4 className="font-display text-sm text-foreground">Profile Picture</h4>
         <div className="flex items-center gap-5">
           <div className="relative group">
-            {avatarUrl ? (
-              <img src={avatarUrl} alt="Avatar" className="w-16 h-16 rounded-full object-cover border-2 border-border" />
-            ) : (
-              <span className="w-16 h-16 rounded-full bg-primary/20 text-primary text-xl font-semibold flex items-center justify-center border-2 border-border">
-                {(name || email || "?")[0].toUpperCase()}
-              </span>
-            )}
+            <UserAvatar url={avatarUrl} name={name} email={email} size={64} className="border-2 border-border" />
           </div>
           <div className="space-y-2">
             <div className="flex items-center gap-2">
