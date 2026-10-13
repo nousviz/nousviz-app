@@ -6,7 +6,24 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Nou
 
 ## [Unreleased]
 
-_Nothing yet — see [ROADMAP.md](ROADMAP.md) for what's planned._
+### Fixed
+
+- **User avatars never show a broken image (B330).**
+  - **The cause:** on installs without nginx (the vite dev server), an
+    uploaded photo saved correctly but never displayed. Nothing served
+    `/uploads/`, so the browser got the app's HTML page instead of the
+    image. Wherever a photo URL failed to load, the top bar and Settings →
+    Profile showed a broken image.
+  - **New `UserAvatar` component:** shows the photo when it loads.
+    Otherwise it shows the first letter of the display name (or email),
+    in white on a colour fixed per user. With neither, a generic person
+    icon. All 12 colours pass WCAG AA with white text.
+  - **Serving photos:** the API now serves the avatar folder read-only,
+    and vite passes `/uploads` to it.
+  - **Access:** only `GET /uploads/avatars/<user id>.<image type>` is
+    public, as nginx already serves it in production. nginx installs are
+    unchanged.
+  - Found and fixed by John Wright.
 
 ---
 

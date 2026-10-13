@@ -98,6 +98,11 @@ PUBLIC_GET_PATTERNS = [
     re.compile(rf"^/api/plugins/{_SLUG}/dashboards/[^/]+/?$"),
     re.compile(rf"^/api/plugins/{_SLUG}/widget/[^/]+$"),
     re.compile(r"^/api/widget-runtime/.+$"),
+    # B330: avatar images, as nginx serves /uploads/ publicly in production.
+    # An <img> request cannot carry X-Session-Token, so without this the
+    # API's own avatar mount (installs without nginx) would always 401.
+    # Exactly one file per user: <user uuid>.<ext>, nothing else under /uploads.
+    re.compile(r"^/uploads/avatars/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(?:png|jpg|webp|gif)$"),
 ]
 
 # B304 (v0.10.0.5): plugin admin-proxy paths.

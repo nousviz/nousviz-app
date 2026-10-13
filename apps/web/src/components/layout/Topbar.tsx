@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation, Link, NavLink } from "react-router-dom";
 import SidebarLogo from "./SidebarLogo";
+import { UserAvatar } from "@/components/ui/UserAvatar";
 import { Search, Github, MessageSquare, RefreshCw, Menu, Shield, X, CheckCircle2, AlertTriangle, XCircle, LogOut, User } from "lucide-react";
 import SslSetupModal from "@/components/SslSetupModal";
 import SetupWizard from "@/components/SetupWizard";
@@ -361,13 +362,7 @@ export default function Topbar({ sidebarCollapsed, onMenuClick }: { sidebarColla
                 className="h-9 w-9 rounded-md bg-secondary hover:bg-secondary/80 flex items-center justify-center transition-colors"
                 title={`${currentUser.name || currentUser.email} (${currentUser.role})`}
               >
-                {currentUser.avatar_url ? (
-                  <img src={currentUser.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover" />
-                ) : (
-                  <span className="w-6 h-6 rounded-full bg-primary/20 text-primary text-[10px] font-semibold flex items-center justify-center">
-                    {(currentUser.name || currentUser.email)[0].toUpperCase()}
-                  </span>
-                )}
+                <UserAvatar url={currentUser.avatar_url} name={currentUser.name} email={currentUser.email} size={24} />
               </button>
               {userMenuOpen && (
                 <div className="absolute right-0 top-11 z-50 w-56 bg-card border border-border rounded-lg shadow-xl overflow-hidden">
