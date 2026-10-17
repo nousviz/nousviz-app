@@ -413,6 +413,22 @@ async def config_status():
 
     update = _check_update_cached()
 
+    # P215: email is optional; it only matters when something needs it.
+    email_alerts_undeliverable = 0
+    if not smtp_host:
+        try:
+            with get_pg_conn() as conn:
+                cur = conn.cursor()
+                cur.execute("SELECT count(*) FROM alert_rules WHERE enabled AND 'email' = ANY(notify_channels)")
+                email_alerts_undeliverable = int(cur.fetchone()[0] or 0)
+        except Exception:
+            pass
+    try:
+        from ..services.email import last_send_failed
+        smtp_last_send_failed = last_send_failed()
+    except Exception:
+        smtp_last_send_failed = False
+
     return {
         "encryption_key_set": bool(encryption_key),
         "auth_required": auth_required,
@@ -423,6 +439,8 @@ async def config_status():
         # always-False are now correct.
         "postgres_password_is_default": False,
         "smtp_configured": bool(smtp_host),
+        "smtp_last_send_failed": smtp_last_send_failed,
+        "email_alerts_undeliverable": email_alerts_undeliverable,
         "update_available": update.get("available", False),
         "update_latest": update.get("latest"),
         "update_current": update.get("current"),
