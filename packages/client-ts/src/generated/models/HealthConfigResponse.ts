@@ -27,6 +27,14 @@ export type HealthConfigResponse = {
      */
     smtp_configured: boolean;
     /**
+     * P215: True iff SMTP is configured and the last send attempt (test or real) failed.
+     */
+    smtp_last_send_failed?: boolean;
+    /**
+     * P215: enabled alert rules that notify by email while SMTP is not configured (0 when it is).
+     */
+    email_alerts_undeliverable?: number;
+    /**
      * True iff a newer release is available on GitHub.
      */
     update_available: boolean;

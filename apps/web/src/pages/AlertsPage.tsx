@@ -7,6 +7,7 @@ import {
   Database, Plug, Link2, AlertTriangle, ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { defaultAlertChannels, fetchSmtpConfigured } from "@/lib/email-status";
 import { useMarkBootReadyOnMount } from "@/components/layout/BootCoordinator";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 
@@ -109,9 +110,21 @@ function CreateAlertModal({ onClose, onCreate, outboundWebhooks }: {
   const [threshold, setThreshold]           = useState("20");
   const [compareTo, setCompareTo]           = useState("7d_avg");
   const [frequency, setFrequency]           = useState("daily");
-  const [notifyChannels, setNotifyChannels]  = useState<string[]>(["email"]);
+  // P215: email by default only when it is set up; otherwise the log.
+  const [notifyChannels, setNotifyChannels]  = useState<string[]>(["log"]);
+  const [smtpConfigured, setSmtpConfigured] = useState<boolean | null>(null);
   const [saving, setSaving]                 = useState(false);
   const [error, setError]                   = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchSmtpConfigured().then(ok => {
+      if (cancelled) return;
+      setSmtpConfigured(ok);
+      setNotifyChannels(defaultAlertChannels(ok));
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     apiFetch("/api/alerts/sources")
@@ -516,17 +529,21 @@ function CreateAlertModal({ onClose, onCreate, outboundWebhooks }: {
                 <label className="block text-xs font-medium text-muted-foreground mb-1.5">Notify via</label>
                 <div className="flex flex-wrap gap-2">
                   {[
-                    { id: "email", label: "Email" },
-                    { id: "log", label: "Log only" },
+                    { id: "email", label: "Email", disabled: smtpConfigured === false },
+                    { id: "log", label: "Log only", disabled: false },
                   ].map(ch => (
-                    <label key={ch.id} className={cn(
-                      "flex items-center gap-1.5 h-9 px-3 rounded-lg border text-sm cursor-pointer transition-all",
+                    <label key={ch.id}
+                      title={ch.disabled ? "Set up email in Settings → Email to use this channel" : undefined}
+                      className={cn(
+                      "flex items-center gap-1.5 h-9 px-3 rounded-lg border text-sm transition-all",
+                      ch.disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
                       notifyChannels.includes(ch.id)
                         ? "border-primary bg-primary/5 text-foreground ring-1 ring-primary/20"
                         : "border-border text-muted-foreground hover:border-primary/30"
                     )}>
                       <input
                         type="checkbox"
+                        disabled={ch.disabled}
                         checked={notifyChannels.includes(ch.id)}
                         onChange={e => {
                           if (e.target.checked) setNotifyChannels(c => [...c, ch.id]);
@@ -560,6 +577,12 @@ function CreateAlertModal({ onClose, onCreate, outboundWebhooks }: {
                     );
                   })}
                 </div>
+                {smtpConfigured === false && (
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Email isn't set up. To send alerts by email, set it up in{" "}
+                    <a href="/settings/email" className="text-primary hover:underline">Settings → Email</a>.
+                  </p>
+                )}
                 {outboundWebhooks.length === 0 && (
                   <p className="text-[10px] text-muted-foreground mt-1">
                     Install the Webhooks plugin to add outbound webhook destinations.

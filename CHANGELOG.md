@@ -6,6 +6,26 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Nou
 
 ## [Unreleased]
 
+### Changed
+
+- **Email (SMTP) is optional (P215).**
+  - **No more warning:** without SMTP there's no banner and no "1 Warning"
+    in the top bar. The Health page lists Email as "Optional · not set
+    up", with a link to Settings → Email.
+  - **Warns only when email is needed:** an enabled alert notifies by
+    email while SMTP isn't set up ("1 alert can't be delivered"), or SMTP
+    is set up but the last send failed. `/health/config` gains
+    `email_alerts_undeliverable` and `smtp_last_send_failed`. The outcome
+    of the last send is kept in `logs/smtp_last_send.json` (no
+    credentials).
+  - **Setup wizard:** the "Configure email (SMTP)" step is gone.
+  - **Alerts:** a new alert defaults to Log only unless email is set up,
+    on the Alerts page, the plugin alert widget and the API. Without
+    SMTP, Email can't be picked and the page says where to set it up.
+    Existing alerts are unchanged.
+  - **Closing the banner sticks** across tabs and logins until the
+    warnings change. It was only remembered for the browser session.
+
 ### Fixed
 
 - **User avatars never show a broken image (B330).**

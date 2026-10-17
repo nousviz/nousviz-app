@@ -34,6 +34,9 @@ const PAGE_TITLES: Record<string, string> = {
   "/health-overview": "System Status",
 };
 
+// P215: the warnings the operator last closed the banner on.
+const BANNER_DISMISSED_KEY = "nousviz:banner_dismissed_sig";
+
 export default function Topbar({ sidebarCollapsed, onMenuClick }: { sidebarCollapsed: boolean; onMenuClick: () => void }) {
   const location = useLocation();
   useCompactNumbers(); // register context — values consumed by child components
@@ -48,6 +51,7 @@ export default function Topbar({ sidebarCollapsed, onMenuClick }: { sidebarColla
   const healthRef = useRef<HTMLDivElement>(null);
   const [healthWarnings, setHealthWarnings] = useState<{ id: string; label: string; detail: string; onClick?: string; href?: string }[]>([]);
   const [showBanner, setShowBanner] = useState(false);
+  const bannerSigRef = useRef("");
   const [showSslModal, setShowSslModal] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
   // B236 (v0.9.10.0): Topbar shows the EFFECTIVE user — when impersonating
@@ -113,8 +117,13 @@ export default function Topbar({ sidebarCollapsed, onMenuClick }: { sidebarColla
         const checks = evaluateChecks(hData, cData);
         const warns = checks.filter(c => c.status === "warn" || c.status === "fail");
         setHealthWarnings(warns.map(c => ({ id: c.id, label: c.label, detail: c.detail, onClick: c.action?.onClick, href: c.action?.href })));
-        const dismissed = sessionStorage.getItem("nousviz:banner_dismissed") === "true";
-        setShowBanner(warns.length > 0 && !dismissed);
+        // P215: closing the banner sticks (across tabs and logins) until
+        // the set of warnings changes.
+        const sig = warns.map(c => `${c.id}:${c.status}:${c.detail}`).sort().join("|");
+        bannerSigRef.current = sig;
+        let dismissedSig: string | null = null;
+        try { dismissedSig = localStorage.getItem(BANNER_DISMISSED_KEY); } catch { /* storage blocked */ }
+        setShowBanner(warns.length > 0 && dismissedSig !== sig);
       } catch {
         setHealthData(null);
       } finally {
@@ -199,7 +208,10 @@ export default function Topbar({ sidebarCollapsed, onMenuClick }: { sidebarColla
             <button onClick={() => setHealthOpen(true)} className="text-[11px] text-primary hover:underline font-medium">View</button>
           )}
           <button
-            onClick={() => { setShowBanner(false); sessionStorage.setItem("nousviz:banner_dismissed", "true"); }}
+            onClick={() => {
+              setShowBanner(false);
+              try { localStorage.setItem(BANNER_DISMISSED_KEY, bannerSigRef.current); } catch { /* storage blocked */ }
+            }}
             className="text-yellow-400/40 hover:text-yellow-400 ml-1"
           >
             <X className="w-3 h-3" />
