@@ -22,6 +22,10 @@ class HealthConfigResponse:
         postgres_password_is_default (bool): Always False since S108 (v0.8.1) — kept for response-shape back-compat.
         smtp_configured (bool): True iff SMTP_HOST is set.
         update_available (bool): True iff a newer release is available on GitHub.
+        smtp_last_send_failed (bool | Unset): P215: True iff SMTP is configured and the last send attempt (test or
+            real) failed. Default: False.
+        email_alerts_undeliverable (int | Unset): P215: enabled alert rules that notify by email while SMTP is not
+            configured (0 when it is). Default: 0.
         update_latest (None | str | Unset): Latest release tag if known.
         update_current (None | str | Unset): Currently-running version.
     """
@@ -32,6 +36,8 @@ class HealthConfigResponse:
     postgres_password_is_default: bool
     smtp_configured: bool
     update_available: bool
+    smtp_last_send_failed: bool | Unset = False
+    email_alerts_undeliverable: int | Unset = 0
     update_latest: None | str | Unset = UNSET
     update_current: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
@@ -48,6 +54,10 @@ class HealthConfigResponse:
         smtp_configured = self.smtp_configured
 
         update_available = self.update_available
+
+        smtp_last_send_failed = self.smtp_last_send_failed
+
+        email_alerts_undeliverable = self.email_alerts_undeliverable
 
         update_latest: None | str | Unset
         if isinstance(self.update_latest, Unset):
@@ -73,6 +83,10 @@ class HealthConfigResponse:
                 "update_available": update_available,
             }
         )
+        if smtp_last_send_failed is not UNSET:
+            field_dict["smtp_last_send_failed"] = smtp_last_send_failed
+        if email_alerts_undeliverable is not UNSET:
+            field_dict["email_alerts_undeliverable"] = email_alerts_undeliverable
         if update_latest is not UNSET:
             field_dict["update_latest"] = update_latest
         if update_current is not UNSET:
@@ -94,6 +108,10 @@ class HealthConfigResponse:
         smtp_configured = d.pop("smtp_configured")
 
         update_available = d.pop("update_available")
+
+        smtp_last_send_failed = d.pop("smtp_last_send_failed", UNSET)
+
+        email_alerts_undeliverable = d.pop("email_alerts_undeliverable", UNSET)
 
         def _parse_update_latest(data: object) -> None | str | Unset:
             if data is None:
@@ -120,6 +138,8 @@ class HealthConfigResponse:
             postgres_password_is_default=postgres_password_is_default,
             smtp_configured=smtp_configured,
             update_available=update_available,
+            smtp_last_send_failed=smtp_last_send_failed,
+            email_alerts_undeliverable=email_alerts_undeliverable,
             update_latest=update_latest,
             update_current=update_current,
         )

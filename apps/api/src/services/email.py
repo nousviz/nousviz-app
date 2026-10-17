@@ -15,9 +15,12 @@ All sends are synchronous in v0.3.1. If alert delivery (v0.3.2) needs
 higher throughput, add a lightweight queue then.
 """
 
+import json
 import logging
 import os
 import smtplib
+from datetime import datetime, timezone
+from pathlib import Path
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -48,8 +51,42 @@ def is_configured() -> bool:
     return bool(os.environ.get("SMTP_HOST", "").strip())
 
 
+# P215: the outcome of the last send attempt (test or real), shared by the
+# API and the worker through a small file, so the health check can warn
+# when email is configured but failing. Never holds credentials.
+_LAST_SEND_FILE = Path(__file__).resolve().parents[4] / "logs" / "smtp_last_send.json"
+
+
+def _record_send(ok: bool, error: str = "") -> None:
+    try:
+        _LAST_SEND_FILE.parent.mkdir(parents=True, exist_ok=True)
+        _LAST_SEND_FILE.write_text(json.dumps({
+            "ok": ok, "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "error": (error or "")[:300]}))
+    except Exception:
+        logger.debug("could not record the SMTP send result", exc_info=True)
+
+
+def last_send_failed() -> bool:
+    """True if SMTP is configured and the last send attempt failed."""
+    if not is_configured():
+        return False
+    try:
+        return not json.loads(_LAST_SEND_FILE.read_text()).get("ok", True)
+    except Exception:
+        return False
+
+
 def _send(to: str, subject: str, html: str, plain: str) -> tuple[bool, str]:
-    """Send an email. Returns (ok, error_message)."""
+    """Send an email. Returns (ok, error_message). Records the outcome
+    (P215) when SMTP is configured."""
+    ok, err = _send_smtp(to, subject, html, plain)
+    if is_configured():
+        _record_send(ok, err)
+    return ok, err
+
+
+def _send_smtp(to: str, subject: str, html: str, plain: str) -> tuple[bool, str]:
     # Edition seam (MC-203): managed may substitute a relay transport per
     # the entitlement (WS6/MC-604); community passes through unchanged.
     cfg = hooks.resolve_smtp_config(_get_smtp_config())
