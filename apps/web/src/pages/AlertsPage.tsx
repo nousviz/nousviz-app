@@ -7,6 +7,7 @@ import {
   Database, Plug, Link2, AlertTriangle, ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useMarkBootReadyOnMount } from "@/components/layout/BootCoordinator";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 
@@ -624,6 +625,9 @@ export default function AlertsPage() {
   const queryClient = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
   const [pluginFilter, setPluginFilter] = useState<string>("all");
+  // B331: deleting is permanent, so it is confirmed first.
+  const [pendingDelete, setPendingDelete] = useState<Alert | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // v0.10.0.7.3 — three fetches via the shared cache. The /api/plugins
   // call hits the SAME key PluginsPage uses, so an operator who already
@@ -675,8 +679,27 @@ export default function AlertsPage() {
     queryClient.invalidateQueries({ queryKey: ALERTS_LIST_QUERY_KEY });
   }
 
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    try {
+      await deleteAlert(pendingDelete.id);
+    } finally {
+      setDeleting(false);
+      setPendingDelete(null);
+    }
+  }
+
   return (
     <>
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title={`Delete alert "${pendingDelete?.label ?? ""}"?`}
+        message=<>This can't be undone: its settings are removed. To stop it for now, switch it off instead.</>
+        busy={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
       {showCreate && canWriteAlerts && (
         <CreateAlertModal
           onClose={() => setShowCreate(false)}
@@ -816,7 +839,7 @@ export default function AlertsPage() {
                         : <ToggleLeft className="w-5 h-5" />}
                     </button>
                     <button
-                      onClick={() => deleteAlert(alert.id)}
+                      onClick={() => setPendingDelete(alert)}
                       title="Delete"
                       className="h-8 w-8 rounded-md hover:bg-red-500/10 hover:text-red-400 flex items-center justify-center text-muted-foreground transition-colors"
                     >
