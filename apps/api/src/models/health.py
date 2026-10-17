@@ -92,6 +92,14 @@ class HealthConfigResponse(BaseModel):
         description="Always False since S108 (v0.8.1) — kept for response-shape back-compat.",
     )
     smtp_configured: bool = Field(..., description="True iff SMTP_HOST is set.")
+    smtp_last_send_failed: bool = Field(
+        default=False,
+        description="P215: True iff SMTP is configured and the last send attempt (test or real) failed.",
+    )
+    email_alerts_undeliverable: int = Field(
+        default=0,
+        description="P215: enabled alert rules that notify by email while SMTP is not configured (0 when it is).",
+    )
     update_available: bool = Field(..., description="True iff a newer release is available on GitHub.")
     update_latest: Optional[str] = Field(default=None, description="Latest release tag if known.")
     update_current: Optional[str] = Field(default=None, description="Currently-running version.")
