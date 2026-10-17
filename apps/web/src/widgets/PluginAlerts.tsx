@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { apiFetch } from "@/lib/api";
+import { defaultAlertChannels, fetchSmtpConfigured } from "@/lib/email-status";
 import {
   listAlerts,
   createAlert,
@@ -160,10 +161,18 @@ function AlertBuilder({
     group_by: undefined,
     min_baseline: 0,
     cooldown_hours: 24,
-    notify_channels: ["email"],
+    notify_channels: ["log"],   // P215: email once we know it is set up
     enabled: true,
   });
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchSmtpConfigured().then(ok => {
+      if (!cancelled) setForm(f => ({ ...f, notify_channels: defaultAlertChannels(ok) }));
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   const { numericColumns, textColumns, loading: columnsLoading, error: columnsError } = useTableColumns(form.dataset || null);
 

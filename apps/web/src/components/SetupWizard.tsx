@@ -700,10 +700,6 @@ function StepDone({ name, checks }: { name: string; checks: CheckItem[] }) {
         </div>
         <div className="flex items-center gap-2">
           <ChevronRight className="w-3 h-3 shrink-0" />
-          <span>Configure <a href="/settings" className="text-primary hover:underline">email (SMTP)</a> so invites and alerts can be delivered</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <ChevronRight className="w-3 h-3 shrink-0" />
           <span>Install a plugin from the <a href="/marketplace" className="text-primary hover:underline">Marketplace</a></span>
         </div>
         <div className="flex items-center gap-2">

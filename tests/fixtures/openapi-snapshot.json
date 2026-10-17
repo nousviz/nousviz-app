@@ -14054,7 +14054,7 @@
             "type": "array",
             "title": "Notify Channels",
             "default": [
-              "email"
+              "log"
             ]
           },
           "enabled": {
@@ -18944,6 +18944,18 @@
             ],
             "title": "Update Current",
             "description": "Currently-running version."
+          },
+          "email_alerts_undeliverable": {
+            "default": 0,
+            "description": "P215: enabled alert rules that notify by email while SMTP is not configured (0 when it is).",
+            "title": "Email Alerts Undeliverable",
+            "type": "integer"
+          },
+          "smtp_last_send_failed": {
+            "default": false,
+            "description": "P215: True iff SMTP is configured and the last send attempt (test or real) failed.",
+            "title": "Smtp Last Send Failed",
+            "type": "boolean"
           }
         },
         "type": "object",

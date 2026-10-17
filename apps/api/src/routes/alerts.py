@@ -62,7 +62,8 @@ class AlertCreate(BaseModel):
     check_period: str = "yesterday"
     cooldown_hours: int = 24
     min_baseline: float = 0
-    notify_channels: list[str] = ["email"]
+    # P215: "log" by default; email only when the client asks for it.
+    notify_channels: list[str] = ["log"]
     enabled: bool = True
     is_template: bool = False
 
