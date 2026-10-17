@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Nou
 
 ## [Unreleased]
 
+---
+
+## [1.0.6] — 2026-10-17
+
 ### Changed
 
 - **Email (SMTP) is optional (P215).**
