@@ -9,6 +9,7 @@ import {
   Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { apiFetch } from "@/lib/api";
 import {
   listAlerts,
@@ -388,8 +389,31 @@ export default function PluginAlerts({ pluginId, tables = [] }: { pluginId: stri
 
   const enabledCount = alerts.filter((a) => a.enabled).length;
 
+  // B331: deleting is permanent, so it is confirmed first.
+  const [pendingDelete, setPendingDelete] = useState<(typeof alerts)[number] | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    try {
+      await deleteAlert(pendingDelete.id);
+      fetchAlerts();
+    } finally {
+      setDeleting(false);
+      setPendingDelete(null);
+    }
+  }
+
   return (
     <div className="space-y-6">
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title={`Delete alert "${pendingDelete?.label ?? ""}"?`}
+        message=<>This can't be undone: its settings are removed. To stop it for now, switch it off instead.</>
+        busy={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -478,7 +502,8 @@ export default function PluginAlerts({ pluginId, tables = [] }: { pluginId: stri
                       <Play className="w-3 h-3" /> Test
                     </button>
                     <button
-                      onClick={async () => { await deleteAlert(alert.id); fetchAlerts(); }}
+                      onClick={() => setPendingDelete(alert)}
+                      title="Delete"
                       className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-red-400"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
