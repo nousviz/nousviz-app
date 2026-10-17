@@ -28,6 +28,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Nou
 
 ### Fixed
 
+- **Deleting an alert asks for confirmation (B331).**
+  - The trash icon on the Alerts page and in a plugin's alert widget
+    deleted the alert at once, permanently.
+  - It now asks first, names the alert, and suggests switching it off
+    instead. Escape or clicking outside cancels.
+  - New shared `ConfirmDialog` component (`components/ui/ConfirmDialog.tsx`)
+    for destructive actions.
+
 - **User avatars never show a broken image (B330).**
   - **The cause:** on installs without nginx (the vite dev server), an
     uploaded photo saved correctly but never displayed. Nothing served
