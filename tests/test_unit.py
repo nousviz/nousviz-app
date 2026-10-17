@@ -657,6 +657,34 @@ def test_smtp_is_configured(monkeypatch):
     assert is_configured() is False
 
 
+def test_smtp_last_send_recorded(monkeypatch, tmp_path):
+    """P215: the last send outcome is recorded only when SMTP is configured,
+    and only counts as a failure while it still is."""
+    from apps.api.src.services import email as em
+    monkeypatch.setattr(em, "_LAST_SEND_FILE", tmp_path / "smtp_last_send.json")
+    monkeypatch.delenv("SMTP_HOST", raising=False)
+    ok, _err = em._send("a@example.com", "s", "<p>h</p>", "h")
+    assert ok is False and not (tmp_path / "smtp_last_send.json").exists()
+    assert em.last_send_failed() is False
+    monkeypatch.setenv("SMTP_HOST", "smtp.example.com")
+    monkeypatch.setattr(em, "_send_smtp", lambda *a: (False, "Connection failed"))
+    em._send("a@example.com", "s", "<p>h</p>", "h")
+    assert em.last_send_failed() is True
+    monkeypatch.setattr(em, "_send_smtp", lambda *a: (True, ""))
+    em._send("a@example.com", "s", "<p>h</p>", "h")
+    assert em.last_send_failed() is False
+    em._record_send(False, "x")
+    monkeypatch.delenv("SMTP_HOST")
+    assert em.last_send_failed() is False
+
+
+def test_alert_default_channel_is_log():
+    """P215: a new alert without channels no longer defaults to email."""
+    from apps.api.src.routes.alerts import AlertCreate
+    fields = AlertCreate.model_fields
+    assert fields["notify_channels"].default == ["log"]
+
+
 # ── B179: Bounded rate limiter ──────────────────────────────────────────
 
 def test_rate_limiter_blocks_after_max_attempts():

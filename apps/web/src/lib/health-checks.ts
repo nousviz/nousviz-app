@@ -51,6 +51,10 @@ export interface ConfigData {
   superadmin_exists: boolean;
   postgres_password_is_default: boolean;
   smtp_configured?: boolean;
+  /** P215: SMTP is configured and the last send (test or real) failed. */
+  smtp_last_send_failed?: boolean;
+  /** P215: enabled alerts that notify by email while SMTP is not configured. */
+  email_alerts_undeliverable?: number;
   update_available?: boolean;
   update_latest?: string;
   update_current?: string;
@@ -319,18 +323,27 @@ export function evaluateChecks(
     });
   }
 
-  // SMTP
+  // SMTP — optional (P215). Not set up is "info", never a warning; it
+  // warns only when email is needed and can't be sent.
   if (config) {
-    checks.push({
-      id: "smtp",
-      label: "Email (SMTP)",
-      group: "configuration",
-      status: config.smtp_configured ? "pass" : "warn",
-      detail: config.smtp_configured ? "Configured" : "Not configured",
-      action: config.smtp_configured
-        ? undefined
-        : { label: "Configure", href: "/settings/email" },
-    });
+    const undeliverable = config.email_alerts_undeliverable ?? 0;
+    let status: HealthCheck["status"];
+    let detail: string;
+    let action: HealthCheck["action"];
+    if (config.smtp_configured) {
+      status = config.smtp_last_send_failed ? "warn" : "pass";
+      detail = config.smtp_last_send_failed ? "Last send failed" : "Configured";
+      action = config.smtp_last_send_failed ? { label: "Check settings", href: "/settings/email" } : undefined;
+    } else if (undeliverable > 0) {
+      status = "warn";
+      detail = `${undeliverable} alert${undeliverable === 1 ? "" : "s"} can't be delivered`;
+      action = { label: "Set up email", href: "/settings/email" };
+    } else {
+      status = "info";
+      detail = "Optional · not set up";
+      action = { label: "Set up", href: "/settings/email" };
+    }
+    checks.push({ id: "smtp", label: "Email (SMTP)", group: "configuration", status, detail, action });
   }
 
   // Active shares — info indicator (not a warning — shares are intentional)
