@@ -12,7 +12,7 @@
 
 name: google-places-api
 display_name: Google Places API
-version: 0.1.0
+version: 0.1.1
 description: >
   Find casinos and cafés with the Google Places API inside Google's free monthly
   allowances. Free ID mapping runs on a schedule; paid detail fetches run only when
@@ -27,6 +27,27 @@ visibility: fully_private
 publisher:
   slug: nousviz
   name: Nousviz
+
+# Shown on the Marketplace card ("author") and the plugin page.
+author: "John Wright (@statsdroneadmin)"
+homepage: https://github.com/nousviz/plugin-google-places-api
+support_url: https://github.com/nousviz/plugin-google-places-api/issues
+changelog_url: https://github.com/nousviz/plugin-google-places-api/blob/main/CHANGELOG.md
+
+# Search terms for the Marketplace / plugin registry: what the plugin does, not who uses it.
+keywords:
+  - google places api
+  - google places api (new)
+  - google places database
+  - google places postgres
+  - google maps places
+  - places text search
+  - place details
+  - location database
+  - business listings database
+  - points of interest
+  - venue database
+  - places api free tier
 
 repository: https://github.com/nousviz/plugin-google-places-api
 
