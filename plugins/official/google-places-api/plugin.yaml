@@ -12,7 +12,7 @@
 
 name: google-places-api
 display_name: Google Places API
-version: 0.1.2
+version: 0.1.3
 description: >
   Find casinos and cafés with the Google Places API inside Google's free monthly
   allowances. Free ID mapping runs on a schedule; paid detail fetches run only when
