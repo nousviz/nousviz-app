@@ -8,6 +8,7 @@ plugins/
 │   ├── clickhouse/           # ClickHouse analytics backend
 │   ├── mysql/                # Shared MySQL connection for data plugins
 │   └── webhooks/             # Inbound + outbound webhook handling
+├── official/                 # NousViz-maintained plugin stubs (code in github.com/nousviz/plugin-{slug})
 ├── community/                # Community-submitted manifest stubs (clone-on-install)
 └── installed/                # Plugins installed at runtime via the marketplace (gitignored)
 ```
@@ -30,8 +31,16 @@ Plugins are installed through the **Plugin Marketplace** in the app:
 | Source | Where the code lives | How operators install it |
 |--------|----------------------|--------------------------|
 | Bundled utilities | `plugins/utilities/{slug}/` in this repo | Marketplace → Utilities |
+| Official | `github.com/nousviz/plugin-{slug}`, pinned by `version:` in `plugins/official/{slug}/plugin.yaml` | Marketplace → Official |
 | Community | Third-party GitHub repos referenced by `plugins/community/{slug}/plugin.yaml` | Marketplace → Community |
 | Private | Any Git URL the operator provides | Install Plugin page → Private install |
+
+### Listing an official plugin
+
+1. The plugin lives at `github.com/nousviz/plugin-{slug}` (public) with a `v{version}` tag.
+2. Copy its `plugin.yaml` to `plugins/official/{slug}/plugin.yaml` — the stub is the catalog
+   entry, and its `version:` is the tag every install pins to.
+3. On each plugin release, bump `version:` in the stub; installs then see the update.
 
 ## Building your own plugin
 

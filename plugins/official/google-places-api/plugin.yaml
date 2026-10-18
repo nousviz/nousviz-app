@@ -1,0 +1,127 @@
+# Official catalog stub for google-places-api.
+# Code: https://github.com/nousviz/plugin-google-places-api — NousViz clones it at tag v<version>.
+# Bump 'version' here when a new plugin release should become the installed/latest one.
+# ─────────────────────────────────────────────────────────────────────────────
+# plugin.yaml — google-places-api
+#
+# Venue discovery (casinos, cafés) via Google Places API (New) Text Search, kept
+# inside Google's free monthly allowances: free ID mapping on a schedule, paid
+# tiers only when queued by hand with a call cap. Moved from the standalone
+# affiliatetrack-scraper/places.py CLI. Plan: PLAN.md
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: google-places-api
+display_name: Google Places API
+version: 0.1.0
+description: >
+  Find casinos and cafés with the Google Places API inside Google's free monthly
+  allowances. Free ID mapping runs on a schedule; paid detail fetches run only when
+  you queue one, with a call cap and a monthly guard you can see.
+
+license: MIT
+icon: globe
+category: analytics
+tags: [google, places, venues, casinos, maps, discovery]
+visibility: fully_private
+
+publisher:
+  slug: nousviz
+  name: Nousviz
+
+repository: https://github.com/nousviz/plugin-google-places-api
+
+long_description: |
+  ## What this plugin does
+
+  Maps every casino (or café) Google knows in a region and buys details for them
+  only within Google's free monthly allowance.
+
+  | Google SKU | What you get | Free / month | Plugin stop |
+  |---|---|---|---|
+  | IDs only | place IDs | unlimited | — |
+  | Pro | name, address, country, location, type | 5,000 | 4,000 |
+  | Enterprise | phone, website, rating, hours | 1,000 | 900 |
+  | Atmosphere | reviews, amenities | 1,000 | 900 |
+
+  - **Scheduled runs are free**: they only resume ID mapping.
+  - **Paid fetches are explicit**: preview what a run covers, set a call cap (never
+    above what's left this month), confirm.
+  - Months follow Google's billing (Pacific time). Guards can be lowered, never raised
+    above Google's free caps.
+
+  ## Setup
+
+  1. Install, trust, hard-refresh.
+  2. Settings → add your Google Places API key.
+  3. Open **Google Places API** in the sidebar.
+
+requires:
+  postgres: true
+  postgres_version: "14"
+
+databases:
+  postgres:
+    table_prefix: gpa_
+    tables:
+      - gpa_venues       # one row per Google place
+      - gpa_cells        # every searched grid square (resume + paid-call targeting)
+      - gpa_cell_places  # which places each leaf cell returned
+      - gpa_api_calls    # the call ledger the monthly guards read
+      - gpa_runs         # one row per map / fetch / label run
+      - gpa_sync_state   # settings (guards, auto_map)
+
+navigation:
+  - label: Google Places API
+    path: /plugin/google-places-api/overview
+    icon: Globe                # Sidebar allowlist (Sidebar.tsx)
+
+dashboards:
+  - name: overview
+    label: Overview
+    file: dashboards/overview.yaml
+
+# Hourly: resumes FREE ID mapping of the auto_map targets only. Paid fetches run
+# only as jobs queued from the UI (details.gpa.task = fetch, with max_calls).
+sync:
+  script: src/google_places_api_sync.py
+  schedule: "40 * * * *"
+  supports_incremental: false
+  execution_mode: async
+  concurrency_policy: skip_if_running
+  timeout_seconds: 1800
+
+connections:
+  - name: google_places
+    type: api_key
+    label: Google Places API
+    description: >
+      An API key with the Places API (New) enabled. Stored encrypted; read only inside
+      the sync job.
+    fields:
+      - name: places_api_key
+        label: Places API key
+        type: password
+        required: true
+        help: "Google Cloud console → APIs & Services → Credentials."
+
+hooks:
+  on_install:            hooks.lifecycle:on_install
+  on_credentials_saved:  hooks.lifecycle:on_credentials_saved
+  on_first_run_success:  hooks.lifecycle:on_first_run_success
+
+setup_checklist:
+  show_until: all_done
+  items:
+    - id: save_credentials
+      label: Add your Google Places API key
+      done_if: credentials_saved
+    - id: schedule_live
+      label: Confirm automatic (free) mapping is scheduled
+      done_if: schedule_active
+
+frontend:
+  trusted: false
+  needs_consent: true
+  components:
+    - name: GooglePlaces
+      path: widget/dist/GooglePlaces.js
