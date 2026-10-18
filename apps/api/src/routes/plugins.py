@@ -21,6 +21,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from .. import hooks
+from ..plugin_loader import is_backup_dir
 from .auth import get_me
 from ..db import get_pg_conn
 from ..rbac import requires, register_route
@@ -448,7 +449,7 @@ def _installed_slugs() -> set:
     for base in ACTIVE_PLUGIN_DIRS:
         if base.exists():
             for d in base.iterdir():
-                if d.is_dir() and (d / "plugin.yaml").exists():
+                if d.is_dir() and not is_backup_dir(d.name) and (d / "plugin.yaml").exists():
                     slugs.add(d.name)
     return slugs
 
@@ -767,7 +768,7 @@ async def list_plugins(request: Request, _: None = Depends(requires("plugins.rea
     for base_dir in ACTIVE_PLUGIN_DIRS:
         if base_dir.exists():
             for d in sorted(base_dir.iterdir()):
-                if d.is_dir():
+                if d.is_dir() and not is_backup_dir(d.name):
                     manifest = d / "plugin.yaml"
                     if manifest.exists():
                         with open(manifest) as f:
@@ -989,7 +990,7 @@ async def list_catalog(_: None = Depends(requires("plugins.read"))):
     for base_dir in [INSTALLED_DIR, COMMUNITY_DIR, OFFICIAL_DIR, UTILITIES_DIR]:
         if base_dir.exists():
             for d in sorted(base_dir.iterdir()):
-                if d.is_dir():
+                if d.is_dir() and not is_backup_dir(d.name):
                     manifest = d / "plugin.yaml"
                     if manifest.exists() and d.name not in seen:
                         seen.add(d.name)
