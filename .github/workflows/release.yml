@@ -24,7 +24,7 @@ jobs:
       contents: write  # required by softprops/action-gh-release to create the release
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0  # full history so git archive can read every file
 
@@ -110,7 +110,7 @@ jobs:
     runs-on: ubuntu-latest
     if: "!contains(github.ref_name, '-rc') && !contains(github.ref_name, '-alpha') && !contains(github.ref_name, '-beta')"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v5
         with:
@@ -147,7 +147,7 @@ jobs:
     runs-on: ubuntu-latest
     if: "!contains(github.ref_name, '-rc') && !contains(github.ref_name, '-alpha') && !contains(github.ref_name, '-beta')"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v4
         with:
