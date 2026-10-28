@@ -74,8 +74,35 @@ def _registered_capabilities_cache() -> set[str]:
     return caps
 
 
-async def _query_external(engine: str, req: "QueryRequest") -> "QueryResponse":
-    """Route query to an external database (ClickHouse, MySQL) via named connections."""
+def _clickhouse_request(cfg: dict, sql: str) -> "urllib.request.Request":
+    """Build the ClickHouse HTTP request for a read-only query.
+
+    B338: GET, because ClickHouse runs every GET request read-only
+    (readonly=2) whatever the account's grants. We don't add a readonly
+    setting ourselves: an account already set to readonly=1 rejects any
+    setting change. Credentials go in headers, never the URL, so they stay
+    out of proxy logs and system.query_log.
+    """
+    import urllib.parse
+    import urllib.request
+    host = cfg.get("host", "localhost")
+    port = cfg.get("port", 8123)
+    params = {"query": sql + " FORMAT JSON"}
+    if cfg.get("database"):
+        params["database"] = cfg["database"]
+    headers = {}
+    if cfg.get("user"):
+        headers["X-ClickHouse-User"] = cfg["user"]
+    if cfg.get("password"):
+        headers["X-ClickHouse-Key"] = cfg["password"]
+    url = f"http://{host}:{port}/?{urllib.parse.urlencode(params)}"
+    return urllib.request.Request(url, headers=headers, method="GET")
+
+
+async def _query_external(engine: str, sql: str, max_rows: int) -> "QueryResponse":
+    """Route query to an external database (ClickHouse, MySQL) via named connections.
+
+    Callers must have applied the auth gate and guardrails first (B338)."""
     import json as _json
     with get_pg_conn() as conn:
         cur = conn.cursor()
@@ -87,30 +114,20 @@ async def _query_external(engine: str, req: "QueryRequest") -> "QueryResponse":
     cfg = row[0] if isinstance(row[0], dict) else _json.loads(row[0])
 
     if engine == "clickhouse":
+        import urllib.error
         import urllib.request
-        host = cfg.get("host", "localhost")
-        port = cfg.get("port", 8123)
-        sql = req.sql.strip().rstrip(";")
-        url = f"http://{host}:{port}/?query={urllib.parse.quote(sql + ' FORMAT JSON')}"
-        if cfg.get("user"):
-            url += f"&user={cfg['user']}"
-        if cfg.get("password"):
-            url += f"&password={cfg['password']}"
-        if cfg.get("database"):
-            url += f"&database={cfg['database']}"
         try:
-            import time
             start = time.time()
-            res = urllib.request.urlopen(url, timeout=30)
+            res = urllib.request.urlopen(_clickhouse_request(cfg, sql), timeout=QUERY_TIMEOUT_SEC)
             data = _json.loads(res.read())
             elapsed = (time.time() - start) * 1000
-            rows = data.get("data", [])
+            rows = data.get("data", [])[:max_rows]
             columns = [m["name"] for m in data.get("meta", [])]
             types = [m["type"] for m in data.get("meta", [])]
             return QueryResponse(
                 columns=columns, types=types, rows=rows,
-                row_count=len(rows), elapsed_ms=round(elapsed, 2),
-                db_engine=engine,
+                row_count=len(rows), truncated=len(rows) >= max_rows,
+                elapsed_ms=round(elapsed, 2), db_engine=engine,
             )
         except urllib.error.HTTPError as e:
             detail = e.read().decode()[:500]
@@ -121,7 +138,6 @@ async def _query_external(engine: str, req: "QueryRequest") -> "QueryResponse":
             import pymysql
         except ImportError:
             raise HTTPException(503, "pymysql not installed. Run: pip install pymysql")
-        import time
         start = time.time()
         c = pymysql.connect(
             host=cfg.get("host", "localhost"),
@@ -130,19 +146,25 @@ async def _query_external(engine: str, req: "QueryRequest") -> "QueryResponse":
             password=cfg.get("password", ""),
             database=cfg.get("database", ""),
             connect_timeout=5,
+            read_timeout=QUERY_TIMEOUT_SEC,
             cursorclass=pymysql.cursors.DictCursor,
         )
-        cur = c.cursor()
-        cur.execute(req.sql.strip().rstrip(";"))
-        rows = cur.fetchall()
+        try:
+            cur = c.cursor()
+            # B338: the server, not our regex, refuses writes.
+            cur.execute("START TRANSACTION READ ONLY")
+            cur.execute(sql)
+            rows = cur.fetchmany(max_rows)
+            columns = [d[0] for d in cur.description] if cur.description else []
+            types = [str(d[1]) for d in cur.description] if cur.description else []
+            c.rollback()
+        finally:
+            c.close()
         elapsed = (time.time() - start) * 1000
-        columns = [d[0] for d in cur.description] if cur.description else []
-        types = [str(d[1]) for d in cur.description] if cur.description else []
-        c.close()
         return QueryResponse(
             columns=columns, types=types, rows=list(rows),
-            row_count=len(rows), elapsed_ms=round(elapsed, 2),
-            db_engine=engine,
+            row_count=len(rows), truncated=len(rows) >= max_rows,
+            elapsed_ms=round(elapsed, 2), db_engine=engine,
         )
 
     raise HTTPException(400, f"Engine {engine} not implemented")
@@ -169,6 +191,14 @@ BLOCKED_PATTERNS = re.compile(
 # Postgres-only: block access to internal application tables regardless of operation
 PG_BLOCKED_TABLES = re.compile(
     r"\b(users|user_sessions|user_activity|api_keys|alert_rules)\b",
+    re.IGNORECASE,
+)
+
+# B338: ClickHouse / MySQL internals (accounts, grants, query history, server
+# state). Schema browsing (tables, columns, databases) stays allowed.
+EXTERNAL_BLOCKED_TABLES = re.compile(
+    r"\b(?:system\s*\.\s*(?!(?:tables|columns|databases)\b)\w+"
+    r"|mysql\s*\.\s*\w+|performance_schema\s*\.\s*\w+|sys\s*\.\s*\w+)",
     re.IGNORECASE,
 )
 
@@ -219,18 +249,22 @@ async def execute_query(
     engine = (req.db_engine or "postgres").lower()
     if engine not in ("postgres", "clickhouse", "mysql"):
         raise HTTPException(400, f"Unknown db_engine: {engine}. Use postgres, clickhouse, or mysql.")
-    if engine != "postgres":
-        # Check if the capability is registered
-        if engine not in _registered_capabilities_cache():
-            raise HTTPException(503, f"{engine} is not installed. Install the {engine.title()} utility plugin first.")
-        # Route to the appropriate connection
-        try:
-            return await _query_external(engine, req)
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"{engine} query failed: {e}")
-            raise HTTPException(400, f"Query failed on {engine}. Check server logs.")
+
+    # S101: validate the token, don't just check header presence. Previously,
+    # sending any fake `X-Session-Token: garbage` bypassed the unauthenticated
+    # table allowlist. Now only callers with valid session tokens or valid API
+    # keys are treated as authenticated.
+    from ..middleware.auth import get_authenticated_identity
+    is_authenticated = get_authenticated_identity(request) is not None
+
+    # B338: /api/query is a public route (share viewers), and the external
+    # engines used to return before any of the checks below. They have no
+    # read-only role to fall back on, so they need a signed-in caller.
+    if engine != "postgres" and not is_authenticated:
+        raise HTTPException(
+            status_code=401,
+            detail=f"Sign in to see this data ({engine} queries need a signed-in user).",
+        )
 
     sql = req.sql.strip().rstrip(";")
 
@@ -244,12 +278,25 @@ async def execute_query(
             detail="Write operations are not allowed through the query API",
         )
 
-    # S101: validate the token, don't just check header presence. Previously,
-    # sending any fake `X-Session-Token: garbage` bypassed the unauthenticated
-    # table allowlist. Now only callers with valid session tokens or valid API
-    # keys are treated as authenticated.
-    from ..middleware.auth import get_authenticated_identity
-    is_authenticated = get_authenticated_identity(request) is not None
+    if engine != "postgres":
+        if EXTERNAL_BLOCKED_TABLES.search(sql):
+            raise HTTPException(
+                status_code=403,
+                detail=f"Access to {engine} system tables is not permitted through the query API",
+            )
+        # Check if the capability is registered
+        if engine not in _registered_capabilities_cache():
+            raise HTTPException(503, f"{engine} is not installed. Install the {engine.title()} utility plugin first.")
+        requested_max = min(max(req.max_rows or MAX_ROWS, 1), MAX_ROWS)
+        # Route to the appropriate connection
+        try:
+            return await _query_external(engine, _enforce_limit(sql, requested_max), requested_max)
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"{engine} query failed: {e}")
+            raise HTTPException(400, f"Query failed on {engine}. Check server logs.")
+
     if not is_authenticated:
         allowed = _get_allowed_tables()
         if allowed:
