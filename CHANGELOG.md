@@ -6,6 +6,27 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Nou
 
 ## [Unreleased]
 
+### Security
+
+- **`/api/query` no longer runs ClickHouse or MySQL SQL for anonymous
+  callers (B338).**
+  - **Sign-in required:** a request with `db_engine` `clickhouse` or
+    `mysql` and no valid session or API key gets 401 before anything is
+    sent to the database. Anonymous Postgres queries (share viewers) are
+    unchanged. A shared dashboard on ClickHouse now asks the viewer to
+    sign in instead of loading its data.
+  - **Same guardrails as Postgres:** write statements are refused, results
+    are capped at 10,000 rows, and ClickHouse / MySQL system tables
+    (accounts, grants, query history) are blocked. `system.tables`,
+    `system.columns` and `system.databases` stay available for schema
+    browsing.
+  - **Read-only at the database:** ClickHouse queries are sent as GET,
+    which ClickHouse always runs read-only; MySQL queries run inside a
+    read-only transaction.
+  - **No password in URLs:** ClickHouse credentials travel in the
+    `X-ClickHouse-User` / `X-ClickHouse-Key` headers, so they no longer
+    reach proxy logs or ClickHouse's `system.query_log`.
+
 ---
 
 ## [1.0.6] — 2026-10-17
