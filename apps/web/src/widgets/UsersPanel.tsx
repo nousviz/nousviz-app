@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, fetchLicence, type Licence } from "@/lib/api";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import { UserPlus, Copy, Check, Trash2, Shield, ChevronDown, UserCheck, Puzzle, X } from "lucide-react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -123,8 +123,13 @@ export default function UsersPanel() {
 
   const [accessDenied, setAccessDenied] = useState(false);
 
+  // MC-608: plan visibility — null on community installs (endpoint 404s),
+  // which hides every plan-related element below.
+  const [licence, setLicence] = useState<Licence | null>(null);
+
   const load = useCallback(() => {
     setLoading(true);
+    fetchLicence().then(setLicence);
     Promise.all([
       apiFetch("/api/auth/users").then(r => {
         if (r.status === 403) { setAccessDenied(true); return { users: [] }; }
@@ -287,8 +292,46 @@ export default function UsersPanel() {
   const activeUsers = users.filter(u => u.is_active);
   const inactiveUsers = users.filter(u => !u.is_active);
 
+  // MC-608: seat maths from the licence (managed only).
+  const seatLimit = licence?.limits?.max_users ?? null;
+  const seatsUsed = licence?.usage?.users ?? users.length;
+  const atSeatLimit = !!licence && seatLimit !== null && seatsUsed >= seatLimit;
+
   return (
     <div className="space-y-6">
+      {/* MC-608: plan card — tier, seat usage, licence health. Hidden on
+          community installs (licence is null). */}
+      {licence && (
+        <div className="bg-secondary/30 rounded-lg border border-border p-4 flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <div className="text-sm font-display text-foreground">
+              <span className="capitalize">{licence.tier}</span> plan
+            </div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              {seatLimit === null
+                ? `${seatsUsed} users · unlimited seats`
+                : `${seatsUsed} of ${seatLimit} seats used`}
+            </div>
+          </div>
+          <div className="text-xs flex items-center gap-2">
+            <span
+              className={cn(
+                "inline-block w-2 h-2 rounded-full",
+                licence.status === "live" && "bg-emerald-500",
+                licence.status === "cached" && "bg-amber-500",
+                (licence.status === "grace_expired" || licence.status === "no_cache_default") && "bg-red-500",
+              )}
+            />
+            <span className="text-muted-foreground">
+              {licence.status === "live" && "Licence up to date"}
+              {licence.status === "cached" && "Running on cached licence"}
+              {(licence.status === "grace_expired" || licence.status === "no_cache_default") &&
+                "Licence unavailable — free-tier limits apply"}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Invite form */}
       <div className="bg-secondary/30 rounded-lg border border-border p-4">
         <h4 className="text-sm font-display text-foreground mb-3 flex items-center gap-2">
@@ -322,12 +365,20 @@ export default function UsersPanel() {
           </div>
           <button
             onClick={handleInvite}
-            disabled={inviting || !inviteEmail}
+            disabled={inviting || !inviteEmail || atSeatLimit}
             className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center gap-2 shrink-0"
           >
             {inviting ? "Sending..." : "Send Invite"}
           </button>
         </div>
+
+        {/* MC-608: tell the operator BEFORE they fill the form, not after. */}
+        {atSeatLimit && (
+          <p className="text-xs text-amber-500 mt-2">
+            All {seatLimit} seats on your {licence?.tier} plan are in use. Existing
+            users are unaffected — upgrade your plan to add more.
+          </p>
+        )}
 
         {/* B305: invite-time plugin allowlist picker. Hidden for admin
             roles — admins are unrestricted by design. */}
