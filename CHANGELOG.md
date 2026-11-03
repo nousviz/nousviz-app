@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Nou
 
 ## [Unreleased]
 
+---
+
+## [1.0.6] — 2026-11-03
+
 ### Security
 
 - **`/api/query` no longer runs ClickHouse or MySQL SQL for anonymous
@@ -26,10 +30,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Nou
   - **No password in URLs:** ClickHouse credentials travel in the
     `X-ClickHouse-User` / `X-ClickHouse-Key` headers, so they no longer
     reach proxy logs or ClickHouse's `system.query_log`.
-
----
-
-## [1.0.6] — 2026-10-17
 
 ### Changed
 
