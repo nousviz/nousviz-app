@@ -74,7 +74,7 @@ def _registered_capabilities_cache() -> set[str]:
     return caps
 
 
-def _clickhouse_request(cfg: dict, sql: str) -> "urllib.request.Request":
+def _clickhouse_request(cfg: dict, sql: str):
     """Build the ClickHouse HTTP request for a read-only query.
 
     B338: GET, because ClickHouse runs every GET request read-only
