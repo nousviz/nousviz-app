@@ -168,6 +168,14 @@ def _verify_plugin_integrity(slug: str, plugin_dir: Path) -> bool:
     return True
 
 
+def is_backup_dir(name: str) -> bool:
+    """B276: rollback backups are written as `{slug}.backup.{ts}` inside
+    plugins/installed/ and are full copies — every directory scanner must
+    skip them or backups masquerade as installed plugins (and, once plugin
+    limits are enforced, silently eat an entitlement seat)."""
+    return ".backup." in name
+
+
 def discover_plugins() -> list[dict]:
     """Find all installed plugins with API routes, including modules."""
     plugins = []
@@ -175,7 +183,7 @@ def discover_plugins() -> list[dict]:
         return plugins
 
     for plugin_dir in sorted(PLUGINS_DIR.iterdir()):
-        if not plugin_dir.is_dir():
+        if not plugin_dir.is_dir() or is_backup_dir(plugin_dir.name):
             continue
         routes_file = plugin_dir / "api" / "routes.py"
         if not routes_file.exists():
