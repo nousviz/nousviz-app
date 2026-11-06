@@ -430,12 +430,43 @@ def cmd_plugin_list():
     if not found:
         _print("No plugins installed.", "yellow")
         _print("  Install one from the marketplace: http://localhost:5173/marketplace", "dim")
-        _print("  Or via API: POST /api/plugins/install {\"plugin_id\": \"starter-plugin\"}", "dim")
+        _print("  Or via API: POST /api/plugins/{slug}/install (X-Session-Token required)", "dim")
         return
 
     _print(f"{'PLUGIN':<30} {'VERSION':<10} DESCRIPTION", "bold")
     for slug, ver, desc in found:
         print(f"  {slug:<28} {ver:<10} {desc[:60]}")
+
+
+def _api_session_token(api_port: str):
+    """Return a session token for API calls that require a permission.
+
+    Uses NOUSVIZ_SESSION_TOKEN when set (scripts/CI); otherwise prompts for
+    the credentials of a user with the required permission and logs in.
+    """
+    token = os.environ.get("NOUSVIZ_SESSION_TOKEN")
+    if token:
+        return token
+    import getpass
+    import urllib.request
+    import urllib.error
+    _print("  Plugin install requires a signed-in user with the plugins.install "
+           "permission (admin or superadmin).", "dim")
+    email = input("  Email: ").strip()
+    password = getpass.getpass("  Password: ")
+    body = json.dumps({"email": email, "password": password}).encode()
+    req = urllib.request.Request(
+        f"http://localhost:{api_port}/api/auth/login",
+        data=body,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return json.loads(resp.read()).get("token")
+    except urllib.error.HTTPError as e:
+        _print(f"  ✗ Login failed ({e.code}): {e.read().decode()[:200]}", "red")
+        return None
 
 
 def cmd_plugin_install(slug: str):
@@ -448,23 +479,32 @@ def cmd_plugin_install(slug: str):
     try:
         import urllib.request
         import urllib.error
-        body = json.dumps({"plugin_id": slug}).encode()
+        token = _api_session_token(api_port)
+        if not token:
+            return
+        # Route shape per apps/api/src/routes/plugins.py (operation_id plugins.install):
+        # POST /api/plugins/{plugin_id}/install, X-Session-Token required.
         req = urllib.request.Request(
-            f"http://localhost:{api_port}/api/plugins/install",
-            data=body,
-            headers={"Content-Type": "application/json"},
+            f"http://localhost:{api_port}/api/plugins/{slug}/install",
+            data=b"{}",
+            headers={"Content-Type": "application/json", "X-Session-Token": token},
             method="POST",
         )
         with urllib.request.urlopen(req, timeout=120) as resp:
             result = json.loads(resp.read())
-        _print(f"  ✓ {result.get('message', 'Plugin installed')}", "green")
+        _print(f"  ✓ {result.get('message', result.get('status', 'Plugin installed'))}", "green")
         if result.get("migrations_applied"):
             _print(f"  ✓ Migrations applied: {result['migrations_applied']}", "dim")
         _print(f"  Visit: http://localhost:5173/plugin/{slug}", "blue")
         return
     except urllib.error.HTTPError as e:
         body = e.read().decode()
-        _print(f"  ✗ API install failed: {body}", "red")
+        if e.code in (401, 403):
+            _print(f"  ✗ Not authorized ({e.code}): plugin install needs the "
+                   f"plugins.install permission (admin/superadmin).", "red")
+            _print(f"    {body[:200]}", "dim")
+        else:
+            _print(f"  ✗ API install failed ({e.code}): {body[:300]}", "red")
         return
     except Exception:
         _print("  API not reachable — install the plugin from the marketplace UI instead:", "yellow")
