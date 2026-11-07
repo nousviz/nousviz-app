@@ -75,6 +75,35 @@ if not api_key:
     raise RuntimeError("No api_key configured — set it in /plugin/my-plugin/settings")
 ```
 
+Only the key asked for is read and decrypted (B342, SDK 0.7.0): in a plugin
+route one database row; in a sync or hook, the key is fetched from the broker
+the first time it is asked for and cached for the rest of the run. The cost
+does not grow with how many credentials the plugin stores.
+
+### `nousviz_sdk.get_credentials(plugin_id, keys) -> dict[str, str | None]`
+
+Several credentials in one round trip (B342, SDK 0.7.0). Returns every key
+asked for, with `None` where nothing is stored. Use it for a group of keys
+needed together — for example one account's login just before a sync works
+on that account, rather than reading every account's credentials up front:
+
+```python
+from nousviz_sdk import get_credentials
+
+for acct in accounts:                      # however many there are
+    creds = get_credentials("my-plugin", [f"username:{acct}", f"password:{acct}"])
+    sync_account(acct, creds)
+```
+
+A sync's broker token is valid for the whole run (revoked when the run
+ends), so fetching per account is the recommended pattern for plugins that
+hold many credentials.
+
+Every read is counted in the credential telemetry: `credentials.last_used_at`
+/ `last_used_by` and a daily per-credential count in `credential_usage_daily`
+(by accessor: `api:<plugin>`, `broker:<plugin>`). Broker requests also write
+one `fetch` row each to `credential_audit_log`.
+
 ### `nousviz_sdk.CredentialBrokerUnavailable`
 
 Raised when the credential broker socket is missing — happens in test
@@ -87,6 +116,11 @@ test-mode environment variable.
 Raised when the broker accepts the request but reports an error
 (unknown key, unauthorized plugin, etc.). The exception message is
 operator-facing.
+
+`CredentialBrokerDenied` (a subclass, SDK 0.7.0) means the token was refused:
+the run has ended, the token expired (24 h cap), or it was presented for
+another plugin. Later calls in the same process raise the same error
+without asking the broker again.
 
 ---
 

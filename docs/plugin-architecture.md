@@ -88,29 +88,47 @@ A plugin must **never**:
 
 1. **API (`apps/api`, gunicorn)** — serves HTTP. Loads plugin routes at startup from `plugins/installed/{slug}/api/routes.py`. Holds `NOUSVIZ_ENCRYPTION_KEY` and connects as the high-privilege `nousviz` DB role.
 2. **Worker (`apps/worker/src/run_jobs.py`, PM2)** — runs sync and hook subprocesses. Holds the same secrets as the API. Hosts the **credential broker** (new in v0.9.0) on a Unix domain socket at `<repo>/run/creds.sock`.
-3. **Plugin subprocess** — what sync scripts and hook callables run inside. Spawned by the worker. Gets a minimal env: identity (plugin_id, run_id), socket path, one-shot broker token, non-secret connection fields. **No decryption key. No core DB password. No decrypted secrets in env.**
+3. **Plugin subprocess** — what sync scripts and hook callables run inside. Spawned by the worker. Gets a minimal env: identity (plugin_id, run_id), socket path, a run-scoped broker token, non-secret connection fields. **No decryption key. No core DB password. No decrypted secrets in env.**
 
-### How a plugin reads a credential (v0.9.0)
+### How a plugin reads a credential (v0.9.0, scoped in v1.0.8 / B342)
 
 ```
-worker registers token T for plugin X
+worker registers token T for plugin X, run R
    ↓
 subprocess starts, env has NOUSVIZ_CREDS_TOKEN=T
    ↓
-plugin calls nousviz_sdk.get_credential("X", "password")
+plugin calls nousviz_sdk.get_credential("X", "password:acct-01")
    ↓
-SDK opens <repo>/run/creds.sock, sends AUTH T / PLUGIN X / GET
+SDK opens <repo>/run/creds.sock, sends AUTH T / PLUGIN X / KEYS ["password:acct-01"] / GET
    ↓
-broker (in worker process): validates T, decrypts credentials with NOUSVIZ_ENCRYPTION_KEY
+broker (in worker process): validates T for X, reads and decrypts only the keys
+asked for, from X's own credentials, with NOUSVIZ_ENCRYPTION_KEY
    ↓
-broker responds with JSON {password, api_token, ..., __db__}
+broker responds with JSON {"password:acct-01": ..., "__scope__": "keys", "__db__": ...}
+and records one `fetch` audit row (run R) plus per-credential daily usage
    ↓
-SDK caches in subprocess memory for its lifetime
+SDK caches the answer (and "not stored") in subprocess memory for its lifetime
    ↓
-broker deletes T (single-use)
+later keys are fetched the same way when the plugin first asks for them
+   ↓
+worker revokes T when run R is finalized (24 h cap)
 ```
 
-Subsequent `get_credential()` calls in the same subprocess hit the cache — no re-fetch.
+A key already fetched is served from the cache. `get_credentials()` fetches
+several keys in one round trip. A request without `KEYS` returns every
+credential of the plugin (the pre-B342 behaviour). In a plugin **route** (API
+process) there is no broker: the in-process resolver reads only the keys
+asked for, so a read costs the same whether the plugin holds 5 credentials or
+5,000.
+
+**Telemetry.** Every read updates `credentials.last_used_at / last_used_by`
+(at most once a minute per credential) and adds to `credential_usage_daily`
+(one row per credential, day and accessor, with a read count).
+`credential_audit_log` holds events — created, rotated, deleted,
+decrypt_failed, access_denied — and one `fetch` row per broker request, not a
+row per credential read. Retention (Settings → Maintenance):
+`credential_audit_log:reads` (90 days, fetch/used rows only) and
+`credential_usage_daily` (400 days); like every policy they ship paused.
 
 ### Postgres role matrix
 

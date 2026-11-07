@@ -135,6 +135,26 @@ POLICIES: list[RetentionPolicy] = [
         default_days=0,
         description="Expired password-reset tokens (immediate purge)",
     ),
+    # B342 (v1.0.8): credential reads. `fetch` rows (one per broker or bulk
+    # read) and legacy per-credential `used` rows age out; credential
+    # lifecycle rows (created, rotated, deleted, decrypt_failed,
+    # access_denied) are kept.
+    RetentionPolicy(
+        key="credential_audit_log:reads",
+        table="credential_audit_log",
+        field="created_at",
+        additional_where="action IN ('fetch', 'used')",
+        default_days=90,
+        description="Credential read records (fetch / used); lifecycle events are kept",
+    ),
+    RetentionPolicy(
+        key="credential_usage_daily",
+        table="credential_usage_daily",
+        field="last_at",
+        additional_where="",
+        default_days=400,
+        description="Daily credential usage counts (when and by what each credential was read)",
+    ),
 ]
 
 POLICIES_BY_KEY: dict[str, RetentionPolicy] = {p.key: p for p in POLICIES}

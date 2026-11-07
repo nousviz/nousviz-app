@@ -19,6 +19,7 @@ from .db import get_pg_conn, dict_cursor, DictCursor
 from .routing import router_for_plugin
 from .credentials import (
     get_credential,
+    get_credentials,
     store_credential,
     CredentialBrokerUnavailable,
     CredentialBrokerError,
@@ -68,13 +69,17 @@ from .oauth import OAuthCallbackResult, start_flow as start_oauth_flow
 # registers a privileged writer at startup; subprocess context raises.
 # Field names may be namespaced (access_token:<user_id>) for per-user
 # storage with no schema change.
-__version__ = "0.6.8"
+# B342 → 0.7.0: credentials.get_credentials (several keys, one round trip);
+# get_credential reads only the key asked for (API: one row decrypted;
+# subprocess: fetched on first use, run-scoped broker token).
+__version__ = "0.7.0"
 __all__ = [
     "get_pg_conn",
     "dict_cursor",
     "DictCursor",
     "router_for_plugin",
     "get_credential",
+    "get_credentials",
     "store_credential",
     "CredentialBrokerUnavailable",
     "CredentialBrokerError",

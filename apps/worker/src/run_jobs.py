@@ -263,7 +263,15 @@ def _finalize_run(
     commit so an alert-delivery failure cannot roll back the
     finalization. Dispatch errors are logged + swallowed (the run is
     correctly persisted regardless).
+
+    B342 (v1.0.8): broker tokens are run-scoped; the run's token is revoked
+    here, first, so a finished (or timed-out) run can't read credentials.
     """
+    if _broker is not None:
+        try:
+            _broker.release_run(run_id)
+        except Exception as e:  # noqa: BLE001 — revocation must not block finalization
+            logger.warning(f"broker: could not release run {run_id}: {e}")
     finalized_job_id: Optional[str] = None
     try:
         with get_pg_conn() as conn:
@@ -456,9 +464,9 @@ def _run_hook_job(job: dict) -> None:
     # path it uses for `get_credential()`. One contract, no env transport,
     # no parent-env mutation, no cross-plugin contamination.
 
-    # P208: register a one-shot broker token for this spawn and pass the
-    # socket path + token to the subprocess via env. These are NOT secrets
-    # (token is single-use, expires in 30s).
+    # P208: register a broker token for this spawn and pass the socket
+    # path + token to the subprocess via env. B342: the token is valid for
+    # this run only (revoked in _finalize_run, 24 h cap).
     if _broker is not None:
         broker_token = _broker.register_spawn(plugin_id=plugin_id, run_id=run_id)
         env["NOUSVIZ_CREDS_SOCKET"] = _broker._socket_path  # noqa: SLF001
@@ -615,8 +623,9 @@ def _run_job(job: dict) -> None:
     # subprocess env. Plugin code uses `nousviz_sdk.get_connection_field()`
     # to read host/port/db from the plugin_settings table.
 
-    # P208: register a one-shot broker token for this spawn. Subprocess's
-    # SDK uses it to fetch credentials over the Unix socket.
+    # P208: register a broker token for this spawn. Subprocess's SDK uses
+    # it to fetch credentials over the Unix socket. B342: valid for this run
+    # only (revoked in _finalize_run, 24 h cap).
     if _broker is not None:
         broker_token = _broker.register_spawn(plugin_id=plugin_id, run_id=run_id)
         env["NOUSVIZ_CREDS_SOCKET"] = _broker._socket_path  # noqa: SLF001

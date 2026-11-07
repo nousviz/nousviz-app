@@ -49,13 +49,20 @@ def test_consume_token_happy_path():
     assert spawn.run_id == 42
 
 
-def test_consume_token_single_use():
+def test_consume_token_reusable_until_run_released():
+    """B342: a token serves every request of its run, then is revoked."""
     from apps.worker.src.credential_broker import CredentialBroker
     b = CredentialBroker(socket_path="/tmp/ignored.sock")
     t = b.register_spawn("plug", 1)
+    other = b.register_spawn("plug", 2)
     assert b._consume_token(t, "plug") is not None
-    # Second attempt: already consumed
+    assert b._consume_token(t, "plug") is not None
+    assert b.release_run(1) == 1
     assert b._consume_token(t, "plug") is None
+    # Another run's token is untouched
+    assert b._consume_token(other, "plug") is not None
+    b.release_spawn(other)
+    assert b._consume_token(other, "plug") is None
 
 
 def test_consume_token_plugin_mismatch_denied_and_burned():
@@ -90,7 +97,7 @@ def test_consume_unknown_token():
 def test_parse_request_happy():
     from apps.worker.src.credential_broker import CredentialBroker
     data = b"AUTH abc123\nPLUGIN my-plugin\nGET\n"
-    token, plugin_id = CredentialBroker._parse_request(data)
+    token, plugin_id, keys = CredentialBroker._parse_request(data)
     assert token == "abc123"
     assert plugin_id == "my-plugin"
 
@@ -155,13 +162,16 @@ def broker_with_stub_decrypt(monkeypatch, _short_sock_dir):
     """
     from apps.worker.src import credential_broker as cb
 
-    def fake_list(plugin_id):
+    def fake_list(plugin_id, keys=None, **kw):
         if plugin_id == "empty-plug":
             return {}
-        return {
+        stored = {
             "password": "s3cret-pw",
             "api_token": "tok-xyz",
         }
+        if keys is None:
+            return stored
+        return {k: v for k, v in stored.items() if k in keys}
 
     # Monkeypatch the import inside _fetch_credentials
     import apps.api.src.plugin_credentials as real_plugin_creds
@@ -219,8 +229,12 @@ def test_broker_end_to_end_token_reuse_denied(broker_with_stub_decrypt):
     token = broker.register_spawn("my-plugin", 1)
     first = _broker_fetch(sock_path, token, "my-plugin")
     assert first.startswith("OK\n")
+    # B342: reuse within the run is served; after the run is released, DENIED.
     second = _broker_fetch(sock_path, token, "my-plugin")
-    assert second.startswith("DENIED\n")
+    assert second.startswith("OK\n")
+    broker.release_run(1)
+    third = _broker_fetch(sock_path, token, "my-plugin")
+    assert third.startswith("DENIED\n")
 
 
 def test_broker_end_to_end_plugin_mismatch_denied(broker_with_stub_decrypt):
@@ -248,7 +262,7 @@ def test_broker_end_to_end_empty_credentials(broker_with_stub_decrypt):
     data = json.loads(body)
     # No credentials, but __db__ still present
     assert "__db__" in data
-    assert len([k for k in data if k != "__db__"]) == 0
+    assert len([k for k in data if k not in ("__db__", "__scope__")]) == 0
 
 
 def test_broker_socket_file_permissions(broker_with_stub_decrypt):
@@ -558,7 +572,7 @@ def test_b341_reply_larger_than_64k_is_read_whole(monkeypatch, broker_with_stub_
 
     broker, sock_path = broker_with_stub_decrypt
     many = {f"password:acct-{i:05d}": f"pw-{i:05d}-" + "x" * 20 for i in range(20_000)}
-    _stub_decrypt(monkeypatch, lambda plugin_id: dict(many))
+    _stub_decrypt(monkeypatch, lambda plugin_id, keys=None, **kw: dict(many))
     _use_broker(monkeypatch, broker, sock_path)
 
     creds = get_cached()
@@ -572,7 +586,7 @@ def test_b341_slow_broker_reply_is_waited_for(monkeypatch, broker_with_stub_decr
 
     broker, sock_path = broker_with_stub_decrypt
 
-    def slow(plugin_id):
+    def slow(plugin_id, keys=None, **kw):
         time.sleep(7)
         return {"password": "late-but-fine"}
 
@@ -585,7 +599,7 @@ def test_b341_reply_over_the_ceiling_names_its_size(monkeypatch, broker_with_stu
     import sdk.nousviz_sdk._broker_client as bc
 
     broker, sock_path = broker_with_stub_decrypt
-    _stub_decrypt(monkeypatch, lambda plugin_id: {f"k{i}": "v" * 50 for i in range(2_000)})
+    _stub_decrypt(monkeypatch, lambda plugin_id, keys=None, **kw: {f"k{i}": "v" * 50 for i in range(2_000)})
     monkeypatch.setattr(bc, "MAX_REPLY_BYTES", 10_000)
     _use_broker(monkeypatch, broker, sock_path)
     with pytest.raises(bc.CredentialBrokerError, match="larger than"):
@@ -638,11 +652,14 @@ def test_b341_cut_short_reply_is_an_incomplete_reply(monkeypatch, _short_sock_di
 
 
 def test_b341_failed_fetch_is_not_retried_with_the_spent_token(monkeypatch, _short_sock_dir):
+    """A DENIED token (run released / expired / spent) is not asked again.
+    (B342: an ERROR no longer spends the run-scoped token, so only DENIED
+    is remembered.)"""
     import sdk.nousviz_sdk._broker_client as bc
     from sdk.nousviz_sdk import get_credential
 
     path = str(_short_sock_dir / "fake.sock")
-    server = _OneShotServer(path, b"ERROR\nboom\n")
+    server = _OneShotServer(path, b"DENIED\nboom\n")
     try:
         bc.reset_resolver_for_tests()
         bc.reset_cache_for_tests()

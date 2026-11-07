@@ -33,6 +33,28 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Nou
   invalid or expired". The SDK now reads the whole reply (up to 16 MiB),
   waits up to 60 s for the broker to answer, and reports the first error
   instead of retrying with a spent token. No plugin change needed.
+- **Credential reads scale to thousands of credentials, with usage
+  telemetry instead of a row per read (B342).** A credential read used to
+  decrypt every credential the plugin owned and write one audit row for
+  each, then return the one value asked for; a plugin with a few thousand
+  credentials took seconds per read and filled `credential_audit_log`
+  (39 GB on one instance in a night).
+  - `get_credential` reads and decrypts only the key asked for, in plugin
+    routes and in syncs. New `get_credentials(plugin_id, keys)` (SDK
+    0.7.0) fetches several in one round trip.
+  - The broker token is valid for the whole run (revoked when the run ends,
+    24 h cap), so a sync can fetch each account's credentials when it
+    reaches that account. Broker requests may name keys (`KEYS`); a request
+    without keys still gets the full set.
+  - Telemetry: `last_used_at / last_used_by` are kept (written at most once
+    a minute per credential); new `credential_usage_daily` counts reads per
+    credential, day and accessor; `credential_audit_log` records events and
+    one `fetch` row per broker request (run id, keys, scope), not a row per
+    credential. A failed telemetry write no longer affects the read.
+  - Retention policies `credential_audit_log:reads` (90 days, read rows
+    only; lifecycle rows kept) and `credential_usage_daily` (400 days).
+  - Migration 080: `credential_usage_daily`; `credential_audit_log.credential_id`
+    may be NULL (fetch rows); index for retention.
 
 ---
 
