@@ -69,10 +69,12 @@ try:
     # The SDK calls our resolver instead of the broker when this is
     # registered. Subprocesses (worker-spawned) don't run main.py and
     # thus don't register, so they fall through to the broker.
-    def _api_credential_resolver(plugin_id: str) -> dict:
-        """Decrypt all credentials for a plugin in the API process.
-        Returns the same shape the broker would: field_name -> value,
-        plus __db__ for the SDK's get_pg_conn().
+    def _api_credential_resolver(plugin_id: str, keys=None) -> dict:
+        """Decrypt a plugin's credentials in the API process — only `keys`
+        when given (B342: `get_credential` asks for one key, so one row is
+        read and decrypted), every one when None. Returns the same shape the
+        broker would: field_name -> value, plus __db__ for the SDK's
+        get_pg_conn(). Usage is counted under `api:<plugin_id>`.
 
         Special plugin_id `__core__` means "I just want __db__" (used by
         SDK's get_pg_conn() when called from a context without a
@@ -82,8 +84,11 @@ try:
         creds: dict = {}
         if plugin_id != "__core__":
             try:
-                from .plugin_credentials import list_plugin_credentials_decrypted
-                creds = list_plugin_credentials_decrypted(plugin_id) or {}
+                from .plugin_credentials import read_plugin_credentials
+                creds = read_plugin_credentials(
+                    plugin_id, keys, accessor=f"api:{plugin_id}",
+                    fetch_detail="api full read" if keys is None else None,
+                ) or {}
             except Exception as _exc:
                 logger.warning(f"resolver: decrypt failed for {plugin_id}: {_exc}")
                 creds = {}

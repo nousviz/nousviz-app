@@ -57,7 +57,7 @@ def get_pg_conn():
 
     # Broker delivers the nousviz_plugin role credentials under the
     # special `__db__` key.
-    creds = get_cached()
+    creds = get_cached(keys=[])  # B342: only `__db__`, no plugin credentials
     db_info = creds.get("__db__")
     if not db_info or not db_info.get("password"):
         raise CredentialBrokerUnavailable(

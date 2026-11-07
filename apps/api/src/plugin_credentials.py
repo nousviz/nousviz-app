@@ -13,7 +13,7 @@ by the sync runner at runtime.
 import logging
 import os
 import uuid
-from typing import Optional
+from typing import Iterable, Optional
 
 from .db import get_pg_conn
 
@@ -143,52 +143,16 @@ def get_plugin_credential(
     Get a decrypted credential for a plugin.
 
     Lookup chain:
-      1. Encrypted DB (credentials table)
+      1. Encrypted DB (credentials table) — one credential read and
+         decrypted; usage recorded under `performed_by` (B342).
       2. Env var fallback (os.environ)
 
     Returns None if not found in either location.
     """
     # 1. Try encrypted DB
-    conn_name = f"plugin:{plugin_id}"
-    try:
-        with get_pg_conn() as conn:
-            cur = conn.cursor()
-            cur.execute(
-                """
-                SELECT c.id, c.encrypted_value, c.nonce
-                FROM credentials c
-                JOIN connections cn ON c.connection_id = cn.id
-                WHERE cn.name = %s AND c.name = %s
-                """,
-                (conn_name, field_name),
-            )
-            row = cur.fetchone()
-
-            if row:
-                cred_id, encrypted_value, nonce = row
-                plaintext = _decrypt(bytes(encrypted_value), bytes(nonce))
-
-                # Update last_used_at and log
-                cur.execute(
-                    "UPDATE credentials SET last_used_at = now(), last_used_by = %s WHERE id = %s",
-                    (performed_by, str(cred_id)),
-                )
-                cur.execute(
-                    """
-                    INSERT INTO credential_audit_log (credential_id, connection_id, action, performed_by, detail)
-                    SELECT %s, connection_id, 'used', %s, %s
-                    FROM credentials WHERE id = %s
-                    """,
-                    (str(cred_id), performed_by, f"plugin={plugin_id} field={field_name}", str(cred_id)),
-                )
-
-                return plaintext
-    except Exception as e:
-        logger.warning(
-            "DB credential lookup failed for %s/%s: %s",
-            plugin_id, field_name, e,
-            extra={"plugin_id": plugin_id},
-        )
+    value = read_plugin_credentials(plugin_id, [field_name], accessor=performed_by).get(field_name)
+    if value is not None:
+        return value
 
     # 2. Fallback: env var
     if env_prefix:
@@ -205,76 +169,111 @@ def get_plugin_credential(
     return None
 
 
-def list_plugin_credentials_decrypted(plugin_id: str) -> dict[str, str]:
-    """P208 (v0.9.0): bulk-fetch every credential for a plugin, decrypted.
+def read_plugin_credentials(
+    plugin_id: str,
+    keys: Optional[Iterable[str]] = None,
+    *,
+    accessor: str,
+    last_used_by: Optional[str] = None,
+    fetch_detail: Optional[str] = None,
+) -> dict[str, str]:
+    """B342 (v1.0.8): decrypt the plugin's credentials named in `keys`
+    (every one when `keys` is None) in one query.
 
-    Used by the credential broker to answer a subprocess's GET in one
-    round trip — each handler call decrypts exactly once, returns a
-    dict of field_name → plaintext, and the broker serializes to JSON.
-
-    Logs each credential use to credential_audit_log the same way
-    `get_plugin_credential` does (one INSERT per field for auditability).
-    Any decryption failure on one field does NOT block the others —
-    returns an empty value for that field with a warning logged.
-
-    Returns: {field_name: plaintext, ...}. Empty dict if plugin has no
-    credentials saved.
+    Only the rows asked for are read and decrypted, so the cost no longer
+    grows with how many credentials the plugin holds. Usage telemetry
+    (`credential_usage.record_reads`) counts one read per credential
+    returned under `accessor`; when `fetch_detail` is given, one `fetch`
+    row is added to `credential_audit_log` for the whole request. A
+    credential that fails to decrypt is skipped and recorded as
+    `decrypt_failed`. Never raises: on a database error, logs and returns {}.
     """
+    from .credential_usage import record_event, record_reads
+
+    wanted: Optional[list[str]] = None
+    if keys is not None:
+        wanted = sorted({str(k) for k in keys if k})
+        if not wanted:
+            return {}
     conn_name = f"plugin:{plugin_id}"
     out: dict[str, str] = {}
+    read_ids: list[str] = []
+    failed: list[tuple[str, str]] = []
+    connection_id: Optional[str] = None
     try:
         with get_pg_conn() as conn:
             cur = conn.cursor()
-            cur.execute(
-                """
-                SELECT c.id, c.name, c.encrypted_value, c.nonce
+            sql = """
+                SELECT c.id, c.name, c.encrypted_value, c.nonce, cn.id
                 FROM credentials c
                 JOIN connections cn ON c.connection_id = cn.id
                 WHERE cn.name = %s
-                """,
-                (conn_name,),
-            )
+            """
+            params: list = [conn_name]
+            if wanted is not None:
+                sql += " AND c.name = ANY(%s)"
+                params.append(wanted)
+            cur.execute(sql, params)
             rows = cur.fetchall()
-            for cred_id, field_name, encrypted_value, nonce in rows:
-                try:
-                    out[field_name] = _decrypt(bytes(encrypted_value), bytes(nonce))
-                except Exception as exc:
-                    logger.warning(
-                        "credential decrypt failed for %s/%s: %s",
-                        plugin_id, field_name, exc,
-                        extra={"plugin_id": plugin_id},
-                    )
-                    continue
-
-                # Audit: update last_used + append to credential_audit_log.
-                try:
-                    cur.execute(
-                        "UPDATE credentials SET last_used_at = now(), last_used_by = %s WHERE id = %s",
-                        ("credential_broker", str(cred_id)),
-                    )
-                    cur.execute(
-                        """
-                        INSERT INTO credential_audit_log (credential_id, connection_id, action, performed_by, detail)
-                        SELECT %s, connection_id, 'used', %s, %s
-                        FROM credentials WHERE id = %s
-                        """,
-                        (str(cred_id), "credential_broker", f"broker fetch plugin={plugin_id}", str(cred_id)),
-                    )
-                except Exception as exc:
-                    logger.warning(
-                        "credential audit log write failed for %s/%s: %s",
-                        plugin_id, field_name, exc,
-                        extra={"plugin_id": plugin_id},
-                    )
+            if not rows and fetch_detail:
+                cur.execute("SELECT id FROM connections WHERE name = %s", (conn_name,))
+                found = cur.fetchone()
+                connection_id = str(found[0]) if found else None
     except Exception as exc:
         logger.error(
-            "list_plugin_credentials_decrypted failed for %s: %s",
+            "read_plugin_credentials failed for %s: %s",
             plugin_id, exc,
             exc_info=True,
             extra={"plugin_id": plugin_id},
         )
         return {}
+
+    for cred_id, field_name, encrypted_value, nonce, conn_id in rows:
+        connection_id = str(conn_id)
+        try:
+            out[field_name] = _decrypt(bytes(encrypted_value), bytes(nonce))
+            read_ids.append(str(cred_id))
+        except Exception as exc:
+            logger.warning(
+                "credential decrypt failed for %s/%s: %s",
+                plugin_id, field_name, exc,
+                extra={"plugin_id": plugin_id},
+            )
+            failed.append((str(cred_id), field_name))
+
+    record_reads(read_ids, accessor, last_used_by, plugin_id=plugin_id)
+    for cred_id, field_name in failed:
+        record_event(connection_id, "decrypt_failed", last_used_by or accessor,
+                     f"plugin={plugin_id} field={field_name}", credential_id=cred_id, plugin_id=plugin_id)
+    if fetch_detail:
+        scope = "full" if wanted is None else f"keys={len(wanted)}"
+        record_event(connection_id, "fetch", last_used_by or accessor,
+                     f"{fetch_detail} plugin={plugin_id} scope={scope} returned={len(out)}",
+                     plugin_id=plugin_id)
     return out
+
+
+def list_plugin_credentials_decrypted(
+    plugin_id: str,
+    keys: Optional[Iterable[str]] = None,
+    *,
+    accessor: Optional[str] = None,
+    last_used_by: Optional[str] = None,
+    fetch_detail: Optional[str] = None,
+) -> dict[str, str]:
+    """P208 (v0.9.0), scoped in B342: the plugin's credentials as
+    {field_name: plaintext} — all of them, or only `keys`.
+
+    Kept for the broker and the API resolver; see `read_plugin_credentials`.
+    Before B342 this decrypted every credential and wrote one audit row per
+    credential on every call.
+    """
+    return read_plugin_credentials(
+        plugin_id, keys,
+        accessor=accessor or f"bulk:{plugin_id}",
+        last_used_by=last_used_by,
+        fetch_detail=fetch_detail,
+    )
 
 
 # inject_plugin_credentials removed in v0.9.2 (B135). The legacy v0.8.x

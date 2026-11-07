@@ -98,7 +98,7 @@ def test_subprocess_env_dict_contains_no_secrets(monkeypatch, _short_sock_dir):
     from apps.worker.src import credential_broker as cb
 
     # Set up broker with a known credential set
-    def fake_list(plugin_id):
+    def fake_list(plugin_id, keys=None, **kw):
         return {
             "password": "SUPER_SECRET_PW",
             "api_token": "SUPER_SECRET_TOKEN",

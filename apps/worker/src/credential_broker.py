@@ -12,6 +12,7 @@ request/response exchange; the broker closes the socket after responding.
 Request (newline-delimited text):
     AUTH <token>
     PLUGIN <plugin_id>
+    KEYS ["password:acct-01", ...]     (optional, B342 v2)
     GET
 
 Response:
@@ -28,8 +29,10 @@ or
     ERROR
     <short reason>
 
-The JSON response contains decrypted credentials for the plugin plus a
-special `__db__` key carrying the nousviz_plugin role's DB password:
+The JSON response contains decrypted credentials for the plugin (with
+KEYS only those keys, without KEYS every credential; `"__scope__"` is
+"keys" or "full"), plus a special `__db__` key carrying the
+nousviz_plugin role's DB password:
 
     {
       "password": "...",
@@ -49,21 +52,38 @@ subprocess; the broker generates a 32-byte random token, stores
 worker passes the token to the subprocess via `NOUSVIZ_CREDS_TOKEN`
 (alongside `NOUSVIZ_CREDS_SOCKET` = the socket path).
 
-The subprocess's SDK connects to the socket, sends `AUTH/PLUGIN/GET`,
-and receives its credentials. The broker then **deletes** the token.
+The subprocess's SDK connects to the socket, sends `AUTH/PLUGIN/[KEYS]/GET`,
+and receives its credentials.
 
-- Single-use: second attempt with the same token returns `DENIED`
-- Time-bound: tokens expire 30s after registration
+B342 (v1.0.8): two kinds of token.
+
+- **Single-use (default, every hook, every sync that doesn't opt in):**
+  valid for one request within 30 s of the spawn, as in v0.9.0. The SDK
+  fetches the full set at its first `get_credential`.
+- **Run-scoped (`sync.credential_fetch: per_key` in the manifest):** may be
+  used again during its run, so a sync can fetch each account's credentials
+  when it reaches that account (`KEYS`) instead of holding every secret from
+  the start. Revoked by `release_run(run_id)` when the run is finalized;
+  hard cap of 24 h (`RUN_TOKEN_MAX_SEC`).
+
+Both kinds:
+- Delivered on a private pipe, not in the environment (the worker's
+  `_broker_handover`); a process's environment is readable by any process
+  of the same user, a pipe held only by the child is not
 - Plugin-scoped: `PLUGIN <plugin_id>` must match what was registered;
-  a token leaked to another plugin yields `DENIED`
+  a token presented for another plugin is **burned** and yields `DENIED`
+- Every request is recorded: one `fetch` row in `credential_audit_log`
+  (run id, scoped or full, how many keys) and per-credential daily usage
 
 ## Security model
 
 - Broker runs as the worker user; socket dir is mode 0700 (plugin
   subprocesses share UID, so they can connect).
-- A compromised plugin exfiltrating its token gains nothing: the token
-  is already consumed by the time the subprocess finishes its startup
-  fetch.
+- The token never sits in the subprocess environment (pipe hand-over),
+  so another process of the same user can't copy it from
+  `/proc/<pid>/environ`. A single-use token is spent at the first fetch;
+  a run-scoped one only exists for plugins that ask for it and dies with
+  the run.
 - A compromised plugin trying to `AUTH <other_plugin_token> / PLUGIN other`
   is stopped by the plugin_id binding check.
 - Broker holds decrypted values only in-memory during the handler;
@@ -92,8 +112,15 @@ from typing import Optional
 
 logger = logging.getLogger("nousviz.broker")
 
+# B342: tokens live for their run (released by the worker when the run is
+# finalized), with this hard cap for a run that is never released.
+RUN_TOKEN_MAX_SEC = 24 * 60 * 60
+# Single-use tokens (the default) must be used within this many seconds.
 TOKEN_TTL_SEC = 30
 TOKEN_BYTES = 32
+# A KEYS line names one account's fields or a batch of them; 64 KiB is
+# about a thousand keys. Larger requests are refused as abuse.
+MAX_REQUEST_BYTES = 64 * 1024
 
 
 def _default_socket_path() -> str:
@@ -125,6 +152,7 @@ class _PendingSpawn:
     plugin_id: str
     run_id: int | None
     expires_at: float
+    single_use: bool = True
 
 
 class CredentialBroker:
@@ -156,17 +184,40 @@ class CredentialBroker:
 
     # ── Token registration (called by worker parent) ─────────────────
 
-    def register_spawn(self, plugin_id: str, run_id: int | None = None) -> str:
-        """Generate a one-shot token bound to (plugin_id, run_id). Call
-        this RIGHT before `subprocess.Popen(...)`."""
+    def register_spawn(self, plugin_id: str, run_id: int | None = None, *, per_key: bool = False) -> str:
+        """Generate a token bound to (plugin_id, run_id). Call this RIGHT
+        before `subprocess.Popen(...)`.
+
+        Default: single-use, valid TOKEN_TTL_SEC (v0.9.0 behaviour).
+        `per_key=True` (B342, manifest `sync.credential_fetch: per_key`):
+        reusable until `release_run(run_id)` / `release_spawn(token)` or
+        RUN_TOKEN_MAX_SEC."""
         token = secrets.token_urlsafe(TOKEN_BYTES)
+        ttl = RUN_TOKEN_MAX_SEC if per_key else TOKEN_TTL_SEC
         with self._lock:
             self._pending[token] = _PendingSpawn(
                 plugin_id=plugin_id,
                 run_id=run_id,
-                expires_at=time.time() + TOKEN_TTL_SEC,
+                expires_at=time.time() + ttl,
+                single_use=not per_key,
             )
         return token
+
+    def release_spawn(self, token: str) -> None:
+        """Revoke one token (its subprocess has exited)."""
+        with self._lock:
+            self._pending.pop(token, None)
+
+    def release_run(self, run_id: int | None) -> int:
+        """Revoke every token of a run (called when the run is finalized).
+        Returns how many were revoked."""
+        if run_id is None:
+            return 0
+        with self._lock:
+            gone = [t for t, s in self._pending.items() if s.run_id == run_id]
+            for t in gone:
+                del self._pending[t]
+        return len(gone)
 
     # ── Lifecycle ────────────────────────────────────────────────────
 
@@ -237,13 +288,13 @@ class CredentialBroker:
         try:
             conn.settimeout(5.0)
             data = self._recv_request(conn)
-            token, plugin_id = self._parse_request(data)
+            token, plugin_id, keys = self._parse_request(data)
             spawn = self._consume_token(token, plugin_id)
             if spawn is None:
                 self._send(conn, "DENIED\ntoken invalid or expired or plugin mismatch\n")
                 return
             try:
-                creds = self._fetch_credentials(spawn.plugin_id)
+                creds = self._fetch_credentials(spawn.plugin_id, keys, spawn.run_id)
             except Exception as exc:
                 logger.error(
                     f"broker DB read failed for {spawn.plugin_id}: {exc}",
@@ -255,7 +306,8 @@ class CredentialBroker:
             self._send(conn, f"OK\n{payload}\n")
             logger.info(
                 f"broker served credentials for plugin={spawn.plugin_id} "
-                f"run={spawn.run_id} fields={len(creds) - 1}"  # minus __db__
+                f"run={spawn.run_id} scope={creds['__scope__']} "
+                f"fields={len(creds) - 2}"  # minus __db__, __scope__
             )
         except _BadRequest as exc:
             self._send(conn, f"ERROR\n{exc}\n")
@@ -275,19 +327,21 @@ class CredentialBroker:
 
     @staticmethod
     def _recv_request(conn: socket.socket) -> bytes:
-        """Read up to 1 KiB of newline-delimited text. Refuses anything
-        larger — the protocol is tiny and larger payloads indicate abuse."""
+        """Read newline-delimited text up to the GET line, at most
+        MAX_REQUEST_BYTES (a KEYS line can name many keys). Refuses anything
+        larger — larger payloads indicate abuse."""
         buf = b""
-        while b"GET\n" not in buf and len(buf) < 1024:
-            chunk = conn.recv(256)
+        while b"GET\n" not in buf and len(buf) < MAX_REQUEST_BYTES:
+            chunk = conn.recv(4096)
             if not chunk:
                 break
             buf += chunk
         return buf
 
     @staticmethod
-    def _parse_request(data: bytes) -> tuple[str, str]:
-        """Parse `AUTH <token>\\nPLUGIN <plugin_id>\\nGET\\n`."""
+    def _parse_request(data: bytes) -> tuple[str, str, Optional[list[str]]]:
+        """Parse `AUTH <token>\\nPLUGIN <plugin_id>\\n[KEYS <json list>\\n]GET\\n`.
+        Returns (token, plugin_id, keys); keys is None without a KEYS line."""
         try:
             text = data.decode("ascii")
         except UnicodeDecodeError:
@@ -299,18 +353,36 @@ class CredentialBroker:
             raise _BadRequest("missing AUTH")
         if not lines[1].startswith("PLUGIN "):
             raise _BadRequest("missing PLUGIN")
-        if lines[2] != "GET":
+        keys: Optional[list[str]] = None
+        rest = lines[2:]
+        if rest and rest[0].startswith("KEYS "):
+            try:
+                parsed = json.loads(rest[0][len("KEYS "):])
+            except ValueError:
+                raise _BadRequest("KEYS is not JSON")
+            if not isinstance(parsed, list) or not all(isinstance(k, str) and k for k in parsed):
+                raise _BadRequest("KEYS must be a list of names")
+            keys = parsed
+            rest = rest[1:]
+        if not rest or rest[0] != "GET":
             raise _BadRequest("missing GET")
         token = lines[0][len("AUTH "):].strip()
         plugin_id = lines[1][len("PLUGIN "):].strip()
         if not token or not plugin_id:
             raise _BadRequest("empty field")
-        return token, plugin_id
+        return token, plugin_id, keys
 
     def _consume_token(self, token: str, plugin_id: str) -> Optional[_PendingSpawn]:
+        """The token's spawn when it may be used for `plugin_id`, else None.
+        A single-use token is removed on use; a run-scoped one (B342) stays
+        for further requests of its run. An expired token is dropped and a
+        mismatched one is burned."""
         now = time.time()
         with self._lock:
-            spawn = self._pending.pop(token, None)
+            spawn = self._pending.get(token)
+            if spawn is not None and (spawn.single_use or spawn.expires_at < now
+                                      or spawn.plugin_id != plugin_id):
+                del self._pending[token]
         if spawn is None:
             return None
         if spawn.expires_at < now:
@@ -322,19 +394,29 @@ class CredentialBroker:
                 f"broker: token plugin mismatch — token for {spawn.plugin_id}, "
                 f"requested by {plugin_id}"
             )
+            self._record_denied(spawn, plugin_id)
             return None
         return spawn
 
     # ── Internal: DB read for credentials + DB password ──────────────
 
-    def _fetch_credentials(self, plugin_id: str) -> dict:
-        """Read and decrypt all credentials for this plugin, plus the
-        low-privilege DB role password. Returns the JSON-serializable dict
-        the subprocess expects.
+    def _fetch_credentials(self, plugin_id: str, keys: Optional[list[str]] = None,
+                           run_id: int | None = None) -> dict:
+        """Read and decrypt this plugin's credentials — only `keys` when
+        given (B342), every one otherwise — plus the low-privilege DB role
+        password. Only the plugin's own credentials can be named: the read
+        is filtered by the plugin's connection. Returns the JSON-serializable
+        dict the subprocess expects.
         """
         from apps.api.src.plugin_credentials import list_plugin_credentials_decrypted
 
-        creds = list_plugin_credentials_decrypted(plugin_id) or {}
+        creds = list_plugin_credentials_decrypted(
+            plugin_id, keys,
+            accessor=f"broker:{plugin_id}",
+            last_used_by=f"broker:{plugin_id}:run={run_id}",
+            fetch_detail=f"broker run={run_id}",
+        ) or {}
+        creds["__scope__"] = "full" if keys is None else "keys"
 
         # Attach the nousviz_plugin DB password so the SDK's
         # get_pg_conn() never has to read it from env. The worker's
@@ -344,6 +426,26 @@ class CredentialBroker:
             "password": os.environ.get("NOUSVIZ_PLUGIN_PASSWORD", ""),
         }
         return creds
+
+    @staticmethod
+    def _record_denied(spawn: _PendingSpawn, requested_by: str) -> None:
+        """B342: an `access_denied` audit row on the token owner's plugin
+        connection. Best effort; never raises."""
+        try:
+            from apps.api.src.credential_usage import record_event
+            from apps.api.src.db import get_pg_conn
+
+            with get_pg_conn() as conn:
+                cur = conn.cursor()
+                cur.execute("SELECT id FROM connections WHERE name = %s", (f"plugin:{spawn.plugin_id}",))
+                row = cur.fetchone()
+            if row:
+                record_event(str(row[0]), "access_denied", f"broker:{requested_by}",
+                             f"token of plugin={spawn.plugin_id} run={spawn.run_id} presented "
+                             f"for plugin={requested_by}; token burned",
+                             plugin_id=spawn.plugin_id)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(f"broker: could not record access_denied: {exc}")
 
     # ── Internal: expired-token sweeper ──────────────────────────────
 
