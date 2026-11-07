@@ -53,8 +53,8 @@ export default function ConnectionHealthBanner({ onVisibleChange }: { onVisibleC
     <div
       className={`fixed top-[calc(var(--topbar-h)+var(--banner-h,0px))] right-0 left-0 md:left-[var(--sidebar-w)] z-20 px-4 py-2.5 flex items-center gap-3 text-sm border-b ${
         isError
-          ? "bg-red-500/10 border-red-500/20 text-red-400"
-          : "bg-orange-500/10 border-orange-500/20 text-orange-400"
+          ? "bg-red-500/10 border-red-500/20 text-danger-foreground"
+          : "bg-orange-500/10 border-orange-500/20 text-warning-foreground"
       }`}
     >
       <AlertTriangle className="w-4 h-4 flex-shrink-0" />

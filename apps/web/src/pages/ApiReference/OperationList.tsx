@@ -129,7 +129,7 @@ export default function OperationList({
                     <ChevronDown className="w-3 h-3" />
                   )}
                   <span>{g.name}</span>
-                  <span className="ml-auto text-[10px] tabular-nums text-muted-foreground/60">
+                  <span className="ml-auto text-[10px] tabular-nums text-muted-foreground">
                     {g.operations.length}
                   </span>
                 </button>

@@ -525,7 +525,7 @@ export default function JobsDashboard() {
         <div className="flex items-center gap-2">
           {justRefreshedAt !== null && !refreshing && (
             <span
-              className="text-[11px] text-green-400 flex items-center gap-1 transition-opacity"
+              className="text-[11px] text-success-foreground flex items-center gap-1 transition-opacity"
               role="status"
             >
               <CheckCircle2 className="w-3 h-3" />
@@ -545,52 +545,52 @@ export default function JobsDashboard() {
 
       {error && (
         <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2 flex items-center gap-2">
-          <XCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
-          <p className="text-xs text-red-300">Failed to load dashboard: {error}</p>
+          <XCircle className="w-3.5 h-3.5 text-danger-foreground shrink-0" />
+          <p className="text-xs text-danger-foreground">Failed to load dashboard: {error}</p>
         </div>
       )}
 
       {actionToast && (
         <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg px-4 py-2">
-          <p className="text-xs text-blue-300">{actionToast}</p>
+          <p className="text-xs text-info-foreground">{actionToast}</p>
         </div>
       )}
 
       {/* ── KPI strip ───────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <KpiCard
-          icon={<Activity className={cn("w-4 h-4", runningCount > 0 ? "text-blue-400" : "text-muted-foreground")} />}
+          icon={<Activity className={cn("w-4 h-4", runningCount > 0 ? "text-info-foreground" : "text-muted-foreground")} />}
           label="Running"
           value={runningCount.toString()}
-          tone={runningCount > 0 ? "text-blue-400" : "text-foreground"}
+          tone={runningCount > 0 ? "text-info-foreground" : "text-foreground"}
           tooltip="Jobs actively executing right now (worker has claimed and is running them)."
         />
         <KpiCard
-          icon={<Hourglass className={cn("w-4 h-4", queuedCount > 0 ? "text-yellow-400" : "text-muted-foreground")} />}
+          icon={<Hourglass className={cn("w-4 h-4", queuedCount > 0 ? "text-warning-foreground" : "text-muted-foreground")} />}
           label="Queued"
           value={queuedCount.toString()}
-          tone={queuedCount > 0 ? "text-yellow-400" : "text-foreground"}
+          tone={queuedCount > 0 ? "text-warning-foreground" : "text-foreground"}
           tooltip="Jobs already inserted into the worker queue, awaiting pickup. Usually 0 — workers poll every 2s. >0 means the queue is backing up."
         />
         <KpiCard
-          icon={<Zap className={cn("w-4 h-4", nextUpCount > 0 ? "text-blue-400" : "text-muted-foreground")} />}
+          icon={<Zap className={cn("w-4 h-4", nextUpCount > 0 ? "text-info-foreground" : "text-muted-foreground")} />}
           label="Next up"
           value={nextUpCount.toString()}
           tone={nextUpCount > 0 ? "text-foreground" : "text-foreground"}
           tooltip="Plugins scheduled to fire within the next 60 minutes — not yet enqueued. Different from Queued (which counts rows already in the worker queue)."
         />
         <KpiCard
-          icon={<AlertTriangle className={cn("w-4 h-4", stuckCount > 0 ? "text-red-400" : "text-muted-foreground")} />}
+          icon={<AlertTriangle className={cn("w-4 h-4", stuckCount > 0 ? "text-danger-foreground" : "text-muted-foreground")} />}
           label="Stuck"
           value={stuckCount.toString()}
-          tone={stuckCount > 0 ? "text-red-400" : "text-foreground"}
+          tone={stuckCount > 0 ? "text-danger-foreground" : "text-foreground"}
           tooltip="Plugins where state suggests an orphaned or stalled run. Investigate via the per-row warning in the Stuck section."
         />
         <KpiCard
-          icon={<XCircle className={cn("w-4 h-4", errors24h > 0 ? "text-red-400" : "text-muted-foreground")} />}
+          icon={<XCircle className={cn("w-4 h-4", errors24h > 0 ? "text-danger-foreground" : "text-muted-foreground")} />}
           label="Errors (24h)"
           value={errors24h.toString()}
-          tone={errors24h > 0 ? "text-red-400" : "text-foreground"}
+          tone={errors24h > 0 ? "text-danger-foreground" : "text-foreground"}
           tooltip="Total error count across all plugins over the last 24 hours."
         />
       </div>
@@ -600,7 +600,7 @@ export default function JobsDashboard() {
         id="stuck"
         title="Stuck"
         subtitle="Orphaned or stalled jobs — investigate or force-stop"
-        icon={<AlertOctagon className="w-4 h-4 text-red-400" />}
+        icon={<AlertOctagon className="w-4 h-4 text-danger-foreground" />}
         rows={sectionRows.stuck}
         emptyText="No stuck jobs."
         hideWhenEmpty
@@ -619,7 +619,7 @@ export default function JobsDashboard() {
         id="running"
         title="Running"
         subtitle="Currently executing — stop cooperatively if needed"
-        icon={<Activity className="w-4 h-4 text-blue-400" />}
+        icon={<Activity className="w-4 h-4 text-info-foreground" />}
         rows={sectionRows.running}
         emptyText="Nothing running right now."
         expandedJob={expandedJob}
@@ -637,7 +637,7 @@ export default function JobsDashboard() {
         id="queued"
         title="Queued"
         subtitle="Waiting for a worker to pick up"
-        icon={<Hourglass className="w-4 h-4 text-yellow-400" />}
+        icon={<Hourglass className="w-4 h-4 text-warning-foreground" />}
         rows={sectionRows.queued}
         emptyText="No jobs queued."
         hideWhenEmpty
@@ -674,7 +674,7 @@ export default function JobsDashboard() {
         id="issues"
         title="Issues"
         subtitle="Errors in the last 24h, currently idle — no upcoming fire in the next hour"
-        icon={<XCircle className="w-4 h-4 text-red-400" />}
+        icon={<XCircle className="w-4 h-4 text-danger-foreground" />}
         rows={sectionRows.issues}
         emptyText="No errors in the last 24 hours."
         hideWhenEmpty
@@ -705,7 +705,7 @@ export default function JobsDashboard() {
             <span>
               Idle · {sectionRows.idle.length} plugin{sectionRows.idle.length === 1 ? "" : "s"}
             </span>
-            <span className="text-muted-foreground/70">— no current activity, healthy recent runs</span>
+            <span className="text-muted-foreground">— no current activity, healthy recent runs</span>
           </button>
           {showIdle && (
             <div className="divide-y divide-border/50 border-t border-border/50">
@@ -823,7 +823,7 @@ function Section({
                 rows.length === 0
                   ? "bg-secondary text-muted-foreground"
                   : isStuck
-                  ? "bg-red-500/15 text-red-400"
+                  ? "bg-red-500/15 text-danger-foreground"
                   : "bg-secondary text-foreground",
               )}
             >
@@ -896,12 +896,12 @@ function KpiCard({
 // ── Per-plugin rollup row ───────────────────────────────────────────
 
 function statusGlyph(status: string): { ch: string; tone: string } {
-  if (status === "success") return { ch: "■", tone: "text-green-400" };
-  if (status === "error") return { ch: "■", tone: "text-red-400" };
-  if (status === "timeout") return { ch: "■", tone: "text-red-400/70" };
+  if (status === "success") return { ch: "■", tone: "text-success-foreground" };
+  if (status === "error") return { ch: "■", tone: "text-danger-foreground" };
+  if (status === "timeout") return { ch: "■", tone: "text-danger-foreground" };
   if (status === "cancelled" || status === "skipped") return { ch: "□", tone: "text-muted-foreground" };
-  if (status === "paused") return { ch: "▣", tone: "text-yellow-400" };
-  if (status === "running" || status === "cancelling") return { ch: "▸", tone: "text-blue-400" };
+  if (status === "paused") return { ch: "▣", tone: "text-warning-foreground" };
+  if (status === "running" || status === "cancelling") return { ch: "▸", tone: "text-info-foreground" };
   return { ch: "■", tone: "text-muted-foreground" };
 }
 
@@ -969,7 +969,7 @@ function PluginRollupRow({
               <span
                 className={cn(
                   "text-[11px] font-mono-deck flex items-center gap-1",
-                  anyRunningDead ? "text-red-400" : "text-blue-400",
+                  anyRunningDead ? "text-danger-foreground" : "text-info-foreground",
                 )}
               >
                 <Loader2 className={cn("w-3 h-3", !anyRunningDead && "animate-spin")} />
@@ -978,21 +978,21 @@ function PluginRollupRow({
                   <span className="text-muted-foreground"> · {fmtDuration(elapsed)}</span>
                 )}
                 {anyRunningDead && (
-                  <span className="text-red-400"> · worker dead</span>
+                  <span className="text-danger-foreground"> · worker dead</span>
                 )}
                 {!anyRunningDead && allRunningAlive && plugin.running.length === 1 && (
-                  <span className="text-green-400"> · live</span>
+                  <span className="text-success-foreground"> · live</span>
                 )}
               </span>
             )}
             {plugin.queued.length > 0 && (
-              <span className="text-[11px] text-yellow-400 font-mono-deck flex items-center gap-1">
+              <span className="text-[11px] text-warning-foreground font-mono-deck flex items-center gap-1">
                 <Hourglass className="w-3 h-3" />
                 {plugin.queued.length} queued
               </span>
             )}
             {plugin.errors_summary && plugin.errors_summary.errors_24h > 0 && (
-              <span className="text-[11px] text-red-400 font-mono-deck flex items-center gap-1">
+              <span className="text-[11px] text-danger-foreground font-mono-deck flex items-center gap-1">
                 <XCircle className="w-3 h-3" />
                 {plugin.errors_summary.errors_24h} error{plugin.errors_summary.errors_24h === 1 ? "" : "s"} 24h
               </span>
@@ -1001,7 +1001,7 @@ function PluginRollupRow({
 
           {/* Stuck banner */}
           {plugin.stuck_reason && (
-            <p className="text-[11px] text-red-400 flex items-start gap-1.5">
+            <p className="text-[11px] text-danger-foreground flex items-start gap-1.5">
               <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" />
               <span>{plugin.stuck_reason}</span>
             </p>
@@ -1031,7 +1031,7 @@ function PluginRollupRow({
               <span
                 className={cn(
                   "font-mono-deck",
-                  plugin.recent_errors > 0 ? "text-red-400" : "text-green-400",
+                  plugin.recent_errors > 0 ? "text-danger-foreground" : "text-success-foreground",
                 )}
               >
                 {plugin.recent_successes}/{totalRecent} success (12h)
@@ -1046,7 +1046,7 @@ function PluginRollupRow({
               <span
                 className={cn(
                   "flex items-center gap-1",
-                  plugin.next_fire.may_overlap ? "text-yellow-400" : "text-muted-foreground",
+                  plugin.next_fire.may_overlap ? "text-warning-foreground" : "text-muted-foreground",
                 )}
                 title={formatAbsoluteTime(plugin.next_fire.next_fire_at)}
               >
@@ -1077,7 +1077,7 @@ function PluginRollupRow({
             <button
               onClick={() => onStopAll(plugin.running, true)}
               disabled={actionInFlight === stopAllForceKey}
-              className="text-[11px] px-2 py-1 rounded border border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center gap-1 disabled:opacity-50"
+              className="text-[11px] px-2 py-1 rounded border border-red-500/30 bg-red-500/10 text-danger-foreground hover:bg-red-500/20 flex items-center gap-1 disabled:opacity-50"
               title="Worker(s) confirmed gone (no heartbeat) — force-mark these runs cancelled. Server gates this on liveness, so the action is safe."
             >
               <AlertOctagon className="w-3 h-3" />
@@ -1132,7 +1132,7 @@ function PluginRollupRow({
             className={cn(
               "text-[11px] flex items-center gap-1 px-1",
               plugin.errors_summary && plugin.errors_summary.errors_24h > 0
-                ? "text-red-400 hover:underline"
+                ? "text-danger-foreground hover:underline"
                 : "text-muted-foreground hover:text-foreground",
             )}
             title="Open logs filtered to this job"
@@ -1211,11 +1211,11 @@ function PluginRollupRow({
 
           {plugin.errors_summary?.last_error && (
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-red-400 font-semibold mb-1.5">
+              <p className="text-[10px] uppercase tracking-wider text-danger-foreground font-semibold mb-1.5">
                 Most recent error
               </p>
               <p
-                className="text-[11px] font-mono-deck text-red-400 whitespace-pre-wrap break-words bg-red-500/5 border border-red-500/20 rounded px-2 py-1.5"
+                className="text-[11px] font-mono-deck text-danger-foreground whitespace-pre-wrap break-words bg-red-500/5 border border-red-500/20 rounded px-2 py-1.5"
                 title={plugin.errors_summary.last_error}
               >
                 {plugin.errors_summary.last_error}
@@ -1254,9 +1254,9 @@ function InFlightRow({
   return (
     <div className="flex items-center gap-2 text-[11px]">
       {kind === "running" ? (
-        <Loader2 className={cn("w-3 h-3 shrink-0", item.worker_alive === false ? "text-red-400" : "text-blue-400 animate-spin")} />
+        <Loader2 className={cn("w-3 h-3 shrink-0", item.worker_alive === false ? "text-danger-foreground" : "text-info-foreground animate-spin")} />
       ) : (
-        <Hourglass className="w-3 h-3 text-yellow-400 shrink-0" />
+        <Hourglass className="w-3 h-3 text-warning-foreground shrink-0" />
       )}
       <span className="font-mono-deck text-muted-foreground tabular-nums shrink-0 w-10">
         #{item.id}
@@ -1264,7 +1264,7 @@ function InFlightRow({
       <span
         className={cn(
           "font-mono-deck shrink-0 w-16",
-          kind === "running" ? "text-blue-400" : "text-yellow-400",
+          kind === "running" ? "text-info-foreground" : "text-warning-foreground",
         )}
       >
         {item.status}
@@ -1277,9 +1277,9 @@ function InFlightRow({
           className={cn(
             "text-[10px] font-mono-deck shrink-0 px-1.5 py-0.5 rounded",
             item.worker_alive
-              ? "text-green-400 bg-green-500/10"
+              ? "text-success-foreground bg-green-500/10"
               : item.worker_alive === false
-              ? "text-red-400 bg-red-500/10"
+              ? "text-danger-foreground bg-red-500/10"
               : "text-muted-foreground bg-secondary/40",
           )}
           title={
@@ -1305,7 +1305,7 @@ function InFlightRow({
         <button
           onClick={() => onStopRun(item.id, true)}
           disabled={actionInFlight === `cancel-${item.id}-force`}
-          className="text-[10px] px-1.5 py-0.5 rounded border border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center gap-1 disabled:opacity-50"
+          className="text-[10px] px-1.5 py-0.5 rounded border border-red-500/30 bg-red-500/10 text-danger-foreground hover:bg-red-500/20 flex items-center gap-1 disabled:opacity-50"
           title="Worker confirmed dead — force-mark cancelled"
         >
           <AlertOctagon className="w-2.5 h-2.5" />
@@ -1337,9 +1337,9 @@ function RecentRunRow({
 }) {
   const tone =
     run.status === "success"
-      ? "text-green-400"
+      ? "text-success-foreground"
       : run.status === "error" || run.status === "timeout"
-      ? "text-red-400"
+      ? "text-danger-foreground"
       : "text-muted-foreground";
   const Icon =
     run.status === "success"
@@ -1369,7 +1369,7 @@ function RecentRunRow({
         {fmtDuration(run.duration_ms)}
       </span>
       {run.error_short ? (
-        <span className="font-mono-deck text-red-400 truncate flex-1" title={run.error_short}>
+        <span className="font-mono-deck text-danger-foreground truncate flex-1" title={run.error_short}>
           {run.error_short}
         </span>
       ) : (

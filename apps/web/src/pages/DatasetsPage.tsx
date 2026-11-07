@@ -20,10 +20,10 @@ interface Dataset {
 }
 
 const FRESHNESS_PILL_STYLE: Record<FreshnessStatus, string> = {
-  ok:        "bg-green-500/15 text-green-400",
-  stale:     "bg-red-500/15 text-red-400",
+  ok:        "bg-green-500/15 text-success-foreground",
+  stale:     "bg-red-500/15 text-danger-foreground",
   never:     "bg-secondary text-muted-foreground",
-  untracked: "bg-secondary/50 text-muted-foreground/70",
+  untracked: "bg-secondary/50 text-muted-foreground",
   unknown:   "bg-secondary text-muted-foreground",
 };
 
@@ -267,7 +267,7 @@ export default function DatasetsPage() {
                         key={`${ds.pluginSlug}-${ds.name}-card`}
                         title={
                           <div className="flex items-center gap-2">
-                            <Database className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                            <Database className="w-3.5 h-3.5 text-info-foreground shrink-0" />
                             <span className="font-mono-deck text-foreground truncate">{ds.name}</span>
                           </div>
                         }
@@ -330,7 +330,7 @@ export default function DatasetsPage() {
                           <tr key={`${ds.pluginSlug}-${ds.name}`} className="hover:bg-secondary/30 transition-colors">
                             <td className="px-4 py-3 sticky left-0 bg-card z-10 shadow-[inset_-1px_0_0_var(--border)]">
                               <div className="flex items-center gap-2">
-                                <Database className="w-3.5 h-3.5 text-blue-400" />
+                                <Database className="w-3.5 h-3.5 text-info-foreground" />
                                 <span className="font-mono-deck text-foreground">{ds.name}</span>
                               </div>
                             </td>

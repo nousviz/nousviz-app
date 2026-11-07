@@ -40,9 +40,9 @@ const CATEGORIES = [
 ];
 
 const SEVERITIES = [
-  { value: "info", label: "Info", color: "text-blue-400 bg-blue-500/10" },
-  { value: "warning", label: "Warning", color: "text-orange-400 bg-orange-500/10" },
-  { value: "critical", label: "Critical", color: "text-red-400 bg-red-500/10" },
+  { value: "info", label: "Info", color: "text-info-foreground bg-blue-500/10" },
+  { value: "warning", label: "Warning", color: "text-warning-foreground bg-orange-500/10" },
+  { value: "critical", label: "Critical", color: "text-danger-foreground bg-red-500/10" },
 ];
 
 // PLUGINS loaded dynamically from API — see useEffect in CreateAnnotationForm
@@ -446,8 +446,8 @@ function AnnotationCard({
                 className={cn(
                   "h-7 px-2 rounded flex items-center gap-1 text-xs transition-colors",
                   confirmDelete
-                    ? "bg-red-500/15 text-red-400 hover:bg-red-500/25"
-                    : "text-muted-foreground hover:text-red-400 hover:bg-red-500/10"
+                    ? "bg-red-500/15 text-danger-foreground hover:bg-red-500/25"
+                    : "text-muted-foreground hover:text-danger-foreground hover:bg-red-500/10"
                 )}
                 title={confirmDelete ? "Click again to permanently delete" : "Delete permanently"}
                 onBlur={() => setConfirmDelete(false)}
@@ -477,7 +477,7 @@ function AnnotationCard({
               </button>
               <button
                 onClick={handleDelete}
-                className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-red-400 transition-colors"
+                className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-danger-foreground transition-colors"
                 title="Delete"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -599,7 +599,7 @@ export default function AnnotationsPage() {
           <span className="text-xs text-muted-foreground ml-2">
             {annotations.filter(a => !a.archived).length} annotation{annotations.filter(a => !a.archived).length !== 1 ? "s" : ""}
             {showArchived && annotations.some(a => a.archived) && (
-              <span className="ml-1 text-muted-foreground/60">
+              <span className="ml-1 text-muted-foreground">
                 · {annotations.filter(a => a.archived).length} archived
               </span>
             )}

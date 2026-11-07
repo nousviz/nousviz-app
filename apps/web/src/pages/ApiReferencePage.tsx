@@ -52,7 +52,7 @@ export default function ApiReferencePage() {
 
   if (error || !spec) {
     return (
-      <div className="flex items-start gap-2 text-sm text-rose-400 py-12">
+      <div className="flex items-start gap-2 text-sm text-danger-foreground py-12">
         <AlertCircle className="w-4 h-4 mt-0.5" />
         <div>
           <p>Failed to load /openapi.json.</p>

@@ -101,7 +101,7 @@ export default function ConnectionDetailPage() {
       <div className="bg-card rounded-lg border border-border p-5">
         <div className="flex items-center gap-4">
           <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
-            <Server className="w-5 h-5 text-blue-400" />
+            <Server className="w-5 h-5 text-info-foreground" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
@@ -136,12 +136,12 @@ export default function ConnectionDetailPage() {
 
       {/* Error states */}
       {error && error.status === 501 && (
-        <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 px-4 py-3 text-sm text-yellow-300">
+        <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 px-4 py-3 text-sm text-warning-foreground">
           {error.detail}
         </div>
       )}
       {error && error.status === 502 && (
-        <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400 space-y-2">
+        <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-danger-foreground space-y-2">
           <p className="font-medium">Could not reach the database.</p>
           <p className="text-xs opacity-80">{error.detail}</p>
           <p className="text-xs">
@@ -154,7 +154,7 @@ export default function ConnectionDetailPage() {
         </div>
       )}
       {error && error.status !== 501 && error.status !== 502 && (
-        <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400">
+        <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-danger-foreground">
           {error.detail}
         </div>
       )}
@@ -224,7 +224,7 @@ export default function ConnectionDetailPage() {
                       to={`/connections/${encodeURIComponent(id!)}/tables/${encodeURIComponent(schemaGroup.name)}/${encodeURIComponent(t.name)}`}
                       className="flex items-center gap-3 px-4 py-2.5 rounded-md bg-card border border-border text-xs hover:border-primary/40 transition-colors group"
                     >
-                      <Database className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                      <Database className="w-3.5 h-3.5 text-info-foreground shrink-0" />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="font-mono-deck text-foreground group-hover:text-primary transition-colors">

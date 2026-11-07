@@ -67,9 +67,9 @@ interface AttentionItem {
 // ── Helpers ──────────────────────────────────────────────────────────
 
 function StatusIcon({ status }: { status: string }) {
-  if (status === "pass") return <CheckCircle2 className="w-3.5 h-3.5 text-green-400 shrink-0" />;
-  if (status === "warn") return <AlertTriangle className="w-3.5 h-3.5 text-yellow-400 shrink-0" />;
-  return <XCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />;
+  if (status === "pass") return <CheckCircle2 className="w-3.5 h-3.5 text-success-foreground shrink-0" />;
+  if (status === "warn") return <AlertTriangle className="w-3.5 h-3.5 text-warning-foreground shrink-0" />;
+  return <XCircle className="w-3.5 h-3.5 text-danger-foreground shrink-0" />;
 }
 
 function SectionCard({ title, icon: Icon, to, badge, children }: {
@@ -248,8 +248,8 @@ export default function DashboardPage() {
               item.severity === "warning" ? "bg-yellow-500/5 border-yellow-500/20" : "bg-blue-500/5 border-blue-500/20"
             )}>
               {item.severity === "warning"
-                ? <AlertTriangle className="w-4 h-4 text-yellow-400 mt-0.5 shrink-0" />
-                : <Clock className="w-4 h-4 text-blue-400 mt-0.5 shrink-0" />
+                ? <AlertTriangle className="w-4 h-4 text-warning-foreground mt-0.5 shrink-0" />
+                : <Clock className="w-4 h-4 text-info-foreground mt-0.5 shrink-0" />
               }
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-foreground">{item.message}</p>
@@ -289,13 +289,13 @@ export default function DashboardPage() {
         >
           {lp.alerts_summary.triggered_24h > 0 ? (
             <div className="space-y-2">
-              <p className="text-xs text-yellow-400 flex items-center gap-1.5">
+              <p className="text-xs text-warning-foreground flex items-center gap-1.5">
                 <AlertTriangle className="w-3 h-3" />
                 {lp.alerts_summary.triggered_24h} alert{lp.alerts_summary.triggered_24h !== 1 ? "s" : ""} fired in the last 24 hours
               </p>
               {lp.alerts_summary.recent_triggers.map((t, i) => (
                 <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-md bg-secondary/30 text-xs">
-                  <Bell className="w-3 h-3 text-yellow-400 shrink-0" />
+                  <Bell className="w-3 h-3 text-warning-foreground shrink-0" />
                   <span className="text-foreground flex-1 truncate">{t.alert_name}</span>
                   <span className="text-muted-foreground font-mono-deck" title={formatAbsoluteTime(t.triggered_at)}>
                     {formatRelativeTime(t.triggered_at)}

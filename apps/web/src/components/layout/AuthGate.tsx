@@ -359,7 +359,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
               />
             </div>
 
-            {error && <p className="text-xs text-red-400 text-center">{error}</p>}
+            {error && <p className="text-xs text-danger-foreground text-center">{error}</p>}
 
             <button
               onClick={handleRegister}
@@ -411,7 +411,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
             />
           </div>
 
-          {error && <p className="text-xs text-red-400 text-center">{error}</p>}
+          {error && <p className="text-xs text-danger-foreground text-center">{error}</p>}
 
           <button
             onClick={handleLogin}

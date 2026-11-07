@@ -139,7 +139,7 @@ export default function StepUpModal({ open, onSuccess, onCancel }: StepUpModalPr
           />
 
           {error && (
-            <p className="text-xs text-rose-400">
+            <p className="text-xs text-danger-foreground">
               {error} {attempts > 0 && attempts < 3 && `(${3 - attempts} attempt${3 - attempts === 1 ? "" : "s"} remaining)`}
             </p>
           )}

@@ -75,21 +75,21 @@ const SEVERITY_META: Record<
   critical: {
     label: "Critical",
     icon: AlertOctagon,
-    tone: "text-red-400",
+    tone: "text-danger-foreground",
     bg: "bg-red-500/10",
     border: "border-red-500/30",
   },
   warn: {
     label: "Warning",
     icon: AlertTriangle,
-    tone: "text-yellow-400",
+    tone: "text-warning-foreground",
     bg: "bg-yellow-500/10",
     border: "border-yellow-500/30",
   },
   info: {
     label: "Info",
     icon: Info,
-    tone: "text-blue-400",
+    tone: "text-info-foreground",
     bg: "bg-blue-500/10",
     border: "border-blue-500/30",
   },
@@ -164,7 +164,7 @@ export default function FindingsPanel() {
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="text-sm font-display text-foreground">Findings</h3>
             {totalFindings === 0 ? (
-              <span className="text-[11px] text-green-400 flex items-center gap-1">
+              <span className="text-[11px] text-success-foreground flex items-center gap-1">
                 <CheckCircle2 className="w-3 h-3" />
                 No issues detected
               </span>
@@ -224,7 +224,7 @@ export default function FindingsPanel() {
           </div>
         </div>
         {error && (
-          <p className="text-[11px] text-red-400 mt-2 flex items-center gap-1.5">
+          <p className="text-[11px] text-danger-foreground mt-2 flex items-center gap-1.5">
             <X className="w-3 h-3" />
             Failed to load: {error}
           </p>
@@ -234,7 +234,7 @@ export default function FindingsPanel() {
       {/* Findings list (or empty state) */}
       {totalFindings === 0 && !error ? (
         <div className="bg-card border border-border rounded-lg px-4 py-6 text-center">
-          <CheckCircle2 className="w-5 h-5 mx-auto mb-2 text-green-400 opacity-60" />
+          <CheckCircle2 className="w-5 h-5 mx-auto mb-2 text-success-foreground opacity-60" />
           <p className="text-xs text-muted-foreground">
             No issues detected against the 12 diagnostic rules.
           </p>
@@ -279,7 +279,7 @@ export default function FindingsPanel() {
             <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-border/50">
               <button
                 onClick={() => handleCopy((manualAction.sql || manualAction.shell || ""))}
-                className="h-8 px-3 rounded-md bg-blue-500 text-white text-xs hover:bg-blue-600 flex items-center gap-1.5"
+                className="h-8 px-3 rounded-md bg-blue-700 text-white text-xs hover:bg-blue-800 flex items-center gap-1.5"
               >
                 {copyState === "copied" ? (
                   <>
@@ -372,7 +372,7 @@ function FindingTimeline({ findingId }: { findingId: string }) {
         <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">
           History (last 30 days)
         </p>
-        <p className="text-[11px] text-red-400">Failed to load: {error}</p>
+        <p className="text-[11px] text-danger-foreground">Failed to load: {error}</p>
       </div>
     );
   }
@@ -483,7 +483,7 @@ function FindingCard({
                 bridge has dispatched a webhook for this finding. */}
             {finding.last_alerted_at && (
               <span
-                className="text-[10px] font-mono-deck flex items-center gap-1 px-1.5 py-0.5 rounded border border-blue-500/30 bg-blue-500/10 text-blue-400"
+                className="text-[10px] font-mono-deck flex items-center gap-1 px-1.5 py-0.5 rounded border border-blue-500/30 bg-blue-500/10 text-info-foreground"
                 title={`Webhook alert sent at ${formatAbsoluteTime(finding.last_alerted_at)}`}
               >
                 <Bell className="w-2.5 h-2.5" />
@@ -551,7 +551,7 @@ function FindingCard({
               {finding.action.type === "external" && finding.action.url ? (
                 <a
                   href={finding.action.url}
-                  className="inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded border border-blue-500/30 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20"
+                  className="inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded border border-blue-500/30 bg-blue-500/10 text-info-foreground hover:bg-blue-500/20"
                 >
                   {finding.action.label}
                   <ExternalLink className="w-3 h-3" />

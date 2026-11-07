@@ -56,10 +56,10 @@ function StatCard({
   color?: "blue" | "green" | "purple" | "orange";
 }) {
   const colorMap = {
-    blue: "bg-blue-500/10 text-blue-400",
-    green: "bg-green-500/10 text-green-400",
-    purple: "bg-purple-500/10 text-purple-400",
-    orange: "bg-orange-500/10 text-orange-400",
+    blue: "bg-blue-500/10 text-info-foreground",
+    green: "bg-green-500/10 text-success-foreground",
+    purple: "bg-purple-500/10 text-purple-700 dark:text-purple-400",
+    orange: "bg-orange-500/10 text-warning-foreground",
   };
   return (
     <div className="bg-card rounded-lg border border-border p-4 flex items-start gap-3">
@@ -142,7 +142,7 @@ export default function AnalyticsPage() {
   if (error || !analytics || !usage) {
     return (
       <div className="max-w-[1400px] py-20 text-center">
-        <AlertCircle className="w-8 h-8 mx-auto mb-3 text-red-400" />
+        <AlertCircle className="w-8 h-8 mx-auto mb-3 text-danger-foreground" />
         <p className="text-sm text-muted-foreground mb-4">{error || "Could not load analytics data."}</p>
         <button
           onClick={loadData}
@@ -219,7 +219,7 @@ export default function AnalyticsPage() {
         <div className="lg:col-span-2 bg-card rounded-lg border border-border">
           <div className="p-4 border-b border-border">
             <h3 className="font-display text-sm text-foreground flex items-center gap-2">
-              <Clock className="w-4 h-4 text-blue-400" />
+              <Clock className="w-4 h-4 text-info-foreground" />
               Page Activity
             </h3>
           </div>
@@ -243,7 +243,7 @@ export default function AnalyticsPage() {
                     {page.minutes < 1 ? "<1m" : `${page.minutes.toFixed(0)}m`}
                   </span>
                   {views !== undefined && (
-                    <span className="text-xs font-mono-deck text-muted-foreground/60 w-12 text-right" title="Page views">
+                    <span className="text-xs font-mono-deck text-muted-foreground w-12 text-right" title="Page views">
                       {views} {views === 1 ? "view" : "views"}
                     </span>
                   )}
@@ -261,7 +261,7 @@ export default function AnalyticsPage() {
           {/* Actions */}
           <div className="bg-card rounded-lg border border-border p-4">
             <h3 className="font-display text-sm text-foreground mb-3 flex items-center gap-2">
-              <BarChart3 className="w-4 h-4 text-green-400" />
+              <BarChart3 className="w-4 h-4 text-success-foreground" />
               Actions
             </h3>
             <div className="space-y-2">
@@ -279,7 +279,7 @@ export default function AnalyticsPage() {
           {/* Browsers */}
           <div className="bg-card rounded-lg border border-border p-4">
             <h3 className="font-display text-sm text-foreground mb-3 flex items-center gap-2">
-              <Globe className="w-4 h-4 text-purple-400" />
+              <Globe className="w-4 h-4 text-purple-700 dark:text-purple-400" />
               Browsers
             </h3>
             <div className="space-y-2">
@@ -301,7 +301,7 @@ export default function AnalyticsPage() {
       {dailyData.length > 1 && (
         <div className="bg-card rounded-lg border border-border p-5">
           <h3 className="font-display text-sm text-foreground mb-4 flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-green-400" />
+            <TrendingUp className="w-4 h-4 text-success-foreground" />
             Daily Activity
           </h3>
           <ResponsiveContainer width="100%" height={200}>
@@ -323,7 +323,7 @@ export default function AnalyticsPage() {
       {hourlyData.length > 1 && (
         <div className="bg-card rounded-lg border border-border p-5">
           <h3 className="font-display text-sm text-foreground mb-4 flex items-center gap-2">
-            <Clock className="w-4 h-4 text-purple-400" />
+            <Clock className="w-4 h-4 text-purple-700 dark:text-purple-400" />
             Activity by Hour
           </h3>
           <ResponsiveContainer width="100%" height={150}>

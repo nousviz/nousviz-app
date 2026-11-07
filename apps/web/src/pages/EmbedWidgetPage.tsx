@@ -84,7 +84,7 @@ export default function EmbedWidgetPage() {
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-[200px]">
-        <p className="text-sm text-red-400">{error}</p>
+        <p className="text-sm text-danger-foreground">{error}</p>
       </div>
     );
   }

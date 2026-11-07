@@ -67,7 +67,7 @@ export default function RestrictedUsersGrantBanner({ pluginSlug }: Props) {
   if (loading) return null;
   if (error) {
     return (
-      <div className="mt-3 flex items-start gap-3 px-3 py-2.5 rounded-md bg-amber-500/5 border border-amber-500/20 text-xs text-amber-400">
+      <div className="mt-3 flex items-start gap-3 px-3 py-2.5 rounded-md bg-amber-500/5 border border-amber-500/20 text-xs text-warning-foreground">
         <span>Could not check restricted-user access: {error}</span>
       </div>
     );
@@ -133,7 +133,7 @@ export default function RestrictedUsersGrantBanner({ pluginSlug }: Props) {
 
   return (
     <div className="mt-3 px-3 py-3 rounded-md bg-amber-500/5 border border-amber-500/20 text-xs">
-      <div className="flex items-start gap-2 text-amber-400">
+      <div className="flex items-start gap-2 text-warning-foreground">
         <Users className="w-4 h-4 shrink-0 mt-0.5" />
         <div className="flex-1">
           <p className="text-foreground">
@@ -165,10 +165,10 @@ export default function RestrictedUsersGrantBanner({ pluginSlug }: Props) {
                   <span className="text-muted-foreground text-[10px]">({u.role})</span>
                 </label>
                 {perUserStatus[u.user_id] === "ok" && (
-                  <Check className="w-3.5 h-3.5 text-green-400 shrink-0" />
+                  <Check className="w-3.5 h-3.5 text-success-foreground shrink-0" />
                 )}
                 {perUserStatus[u.user_id] === "err" && (
-                  <span className="text-red-400 text-[10px] shrink-0">failed</span>
+                  <span className="text-danger-foreground text-[10px] shrink-0">failed</span>
                 )}
               </li>
             ))}

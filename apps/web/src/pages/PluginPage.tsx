@@ -69,7 +69,7 @@ function PluginAboutTab({ manifest }: { manifest: PluginManifest }) {
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="font-display text-xl text-foreground">{manifest.display_name}</h2>
               {manifest.publisher?.verified && (
-                <span className="flex items-center gap-1 text-xs text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full">
+                <span className="flex items-center gap-1 text-xs text-info-foreground bg-blue-500/10 px-2 py-0.5 rounded-full">
                   <CheckCircle2 className="w-3 h-3" /> Verified
                 </span>
               )}
@@ -108,7 +108,7 @@ function PluginAboutTab({ manifest }: { manifest: PluginManifest }) {
                 <div key={key} className="flex items-center justify-between text-sm">
                   <span className="font-mono-deck text-foreground capitalize">{key}</span>
                   <span className={cn("text-xs px-2 py-0.5 rounded-full font-mono-deck",
-                    val === true ? "bg-green-500/10 text-green-400" : "bg-secondary text-muted-foreground"
+                    val === true ? "bg-green-500/10 text-success-foreground" : "bg-secondary text-muted-foreground"
                   )}>{String(val)}</span>
                 </div>
               ))}
@@ -157,7 +157,7 @@ function PluginAboutTab({ manifest }: { manifest: PluginManifest }) {
             <div className="space-y-1.5 text-sm">
               <div className="flex items-center gap-2">
                 <span className="text-foreground font-display">{manifest.publisher.name}</span>
-                {manifest.publisher.verified && <CheckCircle2 className="w-3.5 h-3.5 text-blue-400" />}
+                {manifest.publisher.verified && <CheckCircle2 className="w-3.5 h-3.5 text-info-foreground" />}
               </div>
               {manifest.publisher.website && (
                 <a href={manifest.publisher.website} target="_blank" rel="noopener noreferrer"
@@ -467,10 +467,10 @@ function PluginSettingsTab({ pluginId }: { pluginId: string }) {
                 <h3 className="font-display text-sm text-foreground">Credentials</h3>
                 {coreCreds.map(renderCredField)}
                 <div className="flex items-center gap-3 pt-2">
-                  <button onClick={save} disabled={saving} className="h-8 px-4 rounded-md bg-primary text-xs text-white font-body hover:bg-primary/90 transition-colors disabled:opacity-50">
+                  <button onClick={save} disabled={saving} className="h-8 px-4 rounded-md bg-primary text-xs text-primary-foreground font-body hover:bg-primary/90 transition-colors disabled:opacity-50">
                     {saving ? "Saving\u2026" : "Save Credentials"}
                   </button>
-                  {result && <span className={cn("text-xs font-body", result.ok ? "text-green-400" : "text-red-400")}>{result.message}</span>}
+                  {result && <span className={cn("text-xs font-body", result.ok ? "text-success-foreground" : "text-danger-foreground")}>{result.message}</span>}
                 </div>
                 <p className="text-[10px] text-muted-foreground">Credentials are stored AES-256 encrypted. Never saved to disk.</p>
               </div>
@@ -480,7 +480,7 @@ function PluginSettingsTab({ pluginId }: { pluginId: string }) {
                 <h3 className="font-display text-sm text-foreground">{group.label} Credentials</h3>
                 {group.fields.map(renderCredField)}
                 <div className="flex items-center gap-3 pt-2">
-                  <button onClick={save} disabled={saving} className="h-8 px-4 rounded-md bg-primary text-xs text-white font-body hover:bg-primary/90 transition-colors disabled:opacity-50">
+                  <button onClick={save} disabled={saving} className="h-8 px-4 rounded-md bg-primary text-xs text-primary-foreground font-body hover:bg-primary/90 transition-colors disabled:opacity-50">
                     {saving ? "Saving\u2026" : "Save"}
                   </button>
                 </div>
@@ -546,10 +546,10 @@ function PluginSettingsTab({ pluginId }: { pluginId: string }) {
                 <h3 className="font-display text-sm text-foreground">Plugin Settings</h3>
                 {coreFields.map(renderField)}
                 <div className="flex items-center gap-3 pt-2">
-                  <button onClick={save} disabled={saving} className="h-8 px-4 rounded-md bg-primary text-xs text-white font-body hover:bg-primary/90 transition-colors disabled:opacity-50">
+                  <button onClick={save} disabled={saving} className="h-8 px-4 rounded-md bg-primary text-xs text-primary-foreground font-body hover:bg-primary/90 transition-colors disabled:opacity-50">
                     {saving ? "Saving\u2026" : "Save"}
                   </button>
-                  {result && <span className={cn("text-xs font-body", result.ok ? "text-green-400" : "text-red-400")}>{result.message}</span>}
+                  {result && <span className={cn("text-xs font-body", result.ok ? "text-success-foreground" : "text-danger-foreground")}>{result.message}</span>}
                 </div>
               </div>
             )}
@@ -558,7 +558,7 @@ function PluginSettingsTab({ pluginId }: { pluginId: string }) {
                 <h3 className="font-display text-sm text-foreground">{group.label} Settings</h3>
                 {group.fields.map(renderField)}
                 <div className="flex items-center gap-3 pt-2">
-                  <button onClick={save} disabled={saving} className="h-8 px-4 rounded-md bg-primary text-xs text-white font-body hover:bg-primary/90 transition-colors disabled:opacity-50">
+                  <button onClick={save} disabled={saving} className="h-8 px-4 rounded-md bg-primary text-xs text-primary-foreground font-body hover:bg-primary/90 transition-colors disabled:opacity-50">
                     {saving ? "Saving\u2026" : "Save"}
                   </button>
                 </div>
@@ -591,13 +591,13 @@ function PluginSettingsTab({ pluginId }: { pluginId: string }) {
                 <span className="text-foreground flex-1 truncate">{s.title || s.page_path}</span>
                 <span className="text-muted-foreground font-mono-deck shrink-0">{s.access_count} view{s.access_count !== 1 ? "s" : ""}</span>
                 {s.expires_at && (
-                  <span className={cn("text-muted-foreground font-mono-deck shrink-0", s.expired && "text-red-400")}>
+                  <span className={cn("text-muted-foreground font-mono-deck shrink-0", s.expired && "text-danger-foreground")}>
                     {s.expired ? "Expired" : `Expires ${new Date(s.expires_at).toLocaleDateString()}`}
                   </span>
                 )}
                 <button
                   onClick={() => revokeShare(s.share_id)}
-                  className="text-muted-foreground hover:text-red-400 transition-colors shrink-0"
+                  className="text-muted-foreground hover:text-danger-foreground transition-colors shrink-0"
                   title="Revoke"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -865,7 +865,7 @@ function GenericPluginPage({ pluginId }: { pluginId: string }) {
         <div className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1">
-              <div className="font-body text-amber-300 font-medium">
+              <div className="font-body text-warning-foreground font-medium">
                 This plugin includes custom frontend code
               </div>
               <div className="text-xs text-muted-foreground mt-1">
@@ -877,7 +877,7 @@ function GenericPluginPage({ pluginId }: { pluginId: string }) {
                 You can revoke trust at any time from Settings → Plugins.
               </div>
               {adminProxyOptedIn && (
-                <div className="text-xs text-amber-200 mt-2 border-t border-amber-500/20 pt-2">
+                <div className="text-xs text-warning-foreground mt-2 border-t border-amber-500/20 pt-2">
                   <span className="font-medium">Admin proxy:</span> this plugin issues a session cookie
                   scoped to its admin proxy at <code className="text-[11px]">/api/plugins/{pluginId}/admin/*</code>.
                   The cookie is HttpOnly, Secure, and path-scoped to that prefix only — it cannot
@@ -895,7 +895,7 @@ function GenericPluginPage({ pluginId }: { pluginId: string }) {
               className={`shrink-0 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
                 trusting
                   ? "bg-muted text-muted-foreground cursor-wait"
-                  : "bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40"
+                  : "bg-amber-500/20 hover:bg-amber-500/30 text-warning-foreground border border-amber-500/40"
               }`}
             >
               {trusting ? "Trusting…" : "Trust this plugin"}
@@ -906,10 +906,10 @@ function GenericPluginPage({ pluginId }: { pluginId: string }) {
       {showUpdateBanner && (
         <div className="mb-4 rounded-md border border-blue-500/40 bg-blue-500/10 p-3 text-sm flex items-start justify-between gap-3">
           <div>
-            <div className="font-body text-blue-300 font-medium">
+            <div className="font-body text-info-foreground font-medium">
               Update available
             </div>
-            <div className="font-mono-deck text-xs text-blue-300/80 mt-1">
+            <div className="font-mono-deck text-xs text-info-foreground mt-1">
               v{updateStatus?.installed_version || "?"} → v{updateStatus?.latest_version || "?"}
             </div>
             <div className="text-xs text-muted-foreground mt-2">
@@ -924,7 +924,7 @@ function GenericPluginPage({ pluginId }: { pluginId: string }) {
             className={`shrink-0 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
               updating
                 ? "bg-muted text-muted-foreground cursor-wait"
-                : "bg-blue-500/20 hover:bg-blue-500/30 text-blue-200 border border-blue-500/40"
+                : "bg-blue-500/20 hover:bg-blue-500/30 text-info-foreground border border-blue-500/40"
             }`}
           >
             {updating ? "Updating…" : "Update plugin"}
@@ -932,7 +932,7 @@ function GenericPluginPage({ pluginId }: { pluginId: string }) {
         </div>
       )}
       {updateMessage && (
-        <div className="mb-4 rounded-md border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-300">
+        <div className="mb-4 rounded-md border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-success-foreground">
           {updateMessage}
         </div>
       )}

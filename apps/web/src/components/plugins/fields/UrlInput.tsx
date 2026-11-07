@@ -48,7 +48,7 @@ export default function UrlInput({ name, value, onChange, scheme, required }: Pr
         className="h-8 px-3 rounded-md bg-background border border-border text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary w-full sm:w-80"
       />
       {error && (
-        <p className="text-[11px] text-red-400 inline-flex items-center gap-1">
+        <p className="text-[11px] text-danger-foreground inline-flex items-center gap-1">
           <AlertCircle className="w-3 h-3" /> {error}
         </p>
       )}

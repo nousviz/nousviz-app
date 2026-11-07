@@ -97,7 +97,7 @@ export default function ResetPasswordPage() {
 
         {done ? (
           <div className="bg-card rounded-lg border border-border p-5 space-y-3 text-center">
-            <CheckCircle2 className="w-8 h-8 text-green-400 mx-auto" />
+            <CheckCircle2 className="w-8 h-8 text-success-foreground mx-auto" />
             <p className="text-sm text-foreground">
               Password reset. Redirecting you to log in&hellip;
             </p>
@@ -115,7 +115,7 @@ export default function ResetPasswordPage() {
             className="bg-card rounded-lg border border-border p-5 space-y-4"
           >
             {!token && (
-              <div className="flex items-start gap-2 text-xs text-amber-400">
+              <div className="flex items-start gap-2 text-xs text-warning-foreground">
                 <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
                 <span>
                   This page needs a reset token in the URL. Open the link from
@@ -162,7 +162,7 @@ export default function ResetPasswordPage() {
             </div>
 
             {error && (
-              <p className="text-xs text-rose-400">{error}</p>
+              <p className="text-xs text-danger-foreground">{error}</p>
             )}
 
             <button

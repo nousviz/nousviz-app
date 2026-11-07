@@ -189,8 +189,8 @@ export default function Topbar({ sidebarCollapsed, onMenuClick }: { sidebarColla
       {/* Health warning banner — solid bg so scrolled content doesn't bleed through */}
       {showBanner && healthWarnings.length > 0 && (
         <div className="bg-background border-b border-yellow-500/30 px-4 py-1.5 flex items-center justify-center gap-3 relative before:absolute before:inset-0 before:bg-yellow-500/10 before:pointer-events-none">
-          <Shield className="w-3 h-3 text-yellow-400 shrink-0" />
-          <span className="text-[11px] text-yellow-400">
+          <Shield className="w-3 h-3 text-warning-foreground shrink-0" />
+          <span className="text-[11px] text-warning-foreground">
             {healthWarnings.length === 1
               ? `${healthWarnings[0].label}: ${healthWarnings[0].detail}`
               : `${healthWarnings.length} items need attention`}
@@ -212,7 +212,7 @@ export default function Topbar({ sidebarCollapsed, onMenuClick }: { sidebarColla
               setShowBanner(false);
               try { localStorage.setItem(BANNER_DISMISSED_KEY, bannerSigRef.current); } catch { /* storage blocked */ }
             }}
-            className="text-yellow-400/40 hover:text-yellow-400 ml-1"
+            className="text-warning-foreground hover:opacity-80 ml-1"
           >
             <X className="w-3 h-3" />
           </button>
@@ -279,11 +279,11 @@ export default function Topbar({ sidebarCollapsed, onMenuClick }: { sidebarColla
             const checks = evaluateChecks(healthData, configData);
             const { level, label } = summarize(checks);
             const dotColor = level === "loading" ? "bg-muted-foreground animate-pulse" : level === "healthy" ? "bg-green-400" : level === "warning" ? "bg-yellow-400" : "bg-red-400";
-            const textColor = level === "loading" ? "text-muted-foreground" : level === "healthy" ? "text-green-400" : level === "warning" ? "text-yellow-400" : "text-red-400";
+            const textColor = level === "loading" ? "text-muted-foreground" : level === "healthy" ? "text-success-foreground" : level === "warning" ? "text-warning-foreground" : "text-danger-foreground";
             const CheckIcon = ({ status }: { status: string }) =>
-              status === "pass" ? <CheckCircle2 className="w-3.5 h-3.5 text-green-400 shrink-0" /> :
-              status === "warn" ? <AlertTriangle className="w-3.5 h-3.5 text-yellow-400 shrink-0" /> :
-              <XCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />;
+              status === "pass" ? <CheckCircle2 className="w-3.5 h-3.5 text-success-foreground shrink-0" /> :
+              status === "warn" ? <AlertTriangle className="w-3.5 h-3.5 text-warning-foreground shrink-0" /> :
+              <XCircle className="w-3.5 h-3.5 text-danger-foreground shrink-0" />;
 
             return (
               <div className="relative" ref={healthRef}>
@@ -317,7 +317,7 @@ export default function Topbar({ sidebarCollapsed, onMenuClick }: { sidebarColla
                             {check.detail && !check.action && (
                               <div className={cn(
                                 "text-[10px] font-mono-deck mt-0.5 break-words",
-                                check.status === "pass" ? "text-green-400/80" : check.status === "warn" ? "text-yellow-400/80" : "text-red-400/80"
+                                check.status === "pass" ? "text-success-foreground" : check.status === "warn" ? "text-warning-foreground" : "text-danger-foreground"
                               )}>
                                 {check.detail}
                               </div>
@@ -383,9 +383,9 @@ export default function Topbar({ sidebarCollapsed, onMenuClick }: { sidebarColla
                     <p className="text-[10px] text-muted-foreground truncate">{currentUser.email}</p>
                     <span className={cn(
                       "inline-block mt-1 px-1.5 py-0.5 rounded-full border text-[9px]",
-                      currentUser.role === "superadmin" ? "bg-purple-500/10 text-purple-400 border-purple-500/30"
-                      : currentUser.role === "admin" ? "bg-blue-500/10 text-blue-400 border-blue-500/30"
-                      : currentUser.role === "analyst" ? "bg-green-500/10 text-green-400 border-green-500/30"
+                      currentUser.role === "superadmin" ? "bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/30"
+                      : currentUser.role === "admin" ? "bg-blue-500/10 text-info-foreground border-blue-500/30"
+                      : currentUser.role === "analyst" ? "bg-green-500/10 text-success-foreground border-green-500/30"
                       : "bg-secondary text-muted-foreground border-border"
                     )}>{currentUser.role}</span>
                   </div>
@@ -399,7 +399,7 @@ export default function Topbar({ sidebarCollapsed, onMenuClick }: { sidebarColla
                   </Link>
                   <button
                     onClick={handleLogout}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-muted-foreground hover:text-red-400 hover:bg-secondary/50 transition-colors"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-muted-foreground hover:text-danger-foreground hover:bg-secondary/50 transition-colors"
                   >
                     <LogOut className="w-3.5 h-3.5" />
                     Log out

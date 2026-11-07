@@ -334,7 +334,7 @@ export default function SslSetupModal({ onClose, onComplete }: SslSetupModalProp
           {mode === "done" && (
             <div className="py-6 text-center space-y-4">
               <div className="h-14 w-14 rounded-2xl bg-green-500/10 flex items-center justify-center mx-auto">
-                <CheckCircle2 className="w-7 h-7 text-green-400" />
+                <CheckCircle2 className="w-7 h-7 text-success-foreground" />
               </div>
               <div>
                 <h3 className="font-display text-lg text-foreground">HTTPS configured</h3>
@@ -367,9 +367,9 @@ export default function SslSetupModal({ onClose, onComplete }: SslSetupModalProp
                 {scenario ? (
                   <div className="space-y-3">
                     <div className="flex items-start gap-3 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-                      <AlertTriangle className="w-5 h-5 text-yellow-400 shrink-0 mt-0.5" />
+                      <AlertTriangle className="w-5 h-5 text-warning-foreground shrink-0 mt-0.5" />
                       <div>
-                        <p className="text-sm font-medium text-yellow-400">{scenario.title}</p>
+                        <p className="text-sm font-medium text-warning-foreground">{scenario.title}</p>
                         <p className="text-xs text-muted-foreground mt-1">{scenario.summary}</p>
                       </div>
                     </div>
@@ -406,10 +406,10 @@ export default function SslSetupModal({ onClose, onComplete }: SslSetupModalProp
                   </div>
                 ) : (
                   <div className="flex items-start gap-3 p-4 rounded-lg bg-red-500/10 border border-red-500/20">
-                    <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                    <AlertTriangle className="w-5 h-5 text-danger-foreground shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-red-400">SSL setup failed</p>
-                      <p className="text-xs text-red-300/80 mt-1 whitespace-pre-wrap font-mono-deck">
+                      <p className="text-sm font-medium text-danger-foreground">SSL setup failed</p>
+                      <p className="text-xs text-danger-foreground mt-1 whitespace-pre-wrap font-mono-deck">
                         {error.replace(ANSI_RE, "")}
                       </p>
                     </div>

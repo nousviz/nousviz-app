@@ -1,11 +1,11 @@
 import type { HttpMethod } from "./types";
 
 const STYLES: Record<HttpMethod, string> = {
-  get: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-  post: "bg-sky-500/15 text-sky-400 border-sky-500/30",
-  put: "bg-amber-500/15 text-amber-400 border-amber-500/30",
-  patch: "bg-amber-500/15 text-amber-400 border-amber-500/30",
-  delete: "bg-rose-500/15 text-rose-400 border-rose-500/30",
+  get: "bg-emerald-500/15 text-success-foreground border-emerald-500/30",
+  post: "bg-sky-500/15 text-info-foreground border-sky-500/30",
+  put: "bg-amber-500/15 text-warning-foreground border-amber-500/30",
+  patch: "bg-amber-500/15 text-warning-foreground border-amber-500/30",
+  delete: "bg-rose-500/15 text-danger-foreground border-rose-500/30",
 };
 
 export default function MethodBadge({ method, size = "sm" }: { method: HttpMethod; size?: "sm" | "xs" }) {

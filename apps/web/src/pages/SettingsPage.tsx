@@ -203,7 +203,7 @@ function ApiKeysSection() {
       {/* Revealed key banner */}
       {revealed && (
         <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-3 space-y-2">
-          <p className="text-xs font-body text-green-400 font-medium">Key created — copy it now. It won't be shown again.</p>
+          <p className="text-xs font-body text-success-foreground font-medium">Key created — copy it now. It won't be shown again.</p>
           <div className="flex items-center gap-2">
             <code className="flex-1 text-xs font-mono-deck text-foreground bg-background rounded px-2 py-1.5 border border-border truncate">
               {revealed.key}
@@ -212,7 +212,7 @@ function ApiKeysSection() {
               onClick={() => copy(revealed.key)}
               className="h-7 px-2.5 rounded bg-secondary flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
             >
-              {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+              {copied ? <Check className="w-3.5 h-3.5 text-success-foreground" /> : <Copy className="w-3.5 h-3.5" />}
               {copied ? "Copied" : "Copy"}
             </button>
           </div>
@@ -233,7 +233,7 @@ function ApiKeysSection() {
                 <p className="text-sm text-foreground font-body">{k.name}</p>
                 <p className="text-xs font-mono-deck text-muted-foreground mt-0.5">
                   {k.key_prefix}••••••••••••••••
-                  <span className="font-body ml-2 text-muted-foreground/60">
+                  <span className="font-body ml-2 text-muted-foreground">
                     Created {fmtDate(k.created_at)}
                     {k.last_used_at ? ` · Last used ${fmtDate(k.last_used_at)}` : " · Never used"}
                   </span>
@@ -245,8 +245,8 @@ function ApiKeysSection() {
                 className={cn(
                   "text-xs font-body px-2 py-1 rounded transition-colors shrink-0 flex items-center gap-1",
                   confirmRevoke === k.id
-                    ? "bg-red-500/10 text-red-400 border border-red-500/30"
-                    : "text-muted-foreground hover:text-red-400"
+                    ? "bg-red-500/10 text-danger-foreground border border-red-500/30"
+                    : "text-muted-foreground hover:text-danger-foreground"
                 )}
                 title={confirmRevoke === k.id ? "Click again to confirm" : "Revoke key"}
               >
@@ -272,7 +272,7 @@ function ApiKeysSection() {
         <button
           onClick={create}
           disabled={creating || !newName.trim()}
-          className="h-8 px-3 rounded-md bg-primary text-xs text-white font-body flex items-center gap-1.5 hover:bg-primary/90 transition-colors disabled:opacity-50 shrink-0"
+          className="h-8 px-3 rounded-md bg-primary text-xs text-primary-foreground font-body flex items-center gap-1.5 hover:bg-primary/90 transition-colors disabled:opacity-50 shrink-0"
         >
           <Plus className="w-3.5 h-3.5" />{creating ? "Creating…" : "Create"}
         </button>
@@ -363,12 +363,12 @@ function DatabaseSection() {
         <button
           onClick={save}
           disabled={saving}
-          className="h-8 px-4 rounded-md bg-primary text-xs text-white font-body hover:bg-primary/90 transition-colors disabled:opacity-50"
+          className="h-8 px-4 rounded-md bg-primary text-xs text-primary-foreground font-body hover:bg-primary/90 transition-colors disabled:opacity-50"
         >
           {saving ? "Saving…" : "Save & reconnect"}
         </button>
         {result && (
-          <span className={cn("text-xs font-body", result.ok ? "text-green-400" : "text-red-400")}>
+          <span className={cn("text-xs font-body", result.ok ? "text-success-foreground" : "text-danger-foreground")}>
             {result.ok ? "✓" : "✗"} {result.message}
           </span>
         )}
@@ -537,7 +537,7 @@ function ProfilePanel() {
                 <button
                   onClick={handleRemoveAvatar}
                   disabled={uploading}
-                  className="h-8 px-3 rounded-md bg-secondary text-xs text-muted-foreground hover:text-red-400 disabled:opacity-50 transition-colors"
+                  className="h-8 px-3 rounded-md bg-secondary text-xs text-muted-foreground hover:text-danger-foreground disabled:opacity-50 transition-colors"
                 >
                   Remove
                 </button>
@@ -545,7 +545,7 @@ function ProfilePanel() {
             </div>
             <p className="text-[10px] text-muted-foreground">JPEG, PNG, WebP, or GIF. Max 2MB. Saves automatically.</p>
             {avatarResult && (
-              <p className={cn("text-[11px]", avatarResult.ok ? "text-green-400" : "text-red-400")}>{avatarResult.message}</p>
+              <p className={cn("text-[11px]", avatarResult.ok ? "text-success-foreground" : "text-danger-foreground")}>{avatarResult.message}</p>
             )}
             <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handleAvatarUpload} className="hidden" />
           </div>
@@ -564,9 +564,9 @@ function ProfilePanel() {
             <label className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-1 block">Role</label>
             <span className={cn(
               "inline-block px-2 py-0.5 rounded-full border text-[11px]",
-              role === "superadmin" ? "bg-purple-500/10 text-purple-400 border-purple-500/30"
-              : role === "admin" ? "bg-blue-500/10 text-blue-400 border-blue-500/30"
-              : role === "analyst" ? "bg-green-500/10 text-green-400 border-green-500/30"
+              role === "superadmin" ? "bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/30"
+              : role === "admin" ? "bg-blue-500/10 text-info-foreground border-blue-500/30"
+              : role === "analyst" ? "bg-green-500/10 text-success-foreground border-green-500/30"
               : "bg-secondary text-muted-foreground border-border"
             )}>{role}</span>
           </div>
@@ -600,7 +600,7 @@ function ProfilePanel() {
           </button>
         </div>
         {result && (
-          <p className={cn("text-xs", result.ok ? "text-green-400" : "text-red-400")}>{result.message}</p>
+          <p className={cn("text-xs", result.ok ? "text-success-foreground" : "text-danger-foreground")}>{result.message}</p>
         )}
       </div>
 
@@ -621,7 +621,7 @@ function ProfilePanel() {
               {showNewPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
             </button>
           </div>
-          {pwTooShort && <p className="text-[11px] text-yellow-400 ml-1">Must be at least 8 characters</p>}
+          {pwTooShort && <p className="text-[11px] text-warning-foreground ml-1">Must be at least 8 characters</p>}
           <input
             type="password"
             value={confirmPassword}
@@ -630,10 +630,10 @@ function ProfilePanel() {
             autoComplete="new-password"
             className="w-full h-9 px-3 rounded-md bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
           />
-          {pwNoMatch && <p className="text-[11px] text-yellow-400 ml-1">Passwords don't match</p>}
+          {pwNoMatch && <p className="text-[11px] text-warning-foreground ml-1">Passwords don't match</p>}
         </div>
         {pwResult && (
-          <p className={cn("text-xs", pwResult.ok ? "text-green-400" : "text-red-400")}>{pwResult.message}</p>
+          <p className={cn("text-xs", pwResult.ok ? "text-success-foreground" : "text-danger-foreground")}>{pwResult.message}</p>
         )}
         <button
           onClick={handleChangePassword}
@@ -706,7 +706,7 @@ function GitTokenSection() {
             {saving ? "Saving..." : "Save"}
           </button>
         </div>
-        {result && <p className={cn("text-xs", result.ok ? "text-green-400" : "text-red-400")}>{result.message}</p>}
+        {result && <p className={cn("text-xs", result.ok ? "text-success-foreground" : "text-danger-foreground")}>{result.message}</p>}
       </div>
     </Section>
   );
@@ -815,12 +815,12 @@ function DeployKeysSection() {
         {/* Newly generated key — show public key for copying */}
         {newKey && (
           <div className="bg-green-500/5 border border-green-500/20 rounded-lg p-3 space-y-2">
-            <p className="text-xs text-green-400 font-medium">Key generated! Copy the public key below and add it as a deploy key on your repository.</p>
+            <p className="text-xs text-success-foreground font-medium">Key generated! Copy the public key below and add it as a deploy key on your repository.</p>
             <div className="flex items-center gap-2">
               <code className="flex-1 bg-background px-2 py-1.5 rounded text-[11px] font-mono-deck text-foreground truncate select-all">{newKey.public_key}</code>
               <button onClick={() => copyKey(newKey.public_key)}
                 className="shrink-0 h-7 px-2.5 rounded bg-secondary text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-1">
-                {copied ? <><Check className="w-3 h-3 text-green-400" /> Copied</> : <><Copy className="w-3 h-3" /> Copy</>}
+                {copied ? <><Check className="w-3 h-3 text-success-foreground" /> Copied</> : <><Copy className="w-3 h-3" /> Copy</>}
               </button>
             </div>
             <button onClick={() => setNewKey(null)} className="text-[10px] text-muted-foreground hover:text-foreground">Dismiss</button>
@@ -860,7 +860,7 @@ function DeployKeysSection() {
                       <span
                         className={cn(
                           "text-[10px]",
-                          testResult.ok ? "text-green-400" : "text-red-400"
+                          testResult.ok ? "text-success-foreground" : "text-danger-foreground"
                         )}
                       >
                         {testResult.ok ? "Connected" : testResult.detail.slice(0, 50)}
@@ -874,7 +874,7 @@ function DeployKeysSection() {
                     </button>
                     <button
                       onClick={() => handleDelete(k.id)}
-                      className="text-muted-foreground hover:text-red-400"
+                      className="text-muted-foreground hover:text-danger-foreground"
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
@@ -884,13 +884,13 @@ function DeployKeysSection() {
                   <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
                     {hostOnly ? (
                       <span
-                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-amber-500/30 bg-amber-500/10 text-amber-400"
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-amber-500/30 bg-amber-500/10 text-warning-foreground"
                         title="This key isn't reachable by the resolver since v0.9.5.9. Add a repo_url to use it, or delete it."
                       >
                         Host-only — unused
                       </span>
                     ) : (
-                      <code className="font-mono-deck text-foreground/70 truncate max-w-[280px]">
+                      <code className="font-mono-deck text-foreground truncate max-w-[280px]">
                         {k.repo_url}
                       </code>
                     )}
@@ -996,7 +996,7 @@ function EmailSettingsPanel() {
         "flex items-center gap-3 px-4 py-3 rounded-lg border",
         configured ? "bg-green-500/5 border-green-500/20" : "bg-yellow-500/5 border-yellow-500/20"
       )}>
-        <Mail className={cn("w-4 h-4 shrink-0", configured ? "text-green-400" : "text-yellow-400")} />
+        <Mail className={cn("w-4 h-4 shrink-0", configured ? "text-success-foreground" : "text-warning-foreground")} />
         <div>
           <p className="text-sm text-foreground font-medium">
             {configured ? "SMTP Configured" : "SMTP Not Configured"}
@@ -1059,7 +1059,7 @@ function EmailSettingsPanel() {
         </div>
 
         {result && (
-          <div className={cn("px-3 py-2 rounded-md text-xs", result.ok ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400")}>
+          <div className={cn("px-3 py-2 rounded-md text-xs", result.ok ? "bg-green-500/10 text-success-foreground" : "bg-red-500/10 text-danger-foreground")}>
             {result.message}
           </div>
         )}
@@ -1159,7 +1159,7 @@ function EmailSettingsPanel() {
                   <ChevronRight className={cn("w-3 h-3 text-muted-foreground transition-transform", isOpen && "rotate-90")} />
                   <span className="text-xs font-display text-foreground">{provider.name}</span>
                 </div>
-                <span className="text-[10px] text-green-400 font-mono-deck">{provider.free}</span>
+                <span className="text-[10px] text-success-foreground font-mono-deck">{provider.free}</span>
               </button>
               {isOpen && (
                 <div className="px-4 py-3 border-t border-border space-y-2 text-xs text-muted-foreground">
@@ -1167,7 +1167,7 @@ function EmailSettingsPanel() {
                     <p key={i} className="font-body"><strong className="text-foreground">{i + 1}.</strong> {step}</p>
                   ))}
                   {provider.note && (
-                    <p className="text-muted-foreground/70 mt-1 font-body">{provider.note}</p>
+                    <p className="text-muted-foreground mt-1 font-body">{provider.note}</p>
                   )}
                 </div>
               )}
@@ -1316,7 +1316,7 @@ export default function SettingsPage() {
               to="/analytics"
               className="bg-card rounded-lg border border-border p-4 flex items-center gap-3 hover:border-primary/30 transition-colors"
             >
-              <BarChart3 className="w-4 h-4 text-blue-400 shrink-0" />
+              <BarChart3 className="w-4 h-4 text-info-foreground shrink-0" />
               <div>
                 <p className="text-sm text-foreground font-body">Usage Analytics</p>
                 <p className="text-xs text-muted-foreground">Time per page, sessions, devices</p>
@@ -1485,7 +1485,7 @@ export default function SettingsPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">Status</span>
-                  <span className="text-xs font-mono-deck text-green-400">Enabled</span>
+                  <span className="text-xs font-mono-deck text-success-foreground">Enabled</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">Type</span>
@@ -1511,7 +1511,7 @@ export default function SettingsPage() {
                 </p>
                 <button
                   onClick={() => setShowSslSetup(true)}
-                  className="h-8 px-4 rounded-md bg-primary text-xs text-white font-body hover:bg-primary/90 transition-colors"
+                  className="h-8 px-4 rounded-md bg-primary text-xs text-primary-foreground font-body hover:bg-primary/90 transition-colors"
                 >
                   Configure HTTPS
                 </button>

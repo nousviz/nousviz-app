@@ -25,13 +25,13 @@ html {
     --card-foreground: 240 10% 10%;
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 10%;
-    --primary: 210 100% 62%;   /* #3f9fff — brand blue, matches favicon */
+    --primary: 210 100% 42%;   /* B340: darker brand blue so white button text and blue links reach 4.5:1. The favicon blue is --brand. */
     --primary-foreground: 0 0% 100%;
     --secondary: 240 5% 93%;
     --secondary-foreground: 240 5% 35%;
     --muted: 240 5% 93%;
-    --muted-foreground: 240 5% 45%;
-    --accent: 210 100% 62%;
+    --muted-foreground: 240 5% 40%;   /* B340: 4.5:1 on secondary/muted fills too */
+    --accent: 210 100% 42%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 50%;
     --destructive-foreground: 0 0% 100%;
@@ -47,6 +47,19 @@ html {
     --sidebar-accent-foreground: 240 10% 10%;
     --sidebar-border: 240 6% 90%;
     --sidebar-ring: 210 100% 45%;
+
+    /* B340: brand and status tokens. --brand is the favicon blue, for
+       decoration only, never behind text. Status *-foreground values reach
+       4.5:1 on the page, cards and their own 10-20% tint. */
+    --brand: 210 100% 62%;
+    --info: 217 91% 60%;              /* blue-500 */
+    --info-foreground: 224 76% 48%;   /* blue-700 */
+    --success: 160 84% 39%;           /* emerald-500 */
+    --success-foreground: 163 94% 24%;/* emerald-700 */
+    --warning: 38 92% 50%;            /* amber-500 */
+    --warning-foreground: 23 83% 31%; /* amber-800 */
+    --danger: 0 84% 60%;              /* red-500 */
+    --danger-foreground: 0 74% 42%;   /* red-700 */
     --sidebar-w: 224px;
     --topbar-h: 56px;
     /* Font family tokens */
@@ -64,14 +77,14 @@ html {
     --popover: 240 10% 3.9%;
     --popover-foreground: 0 0% 98%;
     --primary: 210 100% 60%;
-    --primary-foreground: 0 0% 98%;
+    --primary-foreground: 240 10% 10%;   /* B340: dark text on the blue (white was 2.8:1), as Sovereign does */
     --secondary: 240 5% 12%;
     --secondary-foreground: 0 0% 70%;
     --muted: 240 5% 15%;
-    --muted-foreground: 0 0% 40%;
+    --muted-foreground: 0 0% 60%;   /* B340: was 40%, 3.4:1 on cards */
     --accent: 210 100% 60%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 84.2% 60.2%;
+    --accent-foreground: 240 10% 10%;
+    --destructive: 0 84.2% 48%;   /* B340: white text 4.5:1 (was 60.2%, 3.6:1) */
     --destructive-foreground: 210 40% 98%;
     --border: 0 0% 100% / 0.05;
     --input: 240 5% 15%;
@@ -79,11 +92,17 @@ html {
     --sidebar-background: 240 8% 5%;
     --sidebar-foreground: 0 0% 98%;
     --sidebar-primary: 210 100% 60%;
-    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-primary-foreground: 240 10% 10%;
     --sidebar-accent: 240 5% 12%;
     --sidebar-accent-foreground: 0 0% 98%;
     --sidebar-border: 0 0% 100% / 0.05;
     --sidebar-ring: 210 100% 60%;
+
+    /* B340: status text on dark surfaces (Sovereign and the dark presets use these too). */
+    --info-foreground: 212 96% 78%;    /* blue-300 */
+    --success-foreground: 156 72% 67%; /* emerald-300 */
+    --warning-foreground: 46 97% 65%;  /* amber-300 */
+    --danger-foreground: 0 94% 82%;    /* red-300 */
   }
 
   /* ── Sovereign Analyst palette (deep space, premium iGaming) ── */

@@ -245,8 +245,8 @@ export default function InstallPluginPage() {
           {keyIsRepoScoped && !newPublicKey && (
             <div className="space-y-3">
               <div className="flex items-center gap-3 px-3 py-2 rounded-md bg-green-500/5 border border-green-500/20 text-xs">
-                <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
-                <span className="text-green-400">Deploy key found for this repo: <strong>{keyStatus?.key_name}</strong></span>
+                <CheckCircle2 className="w-4 h-4 text-success-foreground shrink-0" />
+                <span className="text-success-foreground">Deploy key found for this repo: <strong>{keyStatus?.key_name}</strong></span>
               </div>
               {/* Test button */}
               <button onClick={testConnection} disabled={testing}
@@ -261,9 +261,9 @@ export default function InstallPluginPage() {
           {keyIsHostOnly && !newPublicKey && (
             <div className="space-y-3">
               <div className="flex items-center gap-3 px-3 py-2.5 rounded-md bg-yellow-500/5 border border-yellow-500/20 text-xs">
-                <AlertTriangle className="w-4 h-4 text-yellow-400 shrink-0" />
+                <AlertTriangle className="w-4 h-4 text-warning-foreground shrink-0" />
                 <div>
-                  <p className="text-yellow-400">A deploy key exists for <strong>{keyStatus?.key_name}</strong>, but it's scoped to a different repo.</p>
+                  <p className="text-warning-foreground">A deploy key exists for <strong>{keyStatus?.key_name}</strong>, but it's scoped to a different repo.</p>
                   <p className="text-muted-foreground mt-1">Test the connection to check if it works, or generate a new key for this specific repo.</p>
                 </div>
               </div>
@@ -274,7 +274,7 @@ export default function InstallPluginPage() {
                   {testing ? "Testing…" : "Test Connection"}
                 </button>
                 <button onClick={generateKey} disabled={generating}
-                  className="h-8 px-3 rounded-md bg-primary text-xs text-white hover:bg-primary/90 transition-colors flex items-center gap-1.5 disabled:opacity-50">
+                  className="h-8 px-3 rounded-md bg-primary text-xs text-primary-foreground hover:bg-primary/90 transition-colors flex items-center gap-1.5 disabled:opacity-50">
                   <Key className="w-3 h-3" />
                   {generating ? "Generating…" : "Generate New Key for This Repo"}
                 </button>
@@ -286,8 +286,8 @@ export default function InstallPluginPage() {
           {keyStatus && !keyStatus.has_key && !newPublicKey && !keyChecking && (
             <div className="space-y-3">
               <div className="flex items-center gap-3 px-3 py-2 rounded-md bg-yellow-500/5 border border-yellow-500/20 text-xs">
-                <AlertTriangle className="w-4 h-4 text-yellow-400 shrink-0" />
-                <span className="text-yellow-400">No deploy key found. Generate one to authenticate with this repository.</span>
+                <AlertTriangle className="w-4 h-4 text-warning-foreground shrink-0" />
+                <span className="text-warning-foreground">No deploy key found. Generate one to authenticate with this repository.</span>
               </div>
               <button onClick={generateKey} disabled={generating}
                 className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center gap-2">
@@ -302,8 +302,8 @@ export default function InstallPluginPage() {
               testResult.ok ? "bg-green-500/5 border border-green-500/20" : "bg-red-500/5 border border-red-500/20"
             )}>
               <div className="flex items-center gap-3 px-3 py-2">
-                {testResult.ok ? <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" /> : <XCircle className="w-4 h-4 text-red-400 shrink-0" />}
-                <span className={testResult.ok ? "text-green-400" : "text-red-400"}>{testResult.message}</span>
+                {testResult.ok ? <CheckCircle2 className="w-4 h-4 text-success-foreground shrink-0" /> : <XCircle className="w-4 h-4 text-danger-foreground shrink-0" />}
+                <span className={testResult.ok ? "text-success-foreground" : "text-danger-foreground"}>{testResult.message}</span>
               </div>
               {testResult.ok && !result?.ok && (
                 <div className="px-3 pb-3">
@@ -315,7 +315,7 @@ export default function InstallPluginPage() {
               )}
               {result && (
                 <div className={cn("mx-3 mb-3 flex items-start gap-3 px-3 py-3 rounded-md",
-                  result.ok ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"
+                  result.ok ? "bg-green-500/10 text-success-foreground" : "bg-red-500/10 text-danger-foreground"
                 )}>
                   {result.ok ? <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" /> : <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />}
                   <div>
@@ -339,7 +339,7 @@ export default function InstallPluginPage() {
           {/* Newly generated key */}
           {newPublicKey && (
             <div className="bg-green-500/5 border border-green-500/20 rounded-lg p-4 space-y-3">
-              <p className="text-xs text-green-400 font-medium">SSH key generated. Add it to your repository:</p>
+              <p className="text-xs text-success-foreground font-medium">SSH key generated. Add it to your repository:</p>
               <ol className="text-xs text-muted-foreground space-y-1.5 list-decimal list-inside">
                 <li>Copy the public key below</li>
                 <li>Go to your repository → <strong className="text-foreground">Settings → Deploy keys → Add deploy key</strong></li>
@@ -349,7 +349,7 @@ export default function InstallPluginPage() {
                 <code className="flex-1 bg-background px-2 py-1.5 rounded text-[11px] font-mono-deck text-foreground truncate select-all">{newPublicKey}</code>
                 <button onClick={() => { navigator.clipboard.writeText(newPublicKey); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
                   className="shrink-0 h-7 px-2.5 rounded bg-secondary text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-1">
-                  {copied ? <><Check className="w-3 h-3 text-green-400" /> Copied</> : <><Copy className="w-3 h-3" /> Copy</>}
+                  {copied ? <><Check className="w-3 h-3 text-success-foreground" /> Copied</> : <><Copy className="w-3 h-3" /> Copy</>}
                 </button>
               </div>
               <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
@@ -380,7 +380,7 @@ export default function InstallPluginPage() {
           </p>
           {result && (
             <div className={cn("flex items-start gap-3 px-3 py-3 rounded-md text-xs",
-              result.ok ? "bg-green-500/5 border border-green-500/20 text-green-400" : "bg-red-500/5 border border-red-500/20 text-red-400"
+              result.ok ? "bg-green-500/5 border border-green-500/20 text-success-foreground" : "bg-red-500/5 border border-red-500/20 text-danger-foreground"
             )}>
               {result.ok ? <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" /> : <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />}
               <div>

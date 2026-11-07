@@ -173,11 +173,11 @@ export default function OperationDetail({ spec, method, path, op }: Props) {
               const codeNum = parseInt(code, 10);
               const codeColor =
                 codeNum >= 200 && codeNum < 300
-                  ? "text-emerald-400"
+                  ? "text-success-foreground"
                   : codeNum >= 400 && codeNum < 500
-                  ? "text-amber-400"
+                  ? "text-warning-foreground"
                   : codeNum >= 500
-                  ? "text-rose-400"
+                  ? "text-danger-foreground"
                   : "text-muted-foreground";
               return (
                 <div key={code} className="rounded-md border border-border bg-card/40 p-3 space-y-2">

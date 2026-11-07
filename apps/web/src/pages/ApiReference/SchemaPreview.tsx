@@ -116,7 +116,7 @@ export default function SchemaPreview({ schema, spec, depth = 0, inline = false 
                 <td className="px-3 py-1.5 align-top">
                   <span className="font-mono-deck text-foreground">{name}</span>
                   {required.has(name) && (
-                    <span className="ml-1.5 text-[10px] text-rose-400 uppercase tracking-wide">
+                    <span className="ml-1.5 text-[10px] text-danger-foreground uppercase tracking-wide">
                       required
                     </span>
                   )}

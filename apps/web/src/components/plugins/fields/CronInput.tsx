@@ -70,10 +70,10 @@ export default function CronInput({ name, value, onChange, required }: Props) {
       <p
         className={
           preview.level === "invalid"
-            ? "text-[11px] text-red-400 inline-flex items-center gap-1"
+            ? "text-[11px] text-danger-foreground inline-flex items-center gap-1"
             : preview.level === "advanced"
             ? "text-[11px] text-muted-foreground inline-flex items-center gap-1"
-            : "text-[11px] text-emerald-400 inline-flex items-center gap-1"
+            : "text-[11px] text-success-foreground inline-flex items-center gap-1"
         }
       >
         <Clock className="w-3 h-3" /> {preview.text}

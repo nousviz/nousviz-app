@@ -93,7 +93,7 @@ function InstallButton({ pluginId, onInstalled }: { pluginId: string; onInstalle
 
   if (state === "done") {
     return (
-      <span className="inline-flex items-center gap-2 h-10 px-5 rounded-md bg-green-500/10 text-green-400 text-sm">
+      <span className="inline-flex items-center gap-2 h-10 px-5 rounded-md bg-green-500/10 text-success-foreground text-sm">
         <CheckCircle2 className="w-4 h-4" /> Installed
       </span>
     );
@@ -211,8 +211,8 @@ export default function PluginDetailPage() {
           {/* Icon */}
           <div className={cn(
             "h-16 w-16 rounded-xl flex items-center justify-center shrink-0",
-            isPremium ? "bg-orange-500/10 text-orange-400"
-              : plugin.installed ? "bg-green-500/10 text-green-400"
+            isPremium ? "bg-orange-500/10 text-warning-foreground"
+              : plugin.installed ? "bg-green-500/10 text-success-foreground"
               : "bg-primary/10 text-primary"
           )}>
             <Package className="w-8 h-8" />
@@ -223,17 +223,17 @@ export default function PluginDetailPage() {
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="font-display text-2xl text-foreground">{plugin.display_name}</h1>
               {plugin.publisher?.verified && (
-                <span className="flex items-center gap-1 text-xs text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full">
+                <span className="flex items-center gap-1 text-xs text-info-foreground bg-blue-500/10 px-2 py-0.5 rounded-full">
                   <CheckCircle2 className="w-3 h-3" /> Verified
                 </span>
               )}
               {isPremium && (
-                <span className="flex items-center gap-1 text-xs text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full">
+                <span className="flex items-center gap-1 text-xs text-warning-foreground bg-orange-500/10 px-2 py-0.5 rounded-full">
                   <Lock className="w-3 h-3" /> Premium
                 </span>
               )}
               {plugin.installed && (
-                <span className="flex items-center gap-1 text-xs text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full">
+                <span className="flex items-center gap-1 text-xs text-success-foreground bg-green-500/10 px-2 py-0.5 rounded-full">
                   <CheckCircle2 className="w-3 h-3" /> Installed
                 </span>
               )}
@@ -280,7 +280,7 @@ export default function PluginDetailPage() {
                 </button>
               </>
             ) : isPremium ? (
-              <button disabled className="inline-flex items-center gap-2 h-10 px-5 rounded-md bg-orange-500/10 text-orange-400/60 text-sm cursor-not-allowed">
+              <button disabled className="inline-flex items-center gap-2 h-10 px-5 rounded-md bg-orange-500/10 text-warning-foreground text-sm cursor-not-allowed">
                 <Lock className="w-4 h-4" /> Premium only
               </button>
             ) : (
@@ -313,7 +313,7 @@ export default function PluginDetailPage() {
                   <span className="font-mono-deck text-foreground capitalize">{key}</span>
                   <span className={cn(
                     "text-xs px-2 py-0.5 rounded-full font-mono-deck",
-                    val === true ? "bg-green-500/10 text-green-400" : "bg-secondary text-muted-foreground"
+                    val === true ? "bg-green-500/10 text-success-foreground" : "bg-secondary text-muted-foreground"
                   )}>
                     {String(val)}
                   </span>
@@ -334,7 +334,7 @@ export default function PluginDetailPage() {
                     <span className="text-foreground">{c.label || c.name}</span>
                     <div className="flex items-center gap-2">
                       <span className="font-mono-deck text-xs text-muted-foreground">{c.type}</span>
-                      {c.required && <span className="text-xs text-orange-400 bg-orange-500/10 px-1.5 py-0.5 rounded">required</span>}
+                      {c.required && <span className="text-xs text-warning-foreground bg-orange-500/10 px-1.5 py-0.5 rounded">required</span>}
                     </div>
                   </div>
                   {c.description && <p className="text-xs text-muted-foreground">{c.description}</p>}
@@ -395,7 +395,7 @@ export default function PluginDetailPage() {
             <div className="space-y-1.5 text-sm">
               <div className="flex items-center gap-2">
                 <span className="text-foreground font-display">{plugin.publisher.name}</span>
-                {plugin.publisher.verified && <CheckCircle2 className="w-3.5 h-3.5 text-blue-400" />}
+                {plugin.publisher.verified && <CheckCircle2 className="w-3.5 h-3.5 text-info-foreground" />}
               </div>
               {plugin.publisher.website && (
                 <a href={plugin.publisher.website} target="_blank" rel="noopener noreferrer"

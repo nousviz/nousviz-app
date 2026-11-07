@@ -101,7 +101,7 @@ export default function SharedViewPage() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="max-w-sm text-center space-y-4">
-          <AlertTriangle className="w-10 h-10 text-yellow-400 mx-auto" />
+          <AlertTriangle className="w-10 h-10 text-warning-foreground mx-auto" />
           <p className="text-sm text-foreground">{error}</p>
           <a href="/" className="text-xs text-primary hover:underline">Go to NousViz</a>
         </div>
@@ -129,7 +129,7 @@ export default function SharedViewPage() {
               placeholder="Enter password"
               className="w-full h-10 px-3 rounded-md bg-card border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             />
-            {pwError && <p className="text-xs text-red-400">{pwError}</p>}
+            {pwError && <p className="text-xs text-danger-foreground">{pwError}</p>}
             <button
               onClick={() => accessShare(password)}
               disabled={!password || submitting}
@@ -163,7 +163,7 @@ export default function SharedViewPage() {
         {/* Shared view header */}
         <div className="border-b border-border px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <CheckCircle2 className="w-4 h-4 text-green-400" />
+            <CheckCircle2 className="w-4 h-4 text-success-foreground" />
             <span className="font-display text-sm text-foreground">{content.title}</span>
             <span className="text-[10px] text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">Shared view</span>
           </div>

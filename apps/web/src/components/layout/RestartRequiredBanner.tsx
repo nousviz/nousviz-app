@@ -118,12 +118,12 @@ export default function RestartRequiredBanner() {
     : "A plugin was removed. Its API routes will stop working after the next restart.";
 
   return (
-    <div className="bg-orange-500/10 border-b border-orange-500/20 px-4 py-2 text-sm text-orange-400 flex items-center gap-2 shrink-0">
+    <div className="bg-orange-500/10 border-b border-orange-500/20 px-4 py-2 text-sm text-warning-foreground flex items-center gap-2 shrink-0">
       <RefreshCw className="w-4 h-4 shrink-0" />
       <span className="flex-1">{message}</span>
       <button
         onClick={dismiss}
-        className="ml-2 text-orange-400/60 hover:text-orange-400 transition-colors"
+        className="ml-2 text-warning-foreground hover:opacity-80 transition-colors"
         title="Dismiss — routes remain active until restart"
       >
         <X className="w-3.5 h-3.5" />

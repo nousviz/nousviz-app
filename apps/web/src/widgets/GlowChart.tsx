@@ -262,7 +262,7 @@ export default function GlowChart({
               </div>
               <p className="text-lg font-display font-bold">{formatY(s.last)}</p>
               <p className={cn("text-[10px] font-mono",
-                s.change > 0 ? "text-emerald-400" : s.change < 0 ? "text-red-400" : "text-muted-foreground"
+                s.change > 0 ? "text-success-foreground" : s.change < 0 ? "text-danger-foreground" : "text-muted-foreground"
               )}>
                 {s.change > 0 ? "▲" : s.change < 0 ? "▼" : "→"} {Math.abs(s.change).toFixed(1)}% vs prior
               </p>

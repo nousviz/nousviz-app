@@ -34,7 +34,7 @@ function CodeBlock({ code, language = "python" }: { code: string; language?: str
           onClick={copy}
           className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 text-[10px] font-mono-deck text-muted-foreground hover:text-foreground"
         >
-          {copied ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+          {copied ? <Check className="w-3 h-3 text-success-foreground" /> : <Copy className="w-3 h-3" />}
           {copied ? "Copied" : "Copy"}
         </button>
       </div>
@@ -55,8 +55,8 @@ function Callout({
   children: React.ReactNode;
 }) {
   const styles = {
-    info: "bg-blue-500/5 border-blue-500/20 text-blue-300",
-    warning: "bg-orange-500/5 border-orange-500/20 text-orange-300",
+    info: "bg-blue-500/5 border-blue-500/20 text-info-foreground",
+    warning: "bg-orange-500/5 border-orange-500/20 text-warning-foreground",
     rule: "bg-primary/5 border-primary/20 text-primary",
   };
   const Icon = type === "warning" ? AlertTriangle : type === "rule" ? CheckCircle2 : Info;
@@ -685,14 +685,14 @@ POST /api/plugins/{slug}/settings     → { "sync_enabled": false }  → saves t
               </div>
               <div className="grid grid-cols-2 divide-x divide-border">
                 <div>
-                  <div className="px-3 pt-2 pb-1 text-[10px] font-mono-deck text-red-400">wrong</div>
-                  <pre className="px-3 pb-3 text-[11px] font-mono-deck text-red-300/70 whitespace-pre-wrap">
+                  <div className="px-3 pt-2 pb-1 text-[10px] font-mono-deck text-danger-foreground">wrong</div>
+                  <pre className="px-3 pb-3 text-[11px] font-mono-deck text-danger-foreground whitespace-pre-wrap">
                     {rule.bad}
                   </pre>
                 </div>
                 <div>
-                  <div className="px-3 pt-2 pb-1 text-[10px] font-mono-deck text-green-400">correct</div>
-                  <pre className="px-3 pb-3 text-[11px] font-mono-deck text-green-300/70 whitespace-pre-wrap">
+                  <div className="px-3 pt-2 pb-1 text-[10px] font-mono-deck text-success-foreground">correct</div>
+                  <pre className="px-3 pb-3 text-[11px] font-mono-deck text-success-foreground whitespace-pre-wrap">
                     {rule.good}
                   </pre>
                 </div>
@@ -781,7 +781,7 @@ LIMIT 90`}
             ["No frontend code in this repo", "Plugins cannot ship custom React components into this repo. Use DashboardRenderer for data visualisation. Custom widgets must be pre-registered in COMPONENT_REGISTRY if they already exist in apps/web/src/widgets/."],
           ].map(([title, body]) => (
             <div key={title as string} className="flex gap-3 p-3 rounded-md bg-secondary/30 border border-border">
-              <AlertTriangle className="w-3.5 h-3.5 text-orange-400 shrink-0 mt-0.5" />
+              <AlertTriangle className="w-3.5 h-3.5 text-warning-foreground shrink-0 mt-0.5" />
               <div>
                 <p className="text-xs font-display text-foreground mb-0.5">{title}</p>
                 <p className="text-xs font-body text-muted-foreground">{body}</p>

@@ -65,9 +65,9 @@ interface CheckItem {
 // ── Shared ────────────────────────────────────────────────────────────
 
 function StatusIcon({ status }: { status: CheckItem["status"] }) {
-  if (status === "ok")      return <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />;
-  if (status === "warn")    return <AlertTriangle className="w-4 h-4 text-yellow-400 shrink-0" />;
-  if (status === "error")   return <XCircle className="w-4 h-4 text-red-400 shrink-0" />;
+  if (status === "ok")      return <CheckCircle2 className="w-4 h-4 text-success-foreground shrink-0" />;
+  if (status === "warn")    return <AlertTriangle className="w-4 h-4 text-warning-foreground shrink-0" />;
+  if (status === "error")   return <XCircle className="w-4 h-4 text-danger-foreground shrink-0" />;
   return <div className="w-4 h-4 rounded-full border-2 border-border shrink-0 animate-pulse" />;
 }
 
@@ -85,7 +85,7 @@ function StepWelcome({ health, checks }: { health: HealthData | null; checks: Ch
           "h-12 w-12 rounded-xl flex items-center justify-center shrink-0",
           loading ? "bg-secondary" : allOk ? "bg-green-500/10" : "bg-primary/10"
         )}>
-          <Rocket className={cn("w-6 h-6", loading ? "text-muted-foreground animate-pulse" : allOk ? "text-green-400" : "text-primary")} />
+          <Rocket className={cn("w-6 h-6", loading ? "text-muted-foreground animate-pulse" : allOk ? "text-success-foreground" : "text-primary")} />
         </div>
         <div>
           <h2 className="font-display text-lg text-foreground">
@@ -157,7 +157,7 @@ function StepDatabase({ check }: { check: CheckItem }) {
     <div className="space-y-5">
       <div className="flex items-start gap-3">
         <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center shrink-0", ok ? "bg-green-500/10" : "bg-red-500/10")}>
-          <Database className={cn("w-5 h-5", ok ? "text-green-400" : "text-red-400")} />
+          <Database className={cn("w-5 h-5", ok ? "text-success-foreground" : "text-danger-foreground")} />
         </div>
         <div>
           <h2 className="font-display text-lg text-foreground">PostgreSQL</h2>
@@ -166,12 +166,12 @@ function StepDatabase({ check }: { check: CheckItem }) {
       </div>
 
       {ok ? (
-        <div className="rounded-lg border border-green-500/20 bg-green-500/5 px-4 py-3 text-sm text-green-400 flex items-center gap-2">
+        <div className="rounded-lg border border-green-500/20 bg-green-500/5 px-4 py-3 text-sm text-success-foreground flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 shrink-0" /> Database is connected and migrations are applied.
         </div>
       ) : (
         <div className="space-y-3">
-          <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400">
+          <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-danger-foreground">
             Cannot connect to Postgres. The API won't work without a database.
           </div>
           <div className="rounded-lg border border-border p-4 space-y-3 text-sm">
@@ -218,7 +218,7 @@ function StepPostgresPassword({
     <div className="space-y-5">
       <div className="flex items-start gap-3">
         <div className="h-10 w-10 rounded-lg bg-yellow-500/10 flex items-center justify-center shrink-0">
-          <Database className="w-5 h-5 text-yellow-400" />
+          <Database className="w-5 h-5 text-warning-foreground" />
         </div>
         <div>
           <h2 className="font-display text-lg text-foreground">Secure your database</h2>
@@ -229,7 +229,7 @@ function StepPostgresPassword({
       </div>
 
       <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-4 space-y-3">
-        <p className="text-xs text-red-400">
+        <p className="text-xs text-danger-foreground">
           <span className="font-mono-deck bg-secondary px-1 rounded">POSTGRES_PASSWORD</span> is set to the publicly known default{" "}
           <span className="font-mono-deck bg-secondary px-1 rounded">nousviz_dev</span>.{" "}
           Set a unique password to secure your database.
@@ -254,10 +254,10 @@ function StepPostgresPassword({
             </button>
           </div>
           {pgPw.length > 0 && pgPw.length < 8 && (
-            <p className="text-[11px] text-yellow-400 mt-1">{8 - pgPw.length} more character{8 - pgPw.length !== 1 ? "s" : ""} needed</p>
+            <p className="text-[11px] text-warning-foreground mt-1">{8 - pgPw.length} more character{8 - pgPw.length !== 1 ? "s" : ""} needed</p>
           )}
           {pgPw.length >= 8 && (
-            <p className="text-[11px] text-green-400 mt-1">✓ Length requirement met</p>
+            <p className="text-[11px] text-success-foreground mt-1">✓ Length requirement met</p>
           )}
         </div>
 
@@ -272,10 +272,10 @@ function StepPostgresPassword({
               className="w-full h-9 px-3 rounded-md bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             />
             {pgPwConfirm.length > 0 && pgPw !== pgPwConfirm && (
-              <p className="text-[11px] text-red-400 mt-1">Passwords do not match</p>
+              <p className="text-[11px] text-danger-foreground mt-1">Passwords do not match</p>
             )}
             {pgPwConfirm.length > 0 && pgPw === pgPwConfirm && pgPw.length >= 8 && (
-              <p className="text-[11px] text-green-400 mt-1">✓ Passwords match</p>
+              <p className="text-[11px] text-success-foreground mt-1">✓ Passwords match</p>
             )}
           </div>
         )}
@@ -386,7 +386,7 @@ function StepSecurity({
     <div className="space-y-5">
       <div className="flex items-start gap-3">
         <div className="h-10 w-10 rounded-lg bg-yellow-500/10 flex items-center justify-center shrink-0">
-          <Shield className="w-5 h-5 text-yellow-400" />
+          <Shield className="w-5 h-5 text-warning-foreground" />
         </div>
         <div>
           <h2 className="font-display text-lg text-foreground">Security</h2>
@@ -402,19 +402,19 @@ function StepSecurity({
         encGenerated ? "border-green-500/20 bg-green-500/5" : "border-yellow-500/20 bg-yellow-500/5"
       )}>
         <div className="flex items-center gap-2">
-          <Key className={cn("w-4 h-4 shrink-0", encGenerated ? "text-green-400" : "text-yellow-400")} />
+          <Key className={cn("w-4 h-4 shrink-0", encGenerated ? "text-success-foreground" : "text-warning-foreground")} />
           <span className="text-sm font-medium text-foreground">Credential encryption key</span>
           <StatusIcon status={encGenerated ? "ok" : "warn"} />
         </div>
         {encGenerated ? (
-          <p className="text-xs text-green-400">Encryption key is set. Plugin credentials are stored securely.</p>
+          <p className="text-xs text-success-foreground">Encryption key is set. Plugin credentials are stored securely.</p>
         ) : (
           <>
             <p className="text-xs text-muted-foreground">
               A 256-bit AES key is required to encrypt plugin credentials at rest.
               Click below to generate one automatically.
             </p>
-            {encErr && <p className="text-xs text-red-400">{encErr}</p>}
+            {encErr && <p className="text-xs text-danger-foreground">{encErr}</p>}
             <button
               onClick={generateKey}
               disabled={encSaving}
@@ -438,14 +438,14 @@ function StepSecurity({
         <div className="flex items-center gap-2">
           <Shield className={cn(
             "w-4 h-4 shrink-0",
-            authDone ? "text-green-400" : isPublic ? "text-red-400" : "text-muted-foreground"
+            authDone ? "text-success-foreground" : isPublic ? "text-danger-foreground" : "text-muted-foreground"
           )} />
           <span className="text-sm font-medium text-foreground">Dashboard authentication</span>
           <StatusIcon status={authDone ? "ok" : isPublic ? "error" : "warn"} />
         </div>
 
         {authDone ? (
-          <p className="text-xs text-green-400">
+          <p className="text-xs text-success-foreground">
             Authentication configured. Close the wizard to continue.
           </p>
         ) : (
@@ -490,10 +490,10 @@ function StepSecurity({
                 </button>
               </div>
               {pw.length > 0 && pw.length < 8 && (
-                <p className="text-[11px] text-yellow-400 mt-1">{8 - pw.length} more character{8 - pw.length !== 1 ? "s" : ""} needed</p>
+                <p className="text-[11px] text-warning-foreground mt-1">{8 - pw.length} more character{8 - pw.length !== 1 ? "s" : ""} needed</p>
               )}
               {pw.length >= 8 && (
-                <p className="text-[11px] text-green-400 mt-1">✓ Length requirement met</p>
+                <p className="text-[11px] text-success-foreground mt-1">✓ Length requirement met</p>
               )}
             </div>
 
@@ -518,7 +518,7 @@ function StepSecurity({
               <span className="text-sm text-foreground">Enable authentication (recommended)</span>
             </label>
 
-            {authErr && <p className="text-xs text-red-400">{authErr}</p>}
+            {authErr && <p className="text-xs text-danger-foreground">{authErr}</p>}
 
             <button
               onClick={applyAuth}
@@ -602,7 +602,7 @@ function StepSsl({ onSetup, onSkip }: { onSetup: () => void; onSkip: () => void 
       <div className="space-y-5">
         <div className="flex items-start gap-3">
           <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
-            <Lock className="w-5 h-5 text-green-400" />
+            <Lock className="w-5 h-5 text-success-foreground" />
           </div>
           <div>
             <h2 className="font-display text-lg text-foreground">HTTPS</h2>
@@ -619,7 +619,7 @@ function StepSsl({ onSetup, onSkip }: { onSetup: () => void; onSkip: () => void 
     <div className="space-y-5">
       <div className="flex items-start gap-3">
         <div className="h-10 w-10 rounded-lg bg-yellow-500/10 flex items-center justify-center shrink-0">
-          <Lock className="w-5 h-5 text-yellow-400" />
+          <Lock className="w-5 h-5 text-warning-foreground" />
         </div>
         <div>
           <h2 className="font-display text-lg text-foreground">Secure your connection</h2>
@@ -637,7 +637,7 @@ function StepSsl({ onSetup, onSkip }: { onSetup: () => void; onSkip: () => void 
           <div className="flex items-center gap-2">
             <Globe className="w-4 h-4 text-primary" />
             <span className="text-sm font-medium text-foreground">Configure HTTPS now</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-400">Recommended</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/10 text-success-foreground">Recommended</span>
           </div>
           <p className="text-xs text-muted-foreground">
             Set up a free Let's Encrypt certificate. Requires a domain name pointed at this server.
@@ -662,7 +662,7 @@ function StepDone({ name, checks }: { name: string; checks: CheckItem[] }) {
     <div className="space-y-5">
       <div className="text-center py-2">
         <div className="h-14 w-14 rounded-2xl bg-green-500/10 flex items-center justify-center mx-auto mb-4">
-          <CheckCircle2 className="w-7 h-7 text-green-400" />
+          <CheckCircle2 className="w-7 h-7 text-success-foreground" />
         </div>
         <h2 className="font-display text-lg text-foreground">
           {issues.length === 0 ? "Ready to go" : "Setup complete"}
@@ -869,7 +869,7 @@ export default function SetupWizard(_props: { onClose: () => void }) {
           <p className="text-[10px] text-muted-foreground mt-1.5">
             {stepIdx + 1} of {STEPS.length} — {step.label}
             {mustSecure && (
-              <span className="ml-2 text-yellow-400">· Set a password to continue</span>
+              <span className="ml-2 text-warning-foreground">· Set a password to continue</span>
             )}
           </p>
         </div>

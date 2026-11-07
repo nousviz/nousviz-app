@@ -138,7 +138,7 @@ export default function ForgotPasswordModal({ open, defaultEmail, onClose }: For
             />
 
             {error && (
-              <p className="text-xs text-rose-400">{error}</p>
+              <p className="text-xs text-danger-foreground">{error}</p>
             )}
 
             <div className="flex items-center justify-end gap-2 pt-1">

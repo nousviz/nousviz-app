@@ -60,7 +60,7 @@ function CommunityTrustModal({ pluginName, onConfirm, onCancel }: {
       <div className="bg-card border border-border rounded-xl p-6 max-w-md w-full mx-4 space-y-4">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-lg bg-yellow-500/10 flex items-center justify-center shrink-0">
-            <AlertTriangle className="w-5 h-5 text-yellow-400" />
+            <AlertTriangle className="w-5 h-5 text-warning-foreground" />
           </div>
           <div>
             <h3 className="font-display text-base text-foreground">Community Plugin</h3>
@@ -82,7 +82,7 @@ function CommunityTrustModal({ pluginName, onConfirm, onCancel }: {
           </button>
           <button
             onClick={onConfirm}
-            className="flex-1 h-9 rounded-md bg-yellow-500/15 text-yellow-400 hover:bg-yellow-500/25 text-sm font-body transition-colors flex items-center justify-center gap-2"
+            className="flex-1 h-9 rounded-md bg-yellow-500/15 text-warning-foreground hover:bg-yellow-500/25 text-sm font-body transition-colors flex items-center justify-center gap-2"
           >
             <Download className="w-3.5 h-3.5" /> Install anyway
           </button>
@@ -132,7 +132,7 @@ function InstallButton({ pluginId, isCommunity, onInstalled, onCommunityInstallR
 
   if (state === "done") {
     return (
-      <span className="text-xs font-mono-deck text-green-400 flex items-center gap-1">
+      <span className="text-xs font-mono-deck text-success-foreground flex items-center gap-1">
         <CheckCircle2 className="w-3 h-3" /> Installed
       </span>
     );
@@ -158,7 +158,7 @@ function InstallButton({ pluginId, isCommunity, onInstalled, onCommunityInstallR
       className={cn(
         "text-xs font-body px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-colors",
         state === "error"
-          ? "bg-red-500/10 text-red-400 hover:bg-red-500/20"
+          ? "bg-red-500/10 text-danger-foreground hover:bg-red-500/20"
           : "bg-primary/10 text-primary hover:bg-primary/20"
       )}
       title={state === "error" ? errorMsg : undefined}
@@ -203,20 +203,20 @@ function PluginCard({
         <div className="flex items-center gap-3">
           <div className={cn(
             "h-10 w-10 rounded-lg flex items-center justify-center shrink-0",
-            isPremium ? "bg-orange-500/10 text-orange-400"
-              : plugin.installed ? "bg-green-500/10 text-green-400"
+            isPremium ? "bg-orange-500/10 text-warning-foreground"
+              : plugin.installed ? "bg-green-500/10 text-success-foreground"
               : featured ? "bg-primary/10 text-primary"
-              : "bg-blue-500/10 text-blue-400"
+              : "bg-blue-500/10 text-info-foreground"
           )}>
             <Package className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h3 className="font-display text-sm text-foreground">{plugin.display_name}</h3>
-              {plugin.publisher?.verified && <CheckCircle2 className="w-3.5 h-3.5 text-blue-400" />}
-              {isPremium && <Lock className="w-3.5 h-3.5 text-orange-400" />}
+              {plugin.publisher?.verified && <CheckCircle2 className="w-3.5 h-3.5 text-info-foreground" />}
+              {isPremium && <Lock className="w-3.5 h-3.5 text-warning-foreground" />}
               {isCommunity && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-mono-deck px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+                <span className="inline-flex items-center gap-1 text-[10px] font-mono-deck px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-warning-foreground border border-yellow-500/20">
                   <Users className="w-2.5 h-2.5" /> community
                 </span>
               )}
@@ -256,7 +256,7 @@ function PluginCard({
         </div>
         {plugin.installed ? (
           <div className="flex items-center gap-2">
-            <span className="text-xs font-mono-deck text-green-400 flex items-center gap-1">
+            <span className="text-xs font-mono-deck text-success-foreground flex items-center gap-1">
               <CheckCircle2 className="w-3 h-3" /> Installed
             </span>
             <button
@@ -270,7 +270,7 @@ function PluginCard({
         ) : isPremium ? (
           <button
             disabled
-            className="text-xs font-body px-3 py-1.5 rounded-md bg-orange-500/10 text-orange-400/60 flex items-center gap-1 cursor-not-allowed"
+            className="text-xs font-body px-3 py-1.5 rounded-md bg-orange-500/10 text-warning-foreground flex items-center gap-1 cursor-not-allowed"
             title="Premium — contact plugins@nousviz.com"
           >
             <Lock className="w-3 h-3" /> Premium
@@ -437,7 +437,7 @@ export default function MarketplacePage() {
           {official.length > 0 && (
             <div className="space-y-3">
               <h3 className="text-xs font-display text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                <CheckCircle2 className="w-3.5 h-3.5 text-blue-400" /> Official
+                <CheckCircle2 className="w-3.5 h-3.5 text-info-foreground" /> Official
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {official.map(plugin => (
@@ -481,9 +481,9 @@ export default function MarketplacePage() {
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <h3 className="text-xs font-display text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                  <Users className="w-3.5 h-3.5 text-yellow-400" /> Community
+                  <Users className="w-3.5 h-3.5 text-warning-foreground" /> Community
                 </h3>
-                <span className="text-[10px] font-body text-muted-foreground/60">
+                <span className="text-[10px] font-body text-muted-foreground">
                   — Third-party plugins. Review before installing.
                 </span>
               </div>

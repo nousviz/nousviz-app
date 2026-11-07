@@ -31,7 +31,7 @@ export function ConfirmDialog({ open, title, message, confirmLabel = "Delete", b
            className="bg-card border border-border rounded-lg p-5 max-w-md w-full space-y-3"
            onClick={e => e.stopPropagation()}>
         <div className="flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+          <AlertTriangle className="w-5 h-5 text-danger-foreground shrink-0 mt-0.5" />
           <div>
             <h3 id="confirm-dialog-title" className="text-sm font-display text-foreground">{title}</h3>
             <div className="text-xs text-muted-foreground mt-1">{message}</div>
@@ -43,7 +43,7 @@ export function ConfirmDialog({ open, title, message, confirmLabel = "Delete", b
             Cancel
           </button>
           <button onClick={onConfirm} disabled={busy} autoFocus
-                  className="h-8 px-3 rounded-md bg-red-500 text-white text-xs hover:bg-red-600 disabled:opacity-50 flex items-center gap-1.5">
+                  className="h-8 px-3 rounded-md bg-red-700 text-white text-xs hover:bg-red-800 disabled:opacity-50 flex items-center gap-1.5">
             <Trash2 className="w-3 h-3" />
             {busy ? "Deleting…" : confirmLabel}
           </button>

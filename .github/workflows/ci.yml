@@ -44,6 +44,11 @@ jobs:
         working-directory: apps/web
         run: npm run build
 
+      # B340: no low-contrast palette text shades (see the test's header).
+      - name: Contrast guard
+        working-directory: apps/web
+        run: npx vitest run src/lib/contrast-guard.test.ts
+
   unit-tests:
     name: Unit Tests (offline — no DB)
     runs-on: ubuntu-latest

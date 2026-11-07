@@ -456,7 +456,7 @@ export default function SystemPermissionsPage() {
       <div className="max-w-2xl mx-auto py-12">
         <div className="bg-card rounded-lg border border-amber-500/30 p-6 text-sm">
           <div className="flex items-start gap-3">
-            <Lock className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+            <Lock className="w-5 h-5 text-warning-foreground flex-shrink-0 mt-0.5" />
             <div>
               <p className="font-medium text-foreground mb-1">Not authorized</p>
               <p className="text-muted-foreground">
@@ -488,7 +488,7 @@ export default function SystemPermissionsPage() {
       <div className="max-w-2xl mx-auto py-12">
         <div className="bg-card rounded-lg border border-rose-500/30 p-6 text-sm">
           <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-rose-400 flex-shrink-0 mt-0.5" />
+            <AlertCircle className="w-5 h-5 text-danger-foreground flex-shrink-0 mt-0.5" />
             <div>
               <p className="font-medium text-foreground mb-1">Could not load permissions</p>
               <p className="text-muted-foreground">{error}</p>
@@ -524,7 +524,7 @@ export default function SystemPermissionsPage() {
           </span>
           {snapshot.shadow_mode && (
             <span
-              className="text-[10px] font-mono-deck uppercase tracking-wide bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded"
+              className="text-[10px] font-mono-deck uppercase tracking-wide bg-amber-500/10 text-warning-foreground px-2 py-0.5 rounded"
               title="Registry verdicts are logged to auth_audit but not enforced. Inline _require_* shims do the actual gating until v0.9.9.x."
             >
               shadow mode
@@ -565,7 +565,7 @@ export default function SystemPermissionsPage() {
       {/* Honest-banner: matrix capabilities. Dismissable; persists. */}
       {!noticeDismissed ? (
         <div className="bg-card rounded-lg border border-amber-500/30 p-4 text-xs flex items-start gap-3">
-          <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+          <AlertTriangle className="w-4 h-4 text-warning-foreground flex-shrink-0 mt-0.5" />
           <div className="text-muted-foreground space-y-1 flex-1">
             <p>
               <strong className="text-foreground">Editing live.</strong>{" "}
@@ -613,7 +613,7 @@ export default function SystemPermissionsPage() {
           </button>
         </div>
       ) : (
-        <div className="text-[11px] text-muted-foreground/60 -mb-2">
+        <div className="text-[11px] text-muted-foreground -mb-2">
           <button
             type="button"
             onClick={restoreNotice}
@@ -881,7 +881,7 @@ function ExplainerBlock({
             <p>
               Routes where the registry's verdict disagrees with the inline shim's verdict (the
               two-check belt-and-suspenders the v0.9.8.x sequence runs in shadow mode).{" "}
-              <strong className="text-rose-400">Zero is the only acceptable value.</strong> A
+              <strong className="text-danger-foreground">Zero is the only acceptable value.</strong> A
               non-zero count means the registry has a wrong permission for some route, and
               fixing it is a prerequisite for the v0.9.9.x enforcement flip.
             </p>
@@ -908,9 +908,9 @@ function SummaryTile({
   title?: string;
 }) {
   const toneClass =
-    tone === "ok" ? "text-emerald-400" :
-    tone === "warn" ? "text-amber-400" :
-    tone === "error" ? "text-rose-400" :
+    tone === "ok" ? "text-success-foreground" :
+    tone === "warn" ? "text-warning-foreground" :
+    tone === "error" ? "text-danger-foreground" :
     "text-foreground";
   return (
     <div className="bg-card rounded-lg border border-border p-3" title={title}>
@@ -1048,7 +1048,7 @@ function MatrixView({
                       <span>{data.display_name || r}</span>
                       {data.kind === "custom" && (
                         <span
-                          className="text-[8px] px-1 py-0.5 rounded bg-blue-500/10 text-blue-400 normal-case"
+                          className="text-[8px] px-1 py-0.5 rounded bg-blue-500/10 text-info-foreground normal-case"
                           title="Custom role"
                         >
                           custom
@@ -1128,7 +1128,7 @@ function PermissionRow({
                 <span className="font-mono-deck text-foreground">{name}</span>
                 {meta.sensitive && (
                   <span
-                    className="inline-flex items-center gap-0.5 text-[10px] font-mono-deck bg-rose-500/10 text-rose-400 px-1.5 py-0.5 rounded"
+                    className="inline-flex items-center gap-0.5 text-[10px] font-mono-deck bg-rose-500/10 text-danger-foreground px-1.5 py-0.5 rounded"
                     title="Sensitive — cannot be granted to non-admin or custom roles"
                   >
                     <Lock className="w-2.5 h-2.5" />
@@ -1260,14 +1260,14 @@ function PermissionCell({
           className={cn(
             "w-3.5 h-3.5 inline",
             isModified && state.overrideKind === "grant"
-              ? "text-amber-400"
-              : "text-emerald-400",
+              ? "text-warning-foreground"
+              : "text-success-foreground",
           )}
           aria-label="Held"
         />
       ) : (
         isModified && state.overrideKind === "revoke" ? (
-          <span className="text-rose-400 font-bold" aria-label="Explicitly revoked">✗</span>
+          <span className="text-danger-foreground font-bold" aria-label="Explicitly revoked">✗</span>
         ) : (
           <span className="text-border" aria-label="Not held">—</span>
         )
@@ -1402,20 +1402,20 @@ const ACTION_LABELS: Record<AuditEntry["action"], string> = {
 };
 
 const ACTION_TONES: Record<AuditEntry["action"], string> = {
-  grant: "text-emerald-400",
-  revoke: "text-rose-400",
+  grant: "text-success-foreground",
+  revoke: "text-danger-foreground",
   clear: "text-muted-foreground",
-  create_role: "text-blue-400",
-  delete_role: "text-amber-400",
-  impersonate_start: "text-amber-400",
+  create_role: "text-info-foreground",
+  delete_role: "text-warning-foreground",
+  impersonate_start: "text-warning-foreground",
   impersonate_end: "text-muted-foreground",
-  password_reset_cli: "text-amber-400",
+  password_reset_cli: "text-warning-foreground",
   password_reset_request: "text-muted-foreground",
-  password_reset_completed: "text-amber-400",
+  password_reset_completed: "text-warning-foreground",
   password_change_self: "text-muted-foreground",
-  acl_grant: "text-emerald-400",
-  acl_revoke: "text-rose-400",
-  set_default_policy: "text-amber-400",
+  acl_grant: "text-success-foreground",
+  acl_revoke: "text-danger-foreground",
+  set_default_policy: "text-warning-foreground",
 };
 
 function HistoryView({
@@ -1458,7 +1458,7 @@ function HistoryView({
     return (
       <div className="bg-card rounded-lg border border-rose-500/30 p-6 text-sm">
         <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-rose-400 flex-shrink-0 mt-0.5" />
+          <AlertCircle className="w-5 h-5 text-danger-foreground flex-shrink-0 mt-0.5" />
           <div>
             <p className="font-medium text-foreground mb-1">Could not load audit log</p>
             <p className="text-muted-foreground">{error}</p>
@@ -1634,7 +1634,7 @@ function UsersView({
     return (
       <div className="bg-card rounded-lg border border-rose-500/30 p-6 text-sm">
         <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-rose-400 flex-shrink-0 mt-0.5" />
+          <AlertCircle className="w-5 h-5 text-danger-foreground flex-shrink-0 mt-0.5" />
           <div>
             <p className="font-medium text-foreground mb-1">Could not load users</p>
             <p className="text-muted-foreground">{error}</p>
@@ -1745,7 +1745,7 @@ function UserRow({
         </td>
         <td className="px-3 py-2">
           {user.is_active ? (
-            <span className="inline-flex items-center gap-1 text-[10px] font-mono-deck text-emerald-400">
+            <span className="inline-flex items-center gap-1 text-[10px] font-mono-deck text-success-foreground">
               <CheckCircle2 className="w-2.5 h-2.5" />
               active
             </span>
@@ -1814,10 +1814,10 @@ function UserRow({
 
 function RoleBadge({ role }: { role: string }) {
   const tone =
-    role === "superadmin" ? "bg-rose-500/10 text-rose-400" :
-    role === "admin" ? "bg-amber-500/10 text-amber-400" :
-    role === "analyst" ? "bg-blue-500/10 text-blue-400" :
-    role === "viewer" ? "bg-emerald-500/10 text-emerald-400" :
+    role === "superadmin" ? "bg-rose-500/10 text-danger-foreground" :
+    role === "admin" ? "bg-amber-500/10 text-warning-foreground" :
+    role === "analyst" ? "bg-blue-500/10 text-info-foreground" :
+    role === "viewer" ? "bg-emerald-500/10 text-success-foreground" :
     "bg-secondary text-muted-foreground";
   return (
     <span className={cn(
@@ -1834,10 +1834,10 @@ function RoleBadge({ role }: { role: string }) {
 
 function MethodPill({ method }: { method: string }) {
   const tone =
-    method === "GET" ? "bg-emerald-500/10 text-emerald-400" :
-    method === "POST" ? "bg-blue-500/10 text-blue-400" :
-    method === "PATCH" || method === "PUT" ? "bg-amber-500/10 text-amber-400" :
-    method === "DELETE" ? "bg-rose-500/10 text-rose-400" :
+    method === "GET" ? "bg-emerald-500/10 text-success-foreground" :
+    method === "POST" ? "bg-blue-500/10 text-info-foreground" :
+    method === "PATCH" || method === "PUT" ? "bg-amber-500/10 text-warning-foreground" :
+    method === "DELETE" ? "bg-rose-500/10 text-danger-foreground" :
     "bg-secondary text-muted-foreground";
   return (
     <span className={cn(
@@ -1852,7 +1852,7 @@ function MethodPill({ method }: { method: string }) {
 function DefaultBadge() {
   return (
     <span
-      className="inline-block px-1.5 py-0.5 text-[10px] font-mono-deck bg-amber-500/10 text-amber-400 rounded"
+      className="inline-block px-1.5 py-0.5 text-[10px] font-mono-deck bg-amber-500/10 text-warning-foreground rounded"
       title="Legacy default — this plugin hasn't declared a `permissions:` block in its manifest. Permission falls back to the method-derived global (plugins.read or plugins.configure). Plugin author should add `permissions:` to plugin.yaml; see docs/contributing-a-plugin.md."
     >
       legacy
@@ -1977,8 +1977,8 @@ function ResourceDefaultsView({ canEdit }: { canEdit: boolean }) {
                   className={cn(
                     "inline-block px-2 py-0.5 rounded text-[10px] font-mono-deck",
                     row.policy === "allow"
-                      ? "bg-green-500/10 text-green-400"
-                      : "bg-red-500/10 text-red-400",
+                      ? "bg-green-500/10 text-success-foreground"
+                      : "bg-red-500/10 text-danger-foreground",
                   )}
                 >
                   {row.policy}
@@ -1996,7 +1996,7 @@ function ResourceDefaultsView({ canEdit }: { canEdit: boolean }) {
                   </button>
                 )}
                 {row.error && (
-                  <span className="ml-2 text-[11px] text-red-400">{row.error}</span>
+                  <span className="ml-2 text-[11px] text-danger-foreground">{row.error}</span>
                 )}
               </td>
             </tr>
@@ -2027,7 +2027,7 @@ function ResourceDefaultsView({ canEdit }: { canEdit: boolean }) {
                   void applyFlip(confirmFlip.rt, confirmFlip.next);
                   setConfirmFlip(null);
                 }}
-                className="h-8 px-3 rounded-md bg-red-500 text-xs text-white hover:bg-red-600"
+                className="h-8 px-3 rounded-md bg-red-700 text-xs text-white hover:bg-red-800"
               >
                 Switch to deny
               </button>

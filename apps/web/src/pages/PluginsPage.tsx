@@ -208,14 +208,14 @@ export default function PluginsPage() {
           ))}
         </div>
       )}
-      {loadError && <p className="text-sm text-red-400">{loadError}</p>}
+      {loadError && <p className="text-sm text-danger-foreground">{loadError}</p>}
       {updateMessage && (
-        <div className="rounded-md border border-blue-500/40 bg-blue-500/10 p-3 text-sm text-blue-300 flex items-center justify-between">
+        <div className="rounded-md border border-blue-500/40 bg-blue-500/10 p-3 text-sm text-info-foreground flex items-center justify-between">
           <span>{updateMessage}</span>
           <button
             type="button"
             onClick={() => setUpdateMessage(null)}
-            className="text-blue-300 hover:text-blue-100 text-xs"
+            className="text-info-foreground hover:opacity-80 text-xs"
           >
             dismiss
           </button>
@@ -239,7 +239,7 @@ export default function PluginsPage() {
         <div className="space-y-3">
           {plugins.map((plugin) => (
             <div key={plugin.id} className="bg-card rounded-lg border border-border p-5 flex items-center gap-4">
-              <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0 bg-blue-500/10 text-blue-400">
+              <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0 bg-blue-500/10 text-info-foreground">
                 <Package className="w-5 h-5" />
               </div>
 
@@ -250,17 +250,17 @@ export default function PluginsPage() {
                   {plugin.publisher?.name && (
                     <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
                       by {plugin.publisher.name}
-                      {plugin.publisher.verified && <CheckCircle2 className="w-3 h-3 text-blue-400" />}
+                      {plugin.publisher.verified && <CheckCircle2 className="w-3 h-3 text-info-foreground" />}
                     </span>
                   )}
                   {plugin.type === "utility" && (
-                    <span className="text-[10px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                    <span className="text-[10px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-500/10 text-info-foreground border border-blue-500/20">
                       utility
                     </span>
                   )}
                   {plugin.update_status?.update_available && (
                     <span
-                      className="text-[10px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/40 inline-flex items-center gap-1"
+                      className="text-[10px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-500/20 text-info-foreground border border-blue-500/40 inline-flex items-center gap-1"
                       title={`Latest: v${plugin.update_status.latest_version}`}
                     >
                       <ArrowUp className="w-2.5 h-2.5" />
@@ -271,14 +271,14 @@ export default function PluginsPage() {
                   {plugin.frontend && plugin.frontend.components.length > 0 && (
                     plugin.frontend.trusted ? (
                       <span
-                        className="text-[10px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                        className="text-[10px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/10 text-success-foreground border border-emerald-500/20"
                         title={`Frontend code trusted: ${plugin.frontend.components.map(c => c.name).join(", ")}`}
                       >
                         Frontend trusted
                       </span>
                     ) : (
                       <span
-                        className="text-[10px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                        className="text-[10px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/10 text-warning-foreground border border-amber-500/20"
                         title={`Pending trust: ${plugin.frontend.components.map(c => c.name).join(", ")}`}
                       >
                         Frontend pending
@@ -295,7 +295,7 @@ export default function PluginsPage() {
                 {plugin.frontend && plugin.frontend.components.length > 0 && !plugin.frontend.trusted && (
                   <button
                     onClick={() => handleTrustFrontend(plugin.id)}
-                    className="h-8 px-3 rounded-md text-xs bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40 transition-colors"
+                    className="h-8 px-3 rounded-md text-xs bg-amber-500/20 hover:bg-amber-500/30 text-warning-foreground border border-amber-500/40 transition-colors"
                     title="Plugin includes custom frontend code. Click to grant trust."
                   >
                     Trust frontend
@@ -317,7 +317,7 @@ export default function PluginsPage() {
                     className={`h-8 px-3 rounded-md flex items-center gap-1.5 text-xs transition-colors ${
                       updatingId === plugin.id
                         ? "bg-muted text-muted-foreground cursor-wait"
-                        : "bg-blue-500/20 hover:bg-blue-500/30 text-blue-200 border border-blue-500/40"
+                        : "bg-blue-500/20 hover:bg-blue-500/30 text-info-foreground border border-blue-500/40"
                     }`}
                     title={`Update from v${plugin.update_status.installed_version} to v${plugin.update_status.latest_version}`}
                   >
@@ -340,7 +340,7 @@ export default function PluginsPage() {
                 </button>
                 <button
                   onClick={() => setUninstallTarget({ id: plugin.id, name: plugin.display_name || plugin.id })}
-                  className="h-8 w-8 rounded-md bg-red-500/10 hover:bg-red-500/20 flex items-center justify-center text-red-400 hover:text-red-300 transition-colors"
+                  className="h-8 w-8 rounded-md bg-red-500/10 hover:bg-red-500/20 flex items-center justify-center text-danger-foreground hover:opacity-80 transition-colors"
                   title={`Uninstall ${plugin.display_name || plugin.id}`}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
