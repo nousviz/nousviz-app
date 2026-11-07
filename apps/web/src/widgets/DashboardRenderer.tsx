@@ -365,7 +365,7 @@ function WidgetRenderer({ widget, dbEngine, pluginId, dashboardName, dashboardRe
         );
       }
       return (
-        <div className="bg-card rounded-lg border border-red-500/30 p-4 text-xs text-red-400">
+        <div className="bg-card rounded-lg border border-red-500/30 p-4 text-xs text-danger-foreground">
           Unknown custom component: {componentName}
         </div>
       );
@@ -382,7 +382,7 @@ function WidgetRenderer({ widget, dbEngine, pluginId, dashboardName, dashboardRe
         context={`plugin-widget:${pluginId}/${componentName}`}
         fallback={(error, reset) => (
           <div className="bg-card rounded-lg border border-amber-500/30 p-4 text-xs space-y-2">
-            <div className="text-amber-400 font-medium">
+            <div className="text-warning-foreground font-medium">
               Widget failed to render: {componentName}
             </div>
             <div className="text-muted-foreground">
@@ -493,7 +493,7 @@ function DataWidgetRenderer({
   if (error) {
     return (
       <div className="bg-card rounded-lg border border-red-500/20 p-4">
-        <div className="flex items-center gap-2 text-red-400 text-xs">
+        <div className="flex items-center gap-2 text-danger-foreground text-xs">
           <AlertCircle className="w-4 h-4" />
           <span>{error}</span>
         </div>
@@ -669,7 +669,7 @@ export default function DashboardRenderer({ pluginId, dashboardName, preloadedSp
   if (error) {
     return (
       <div className="bg-card rounded-lg border border-orange-500/20 p-6 text-center">
-        <AlertCircle className="w-8 h-8 text-orange-400 mx-auto mb-3" />
+        <AlertCircle className="w-8 h-8 text-warning-foreground mx-auto mb-3" />
         <h3 className="font-display text-lg text-foreground mb-2">Dashboard unavailable</h3>
         <p className="text-sm text-muted-foreground font-body mb-1">{error}</p>
         <p className="text-xs text-muted-foreground font-mono-deck">

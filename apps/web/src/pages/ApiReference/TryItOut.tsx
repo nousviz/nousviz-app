@@ -163,11 +163,11 @@ export default function TryItOut({ method, path, op }: Props) {
 
   const codeColor = (code: number) =>
     code >= 200 && code < 300
-      ? "text-emerald-400"
+      ? "text-success-foreground"
       : code >= 400 && code < 500
-      ? "text-amber-400"
+      ? "text-warning-foreground"
       : code >= 500
-      ? "text-rose-400"
+      ? "text-danger-foreground"
       : "text-muted-foreground";
 
   return (
@@ -208,7 +208,7 @@ export default function TryItOut({ method, path, op }: Props) {
             className="w-full h-40 text-xs font-mono-deck bg-background/60 border border-border rounded p-3 focus:outline-none focus:ring-1 focus:ring-primary/30"
           />
           {bodyError && (
-            <div className="flex items-center gap-2 text-xs text-amber-400">
+            <div className="flex items-center gap-2 text-xs text-warning-foreground">
               <AlertTriangle className="w-3.5 h-3.5" />
               {bodyError}
             </div>
@@ -273,7 +273,7 @@ export default function TryItOut({ method, path, op }: Props) {
       {confirmModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
           <div className="rounded-md border border-border bg-card p-5 max-w-md space-y-3">
-            <div className="flex items-center gap-2 text-amber-400">
+            <div className="flex items-center gap-2 text-warning-foreground">
               <AlertTriangle className="w-4 h-4" />
               <span className="font-display text-sm">Confirm {method.toUpperCase()} request</span>
             </div>
@@ -291,7 +291,7 @@ export default function TryItOut({ method, path, op }: Props) {
               <button
                 type="button"
                 onClick={submit}
-                className="px-3 py-1.5 text-xs font-display uppercase tracking-wide rounded bg-amber-500/20 text-amber-400 border border-amber-500/40 hover:bg-amber-500/30"
+                className="px-3 py-1.5 text-xs font-display uppercase tracking-wide rounded bg-amber-500/20 text-warning-foreground border border-amber-500/40 hover:bg-amber-500/30"
               >
                 Send anyway
               </button>
@@ -317,7 +317,7 @@ function ParamInput({
     <div className="space-y-1">
       <label className="flex items-center gap-2 text-[11px] font-mono-deck text-muted-foreground">
         <span className="text-foreground">{param.name}</span>
-        {param.required && <span className="text-rose-400">*</span>}
+        {param.required && <span className="text-danger-foreground">*</span>}
         {param.schema?.type && <span>({String(param.schema.type)})</span>}
       </label>
       <input

@@ -164,7 +164,7 @@ export default function PluginAccessPicker({
           {loading ? (
             <p className="text-xs text-muted-foreground">Loading plugins...</p>
           ) : error ? (
-            <p className="text-xs text-red-400">{error}</p>
+            <p className="text-xs text-danger-foreground">{error}</p>
           ) : plugins.length === 0 ? (
             <p className="text-xs text-muted-foreground">
               No data plugins installed. (Utility plugins are always visible.)

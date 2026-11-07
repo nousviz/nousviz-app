@@ -55,8 +55,8 @@ type CronSource = "pm2" | "crontab" | "both" | "none";
 // `status: stale` classification (2× the declared schedule) but labels
 // it "Overdue" in the UI — "stale" was jargon that wasn't clear to operators.
 const STATUS_CONFIG = {
-  ok:    { icon: CheckCircle,    color: "text-green-400",          bg: "bg-green-500/10" },
-  stale: { icon: AlertTriangle,  color: "text-yellow-400",         bg: "bg-yellow-500/10" },
+  ok:    { icon: CheckCircle,    color: "text-success-foreground",          bg: "bg-green-500/10" },
+  stale: { icon: AlertTriangle,  color: "text-warning-foreground",         bg: "bg-yellow-500/10" },
   never: { icon: XCircle,        color: "text-muted-foreground",   bg: "bg-secondary" },
 };
 
@@ -75,12 +75,12 @@ function scheduleLabel(job: Job): string {
 
 function scheduleLabelClasses(job: Job): string {
   if (job.status === "stale") {
-    return "bg-yellow-500/15 text-yellow-400 border-yellow-500/30";
+    return "bg-yellow-500/15 text-warning-foreground border-yellow-500/30";
   }
   if (job.cron_active) {
-    return "bg-green-500/15 text-green-400 border-green-500/30";
+    return "bg-green-500/15 text-success-foreground border-green-500/30";
   }
-  return "bg-blue-500/10 text-blue-400 border-blue-500/20";
+  return "bg-blue-500/10 text-info-foreground border-blue-500/20";
 }
 
 export default function ScheduledJobs() {
@@ -200,7 +200,7 @@ export default function ScheduledJobs() {
       {/* P108 UI: transient toast for fire-now outcome */}
       {actionMessage && (
         <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg px-4 py-2">
-          <p className="text-xs text-blue-300">{actionMessage}</p>
+          <p className="text-xs text-info-foreground">{actionMessage}</p>
         </div>
       )}
 
@@ -208,11 +208,11 @@ export default function ScheduledJobs() {
           run_id is older than each job's latest run. */}
       {olderRunBanner && (
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg px-4 py-2 flex items-start gap-2">
-          <Info className="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
-          <p className="text-xs text-amber-300 flex-1">{olderRunBanner}</p>
+          <Info className="w-3.5 h-3.5 text-warning-foreground mt-0.5 shrink-0" />
+          <p className="text-xs text-warning-foreground flex-1">{olderRunBanner}</p>
           <button
             onClick={() => setOlderRunBanner(null)}
-            className="text-amber-400/60 hover:text-amber-300 text-[10px]"
+            className="text-warning-foreground hover:opacity-80 text-[10px]"
           >
             Dismiss
           </button>
@@ -222,7 +222,7 @@ export default function ScheduledJobs() {
       {/* Status banner — only show "no cron" warning on bare-metal deploys without PM2 */}
       {cronSource === "none" && (
         <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-4 py-3 flex items-start gap-3">
-          <AlertTriangle className="w-4 h-4 text-yellow-400 mt-0.5 shrink-0" />
+          <AlertTriangle className="w-4 h-4 text-warning-foreground mt-0.5 shrink-0" />
           <div>
             <p className="text-sm text-foreground font-medium">No cron jobs configured</p>
             <p className="text-xs text-muted-foreground mt-1">
@@ -325,14 +325,14 @@ export default function ScheduledJobs() {
                     {isPluginRow(job) && job.scheduler?.last_error && (
                       <>
                         {" · "}
-                        <span className="text-yellow-400">
+                        <span className="text-warning-foreground">
                           Schedule error: {job.scheduler.last_error}
                         </span>
                       </>
                     )}
                   </p>
                   {job.status === "stale" && job.last_run && (
-                    <p className="text-[11px] text-yellow-400 mt-0.5 flex items-start gap-1.5">
+                    <p className="text-[11px] text-warning-foreground mt-0.5 flex items-start gap-1.5">
                       <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" />
                       <span>
                         Overdue — expected to run {job.recommended_label.toLowerCase()}, but last ran {formatRelativeTime(job.last_run)}.{" "}
@@ -433,7 +433,7 @@ export default function ScheduledJobs() {
                       className="p-2 rounded border border-border hover:bg-secondary shrink-0"
                       title="Copy command"
                     >
-                      {copiedId === job.id ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
+                      {copiedId === job.id ? <Check className="w-3.5 h-3.5 text-success-foreground" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
                     </button>
                   </div>
 
@@ -482,7 +482,7 @@ export default function ScheduledJobs() {
               onClick={() => copyCommand("full-crontab", fullCrontab)}
               className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
             >
-              {copiedId === "full-crontab" ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+              {copiedId === "full-crontab" ? <Check className="w-3.5 h-3.5 text-success-foreground" /> : <Copy className="w-3.5 h-3.5" />}
               Copy all
             </button>
           </div>

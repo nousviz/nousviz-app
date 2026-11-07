@@ -231,7 +231,7 @@ export default function ConnectionTableRowsPage() {
         >
           <ArrowLeft className="w-3 h-3" /> Back to connection
         </Link>
-        <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400">
+        <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-danger-foreground">
           {error}
         </div>
       </div>
@@ -300,7 +300,7 @@ export default function ConnectionTableRowsPage() {
 
       {/* Error banner (when rows fail but meta succeeded) */}
       {error && meta && (
-        <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400">
+        <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-danger-foreground">
           {error}
         </div>
       )}

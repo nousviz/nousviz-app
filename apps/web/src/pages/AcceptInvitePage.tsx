@@ -66,7 +66,7 @@ export default function AcceptInvitePage() {
         <div className="w-full max-w-sm text-center">
           <SidebarLogo collapsed={false} />
           <div className="bg-card border border-border rounded-xl p-6 mt-8 space-y-3">
-            <XCircle className="w-8 h-8 text-red-400 mx-auto" />
+            <XCircle className="w-8 h-8 text-danger-foreground mx-auto" />
             <h2 className="font-display text-base text-foreground">Invitation Expired</h2>
             <p className="text-xs text-muted-foreground">
               This invite link is invalid or has expired. Ask your admin to send a new one.
@@ -83,7 +83,7 @@ export default function AcceptInvitePage() {
         <div className="w-full max-w-sm text-center">
           <SidebarLogo collapsed={false} />
           <div className="bg-card border border-border rounded-xl p-6 mt-8 space-y-3">
-            <CheckCircle2 className="w-8 h-8 text-green-400 mx-auto" />
+            <CheckCircle2 className="w-8 h-8 text-success-foreground mx-auto" />
             <h2 className="font-display text-base text-foreground">Account Created</h2>
             <p className="text-xs text-muted-foreground">Redirecting to NousViz...</p>
           </div>
@@ -128,7 +128,7 @@ export default function AcceptInvitePage() {
                 className="w-full h-10 px-4 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
               {passwordTooShort && (
-                <p className="text-[11px] text-yellow-400 mt-1 ml-1">Must be at least 8 characters</p>
+                <p className="text-[11px] text-warning-foreground mt-1 ml-1">Must be at least 8 characters</p>
               )}
             </div>
             <div>
@@ -142,12 +142,12 @@ export default function AcceptInvitePage() {
                 className="w-full h-10 px-4 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
               {passwordsNoMatch && (
-                <p className="text-[11px] text-yellow-400 mt-1 ml-1">Passwords don't match</p>
+                <p className="text-[11px] text-warning-foreground mt-1 ml-1">Passwords don't match</p>
               )}
             </div>
           </div>
 
-          {error && <p className="text-xs text-red-400 text-center">{error}</p>}
+          {error && <p className="text-xs text-danger-foreground text-center">{error}</p>}
 
           <button
             onClick={handleAccept}

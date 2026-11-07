@@ -259,7 +259,7 @@ export default function NotesPanel({
                           onClick={() => handleResolve(note.id, !note.resolved)}
                           className={cn(
                             "h-6 w-6 rounded flex items-center justify-center transition-colors",
-                            note.resolved ? "text-green-400" : "text-muted-foreground hover:text-green-400"
+                            note.resolved ? "text-success-foreground" : "text-muted-foreground hover:opacity-80"
                           )}
                           title={note.resolved ? "Unresolve" : "Mark resolved"}
                         >
@@ -277,7 +277,7 @@ export default function NotesPanel({
                         </button>
                         <button
                           onClick={() => handleDelete(note.id)}
-                          className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-red-400 transition-colors"
+                          className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-danger-foreground transition-colors"
                         >
                           <Trash2 className="w-3 h-3" />
                         </button>

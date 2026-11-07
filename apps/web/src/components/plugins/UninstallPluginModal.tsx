@@ -179,7 +179,7 @@ export default function UninstallPluginModal({ pluginId, pluginName, onClose, on
                 {/* Dependents warning */}
                 {step.check.has_dependents && (
                   <div className="rounded-md border border-orange-500/30 bg-orange-500/5 p-3 space-y-2">
-                    <div className="flex items-center gap-2 text-sm font-body text-orange-400">
+                    <div className="flex items-center gap-2 text-sm font-body text-warning-foreground">
                       <AlertTriangle className="w-4 h-4 shrink-0" />
                       Dependent plugins will also be uninstalled
                     </div>
@@ -368,7 +368,7 @@ export default function UninstallPluginModal({ pluginId, pluginName, onClose, on
                       value={confirmText}
                       onChange={e => setConfirmText(e.target.value)}
                       placeholder={`Type "${removeData ? deletePhrase : keepPhrase}" to confirm`}
-                      className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary"
+                      className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                     />
                   </div>
                   );
@@ -396,7 +396,7 @@ export default function UninstallPluginModal({ pluginId, pluginName, onClose, on
               <div className="space-y-3">
                 {step.result.uninstalled.map(slug => (
                   <div key={slug} className="flex items-center gap-2 text-sm text-foreground">
-                    <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 text-success-foreground shrink-0" />
                     {slug} uninstalled
                   </div>
                 ))}
@@ -406,7 +406,7 @@ export default function UninstallPluginModal({ pluginId, pluginName, onClose, on
                     just echoing the operator's intent flag. */}
                 {step.result.data_tables_dropped && step.result.data_tables_dropped.length > 0 && (
                   <div className="rounded-md border border-green-500/30 bg-green-500/5 p-3 space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-green-400">
+                    <div className="flex items-center gap-2 text-sm text-success-foreground">
                       <CheckCircle2 className="w-4 h-4 shrink-0" />
                       Tables dropped ({step.result.data_tables_dropped.length})
                     </div>
@@ -419,7 +419,7 @@ export default function UninstallPluginModal({ pluginId, pluginName, onClose, on
                 )}
                 {step.result.data_removed && (!step.result.data_tables_dropped || step.result.data_tables_dropped.length === 0) && (
                   <div className="flex items-center gap-2 text-sm text-foreground">
-                    <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 text-success-foreground shrink-0" />
                     Plugin data removed
                   </div>
                 )}
@@ -428,7 +428,7 @@ export default function UninstallPluginModal({ pluginId, pluginName, onClose, on
                     they need to manually clean up anything we couldn't drop. */}
                 {step.result.data_tables_drop_failed && step.result.data_tables_drop_failed.length > 0 && (
                   <div className="rounded-md border border-orange-500/30 bg-orange-500/5 p-3 space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-orange-400">
+                    <div className="flex items-center gap-2 text-sm text-warning-foreground">
                       <AlertTriangle className="w-4 h-4 shrink-0" />
                       Some tables didn't drop ({step.result.data_tables_drop_failed.length})
                     </div>
@@ -468,7 +468,7 @@ export default function UninstallPluginModal({ pluginId, pluginName, onClose, on
                     <>
                       {totalCleaned > 0 && (
                         <div className="rounded-md border border-green-500/30 bg-green-500/5 p-3 space-y-1">
-                          <div className="flex items-center gap-2 text-sm text-green-400">
+                          <div className="flex items-center gap-2 text-sm text-success-foreground">
                             <CheckCircle2 className="w-4 h-4 shrink-0" />
                             References cleaned up
                           </div>
@@ -489,7 +489,7 @@ export default function UninstallPluginModal({ pluginId, pluginName, onClose, on
                               </li>
                             )}
                             {(c.alerts_left_alone?.length ?? 0) > 0 && (
-                              <li className="text-muted-foreground/80">
+                              <li className="text-muted-foreground">
                                 {c.alerts_left_alone!.length} alert rule{c.alerts_left_alone!.length !== 1 ? "s" : ""} left in place — handle them via the alerts page
                               </li>
                             )}
@@ -498,7 +498,7 @@ export default function UninstallPluginModal({ pluginId, pluginName, onClose, on
                       )}
                       {failedCount > 0 && (
                         <div className="rounded-md border border-orange-500/30 bg-orange-500/5 p-3 space-y-2">
-                          <div className="flex items-center gap-2 text-sm text-orange-400">
+                          <div className="flex items-center gap-2 text-sm text-warning-foreground">
                             <AlertTriangle className="w-4 h-4 shrink-0" />
                             {failedCount} reference cleanup{failedCount !== 1 ? "s" : ""} failed
                           </div>
@@ -508,7 +508,7 @@ export default function UninstallPluginModal({ pluginId, pluginName, onClose, on
                           <ul className="pl-6 space-y-1">
                             {c.failed!.map((f, i) => (
                               <li key={`${f.kind}-${f.id}-${i}`} className="text-xs text-muted-foreground">
-                                <span className="text-[10px] uppercase tracking-wider font-display text-orange-400/80 mr-1.5">{f.kind}</span>
+                                <span className="text-[10px] uppercase tracking-wider font-display text-warning-foreground mr-1.5">{f.kind}</span>
                                 <span className="text-foreground">{f.id}</span>
                                 <span className="ml-1">— {f.error}</span>
                               </li>
@@ -522,7 +522,7 @@ export default function UninstallPluginModal({ pluginId, pluginName, onClose, on
 
                 {step.result.restart_required && (
                   <div className="rounded-md border border-orange-500/30 bg-orange-500/5 p-3">
-                    <div className="flex items-center gap-2 text-sm text-orange-400">
+                    <div className="flex items-center gap-2 text-sm text-warning-foreground">
                       <RefreshCw className="w-4 h-4 shrink-0" />
                       API restart required
                     </div>

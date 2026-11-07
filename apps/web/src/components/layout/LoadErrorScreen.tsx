@@ -59,7 +59,7 @@ export default function LoadErrorScreen({ reason, onReload }: LoadErrorScreenPro
 
         <div className="bg-card border border-border rounded-xl p-6 space-y-4">
           <div className="flex flex-col items-center text-center space-y-3">
-            <AlertTriangle className="w-8 h-8 text-amber-400" />
+            <AlertTriangle className="w-8 h-8 text-warning-foreground" />
             <div className="space-y-1">
               <h2 className="font-display text-base text-foreground">
                 Couldn&apos;t load plugins

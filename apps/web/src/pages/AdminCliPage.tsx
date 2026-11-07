@@ -123,7 +123,7 @@ export default function AdminCliPage() {
               <span className="text-primary">❯</span>
               <span className="text-foreground">{entry.command}</span>
             </div>
-            <pre className={`whitespace-pre-wrap break-all mt-1 ${entry.ok ? "text-[#a0a0b0]" : "text-red-400"}`}>
+            <pre className={`whitespace-pre-wrap break-all mt-1 ${entry.ok ? "text-[#a0a0b0]" : "text-danger-foreground"}`}>
               {entry.output}
             </pre>
           </div>

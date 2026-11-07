@@ -42,13 +42,13 @@ export default class ErrorBoundary extends Component<Props, State> {
       // Default: full-page treatment (route-level boundary).
       return (
         <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
-          <AlertTriangle className="w-10 h-10 text-yellow-400 mb-4" />
+          <AlertTriangle className="w-10 h-10 text-warning-foreground mb-4" />
           <h2 className="font-display text-lg text-foreground mb-2">Something went wrong</h2>
           <p className="text-sm text-muted-foreground max-w-md mb-4">
             This page encountered an error. Try refreshing, or navigate to a different page.
           </p>
           {this.state.error && (
-            <pre className="text-[11px] text-muted-foreground/60 font-mono-deck bg-secondary/30 rounded-lg p-3 max-w-md overflow-auto max-h-32">
+            <pre className="text-[11px] text-muted-foreground font-mono-deck bg-secondary/30 rounded-lg p-3 max-w-md overflow-auto max-h-32">
               {this.state.error.message}
             </pre>
           )}

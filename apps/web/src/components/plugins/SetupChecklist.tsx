@@ -81,7 +81,7 @@ export default function SetupChecklist({ pluginId, checklist }: Props) {
   if (allDone && checklist.show_until === "all_done") {
     return (
       <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-4 py-2.5 flex items-center justify-between">
-        <p className="text-xs text-emerald-300 inline-flex items-center gap-1.5">
+        <p className="text-xs text-success-foreground inline-flex items-center gap-1.5">
           <CheckCircle2 className="w-3.5 h-3.5" /> Setup complete
         </p>
         <button
@@ -123,7 +123,7 @@ export default function SetupChecklist({ pluginId, checklist }: Props) {
             )}
           >
             {item.done ? (
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <CheckCircle2 className="w-3.5 h-3.5 text-success-foreground shrink-0" />
             ) : (
               <Circle className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
             )}

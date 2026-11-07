@@ -44,10 +44,10 @@ interface UnifiedSource {
 }
 
 const TYPE_CHIP: Record<string, string> = {
-  postgres: "bg-blue-500/10 text-blue-400",
-  mysql: "bg-orange-500/10 text-orange-400",
-  clickhouse: "bg-yellow-500/10 text-yellow-400",
-  plugin: "bg-purple-500/10 text-purple-400",
+  postgres: "bg-blue-500/10 text-info-foreground",
+  mysql: "bg-orange-500/10 text-warning-foreground",
+  clickhouse: "bg-yellow-500/10 text-warning-foreground",
+  plugin: "bg-purple-500/10 text-purple-700 dark:text-purple-400",
 };
 
 const TYPE_LABEL: Record<string, string> = {
@@ -316,7 +316,7 @@ export default function DataPage() {
                     {TYPE_LABEL[s.type] ?? s.type}
                   </span>
                   {s.isDefault && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-warning-foreground">
                       default
                     </span>
                   )}
@@ -330,7 +330,7 @@ export default function DataPage() {
                   )}
                 </p>
               </div>
-              <span className="text-muted-foreground/60 text-[10px] uppercase tracking-wider shrink-0">
+              <span className="text-muted-foreground text-[10px] uppercase tracking-wider shrink-0">
                 Browse →
               </span>
             </Link>

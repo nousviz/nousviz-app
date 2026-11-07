@@ -199,7 +199,7 @@ export default function ShareButton() {
                         className="w-full flex items-center justify-between text-xs hover:text-foreground transition-colors py-0.5"
                       >
                         <div className="flex items-center gap-1.5">
-                          {share.has_password && <span title="Password protected — cannot be recovered"><Lock className="w-3 h-3 text-orange-400" /></span>}
+                          {share.has_password && <span title="Password protected — cannot be recovered"><Lock className="w-3 h-3 text-warning-foreground" /></span>}
                           <span className="text-muted-foreground">
                             {share.access_count} view{share.access_count !== 1 ? "s" : ""}
                           </span>
@@ -224,7 +224,7 @@ export default function ShareButton() {
                           onClick={() => handleCopy(`/shared/${share.share_id}`)}
                           className={cn(
                             "h-7 px-2 rounded text-[11px] flex items-center gap-1 transition-colors",
-                            copied ? "bg-green-500/15 text-green-400" : "bg-secondary text-foreground hover:bg-secondary/80"
+                            copied ? "bg-green-500/15 text-success-foreground" : "bg-secondary text-foreground hover:bg-secondary/80"
                           )}
                         >
                           <Copy className="w-3 h-3" />
@@ -232,7 +232,7 @@ export default function ShareButton() {
                         </button>
                         <button
                           onClick={() => handleRevoke(share.share_id, share.access_count)}
-                          className="h-7 w-7 rounded bg-red-500/10 hover:bg-red-500/20 flex items-center justify-center text-red-400 transition-colors"
+                          className="h-7 w-7 rounded bg-red-500/10 hover:bg-red-500/20 flex items-center justify-center text-danger-foreground transition-colors"
                           title="Revoke this link"
                         >
                           <Trash2 className="w-3 h-3" />
@@ -261,7 +261,7 @@ export default function ShareButton() {
                             disabled={saving || saved}
                             className={cn(
                               "h-7 px-3 rounded text-[11px] transition-colors disabled:opacity-70",
-                              saved ? "bg-green-500/15 text-green-400" : "bg-primary text-primary-foreground hover:bg-primary/90"
+                              saved ? "bg-green-500/15 text-success-foreground" : "bg-primary text-primary-foreground hover:bg-primary/90"
                             )}
                           >
                             {saving ? "Saving…" : saved ? "Saved ✓" : "Save"}
@@ -273,7 +273,7 @@ export default function ShareButton() {
                               <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Recent access</p>
                               {accessLog.slice(0, 5).map((entry, i) => (
                                 <div key={i} className="flex items-center justify-between text-[10px]">
-                                  <span className={entry.success ? "text-green-400" : "text-red-400"}>
+                                  <span className={entry.success ? "text-success-foreground" : "text-danger-foreground"}>
                                     {entry.success ? "✓" : "✗"} {entry.ip_address || "unknown"}
                                   </span>
                                   <span className="text-muted-foreground">
@@ -377,7 +377,7 @@ export default function ShareButton() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="font-display text-sm text-foreground flex items-center gap-2">
-                    <Check className="w-4 h-4 text-green-400" />
+                    <Check className="w-4 h-4 text-success-foreground" />
                     Link Created
                   </h3>
                   <button onClick={handleClose} className="text-muted-foreground hover:text-foreground">
@@ -396,7 +396,7 @@ export default function ShareButton() {
                     onClick={() => handleCopy(result.url)}
                     className={cn(
                       "h-8 px-3 rounded-md text-xs flex items-center gap-1 transition-colors",
-                      copied ? "bg-green-500/15 text-green-400" : "bg-secondary text-foreground hover:bg-secondary/80"
+                      copied ? "bg-green-500/15 text-success-foreground" : "bg-secondary text-foreground hover:bg-secondary/80"
                     )}
                   >
                     <Copy className="w-3 h-3" />
@@ -405,7 +405,7 @@ export default function ShareButton() {
                 </div>
 
                 {result.has_password && (
-                  <p className="text-[10px] text-orange-400 flex items-center gap-1">
+                  <p className="text-[10px] text-warning-foreground flex items-center gap-1">
                     <Lock className="w-2.5 h-2.5" />
                     Password required to access
                   </p>

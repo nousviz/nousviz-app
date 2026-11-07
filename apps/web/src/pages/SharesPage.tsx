@@ -126,10 +126,10 @@ export default function SharesPage() {
                 <div className="flex items-center gap-2">
                   <Share2 className="w-4 h-4 text-muted-foreground" />
                   <span className="font-display text-sm text-foreground">{link.title}</span>
-                  {link.has_password && <Lock className="w-3 h-3 text-orange-400" />}
-                  {link.revoked && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/10 text-red-400">Revoked</span>}
-                  {link.expired && !link.revoked && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400">Expired</span>}
-                  {!link.expired && !link.revoked && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-400">Active</span>}
+                  {link.has_password && <Lock className="w-3 h-3 text-warning-foreground" />}
+                  {link.revoked && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/10 text-danger-foreground">Revoked</span>}
+                  {link.expired && !link.revoked && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-warning-foreground">Expired</span>}
+                  {!link.expired && !link.revoked && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/10 text-success-foreground">Active</span>}
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -149,7 +149,7 @@ export default function SharesPage() {
                   {!link.revoked && !link.expired && (
                     <button
                       onClick={() => handleRevoke(link.share_id, link.access_count)}
-                      className="h-8 w-8 rounded-md bg-red-500/10 hover:bg-red-500/20 flex items-center justify-center text-red-400 transition-colors"
+                      className="h-8 w-8 rounded-md bg-red-500/10 hover:bg-red-500/20 flex items-center justify-center text-danger-foreground transition-colors"
                       title="Revoke"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -181,7 +181,7 @@ export default function SharesPage() {
                       {accessLog.map((entry, i) => (
                         <div key={i} className="flex items-center justify-between text-xs">
                           <div className="flex items-center gap-2">
-                            <span className={entry.success ? "text-green-400" : "text-red-400"}>
+                            <span className={entry.success ? "text-success-foreground" : "text-danger-foreground"}>
                               {entry.success ? "✓" : "✗"}
                             </span>
                             <span className="font-mono-deck text-foreground">{entry.ip_address || "unknown"}</span>

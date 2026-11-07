@@ -32,7 +32,7 @@ interface WebhookEndpoint {
 }
 
 const TYPE_LABELS: Record<string, string> = { postgres: "PostgreSQL", mysql: "MySQL", clickhouse: "ClickHouse" };
-const TYPE_ICONS: Record<string, string> = { postgres: "bg-blue-500/10 text-blue-400", mysql: "bg-orange-500/10 text-orange-400", clickhouse: "bg-yellow-500/10 text-yellow-400" };
+const TYPE_ICONS: Record<string, string> = { postgres: "bg-blue-500/10 text-info-foreground", mysql: "bg-orange-500/10 text-warning-foreground", clickhouse: "bg-yellow-500/10 text-warning-foreground" };
 const TYPE_FIELDS: Record<string, { name: string; label: string; type: string; default?: string }[]> = {
   postgres: [
     { name: "host", label: "Host", type: "text", default: "localhost" },
@@ -153,16 +153,16 @@ export default function ConnectionsPage() {
       <div className="bg-card rounded-lg border border-border p-5">
         <div className="flex items-center gap-4">
           <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-            <Database className="w-5 h-5 text-blue-400" />
+            <Database className="w-5 h-5 text-info-foreground" />
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <span className="font-display text-sm text-foreground">PostgreSQL</span>
               <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">Core</span>
               {pgStatus?.status === "connected" ? (
-                <CheckCircle2 className="w-4 h-4 text-green-400" />
+                <CheckCircle2 className="w-4 h-4 text-success-foreground" />
               ) : (
-                <AlertCircle className="w-4 h-4 text-red-400" />
+                <AlertCircle className="w-4 h-4 text-danger-foreground" />
               )}
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
@@ -185,8 +185,8 @@ export default function ConnectionsPage() {
                 <Link to={`/plugin/${name}`} className="font-display text-sm text-foreground capitalize hover:text-primary transition-colors">
                   {name}
                 </Link>
-                {svc.status === "connected" ? <CheckCircle2 className="w-4 h-4 text-green-400" /> : <AlertCircle className="w-4 h-4 text-yellow-400" />}
-                <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full", svc.status === "connected" ? "bg-green-500/10 text-green-400" : "bg-yellow-500/10 text-yellow-400")}>
+                {svc.status === "connected" ? <CheckCircle2 className="w-4 h-4 text-success-foreground" /> : <AlertCircle className="w-4 h-4 text-warning-foreground" />}
+                <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full", svc.status === "connected" ? "bg-green-500/10 text-success-foreground" : "bg-yellow-500/10 text-warning-foreground")}>
                   {formatStatus(svc.status)}
                 </span>
               </div>
@@ -286,18 +286,18 @@ export default function ConnectionsPage() {
                   <Play className="w-2.5 h-2.5" /> Test
                 </button>
                 {testResult?.id === c.id && (
-                  <span className={cn("text-[10px] shrink-0 max-w-[150px] truncate", testResult.ok ? "text-green-400" : "text-red-400")}>
+                  <span className={cn("text-[10px] shrink-0 max-w-[150px] truncate", testResult.ok ? "text-success-foreground" : "text-danger-foreground")}>
                     {testResult.detail}
                   </span>
                 )}
                 <button
                   onClick={() => handleToggleDefault(c.id, c.is_default)}
-                  className={cn("shrink-0", c.is_default ? "text-yellow-400 hover:text-muted-foreground" : "text-muted-foreground hover:text-yellow-400")}
+                  className={cn("shrink-0", c.is_default ? "text-warning-foreground hover:text-muted-foreground" : "text-muted-foreground hover:opacity-80")}
                   title={c.is_default ? "Unset as default" : "Set as default"}
                 >
                   <Star className={cn("w-3 h-3", c.is_default && "fill-yellow-400")} />
                 </button>
-                <button onClick={() => handleDelete(c.id)} className="text-muted-foreground hover:text-red-400 shrink-0">
+                <button onClick={() => handleDelete(c.id)} className="text-muted-foreground hover:text-danger-foreground shrink-0">
                   <Trash2 className="w-3 h-3" />
                 </button>
               </div>
@@ -364,7 +364,7 @@ export default function ConnectionsPage() {
           <div className="space-y-1.5">
             {webhooks.map(ep => (
               <div key={ep.id} className="flex items-center gap-2 px-3 py-2 rounded-md bg-secondary/30 text-xs">
-                {ep.direction === "inbound" ? <ArrowDownLeft className="w-3 h-3 text-green-400 shrink-0" /> : <ArrowUpRight className="w-3 h-3 text-blue-400 shrink-0" />}
+                {ep.direction === "inbound" ? <ArrowDownLeft className="w-3 h-3 text-success-foreground shrink-0" /> : <ArrowUpRight className="w-3 h-3 text-info-foreground shrink-0" />}
                 <span className="text-foreground font-medium truncate">{ep.name}</span>
                 <span className="text-[10px] text-muted-foreground font-mono-deck">{ep.direction}</span>
                 <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", ep.is_active ? "bg-green-400" : "bg-muted-foreground/30")} />

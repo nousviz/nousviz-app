@@ -59,7 +59,7 @@ export default function DashboardManagerPage() {
         </div>
         <Link
           to="/dashboards/new"
-          className="h-9 px-4 rounded-md bg-primary text-sm text-white font-body hover:bg-primary/90 transition-colors flex items-center gap-2"
+          className="h-9 px-4 rounded-md bg-primary text-sm text-primary-foreground font-body hover:bg-primary/90 transition-colors flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
           New Dashboard
@@ -86,7 +86,7 @@ export default function DashboardManagerPage() {
           </p>
           <Link
             to="/dashboards/new"
-            className="inline-flex h-9 px-4 rounded-md bg-primary text-sm text-white font-body hover:bg-primary/90 transition-colors items-center gap-2"
+            className="inline-flex h-9 px-4 rounded-md bg-primary text-sm text-primary-foreground font-body hover:bg-primary/90 transition-colors items-center gap-2"
           >
             <Plus className="w-4 h-4" />
             Create Dashboard
@@ -124,7 +124,7 @@ export default function DashboardManagerPage() {
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); setDeleteSlug(d.slug); }}
-                    className="p-1.5 rounded hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-colors"
+                    className="p-1.5 rounded hover:bg-red-500/10 text-muted-foreground hover:text-danger-foreground transition-colors"
                     title="Delete"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -190,7 +190,7 @@ export default function DashboardManagerPage() {
               </button>
               <button
                 onClick={() => handleDelete(deleteSlug)}
-                className="h-8 px-3 rounded-md bg-red-500 text-xs text-white font-body hover:bg-red-600 transition-colors"
+                className="h-8 px-3 rounded-md bg-red-700 text-xs text-white font-body hover:bg-red-800 transition-colors"
               >
                 Delete
               </button>

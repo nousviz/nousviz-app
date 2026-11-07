@@ -38,16 +38,16 @@ interface HealthLogEntry {
 const AUTO_REFRESH_MS = 30_000;
 
 function StatusIcon({ status, className }: { status: string; className?: string }) {
-  if (status === "pass" || status === "info") return <CheckCircle2 className={cn("w-4 h-4 text-green-400 shrink-0", className)} />;
-  if (status === "warn") return <AlertTriangle className={cn("w-4 h-4 text-yellow-400 shrink-0", className)} />;
-  return <XCircle className={cn("w-4 h-4 text-red-400 shrink-0", className)} />;
+  if (status === "pass" || status === "info") return <CheckCircle2 className={cn("w-4 h-4 text-success-foreground shrink-0", className)} />;
+  if (status === "warn") return <AlertTriangle className={cn("w-4 h-4 text-warning-foreground shrink-0", className)} />;
+  return <XCircle className={cn("w-4 h-4 text-danger-foreground shrink-0", className)} />;
 }
 
 function LevelBadge({ level, label }: { level: string; label?: string }) {
   const styles: Record<string, string> = {
-    healthy: "bg-green-500/10 text-green-400",
-    warning: "bg-yellow-500/10 text-yellow-400",
-    critical: "bg-red-500/10 text-red-400",
+    healthy: "bg-green-500/10 text-success-foreground",
+    warning: "bg-yellow-500/10 text-warning-foreground",
+    critical: "bg-red-500/10 text-danger-foreground",
     loading: "bg-secondary text-muted-foreground",
   };
   const displayLabel = label || labelForLevel(level);
@@ -330,9 +330,9 @@ export default function HealthOverviewPage() {
             <LevelBadge level={liveLevel} />
             {liveChecks.length > 0 && (
               <span className="text-[11px] text-muted-foreground font-mono-deck">
-                <span className="text-green-400">{liveCounts.pass} Passing</span>
-                {liveCounts.warn > 0 && <> · <span className="text-yellow-400">{liveCounts.warn} Warning{liveCounts.warn === 1 ? "" : "s"}</span></>}
-                {liveCounts.fail > 0 && <> · <span className="text-red-400">{liveCounts.fail} Failing</span></>}
+                <span className="text-success-foreground">{liveCounts.pass} Passing</span>
+                {liveCounts.warn > 0 && <> · <span className="text-warning-foreground">{liveCounts.warn} Warning{liveCounts.warn === 1 ? "" : "s"}</span></>}
+                {liveCounts.fail > 0 && <> · <span className="text-danger-foreground">{liveCounts.fail} Failing</span></>}
               </span>
             )}
             {liveVersion && (
@@ -343,7 +343,7 @@ export default function HealthOverviewPage() {
       )}
 
       {liveError && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-yellow-500/10 text-yellow-400 text-xs">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-yellow-500/10 text-warning-foreground text-xs">
           <Info className="w-3.5 h-3.5 shrink-0" />
           <span>{liveError}</span>
         </div>
@@ -496,9 +496,9 @@ export default function HealthOverviewPage() {
                     </span>
                     {h.checks && h.checks.length > 0 && (
                       <span className="text-[11px] font-mono-deck">
-                        <span className="text-green-400">{counts.pass} Passing</span>
-                        {counts.warn > 0 && <span className="text-yellow-400"> · {counts.warn} Warning{counts.warn === 1 ? "" : "s"}</span>}
-                        {counts.fail > 0 && <span className="text-red-400"> · {counts.fail} Failing</span>}
+                        <span className="text-success-foreground">{counts.pass} Passing</span>
+                        {counts.warn > 0 && <span className="text-warning-foreground"> · {counts.warn} Warning{counts.warn === 1 ? "" : "s"}</span>}
+                        {counts.fail > 0 && <span className="text-danger-foreground"> · {counts.fail} Failing</span>}
                       </span>
                     )}
                     <span className="text-xs font-mono-deck text-muted-foreground w-20 text-right">v{h.version}</span>

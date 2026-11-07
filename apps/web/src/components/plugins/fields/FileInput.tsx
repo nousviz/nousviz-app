@@ -94,7 +94,7 @@ export default function FileInput({ name, value, onChange, accept, format_hint, 
                   e.stopPropagation();
                   clear();
                 }}
-                className="ml-2 inline-flex items-center gap-0.5 text-red-400 hover:text-red-300"
+                className="ml-2 inline-flex items-center gap-0.5 text-danger-foreground hover:opacity-80"
               >
                 <X className="w-3 h-3" /> remove
               </button>
@@ -104,11 +104,11 @@ export default function FileInput({ name, value, onChange, accept, format_hint, 
           )}
         </p>
         {hintOk && (
-          <p className="text-xs text-emerald-400 mt-1 inline-flex items-center gap-1">
+          <p className="text-xs text-success-foreground mt-1 inline-flex items-center gap-1">
             <CheckCircle2 className="w-3 h-3" /> looks like a valid {format_hint}
           </p>
         )}
-        {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
+        {error && <p className="text-xs text-danger-foreground mt-1">{error}</p>}
       </div>
       <input
         ref={inputRef}

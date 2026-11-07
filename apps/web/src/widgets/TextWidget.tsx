@@ -58,7 +58,7 @@ export function TextWidget({ text }: { text: string }) {
   return (
     <div className="h-full px-1 py-1 overflow-auto">
       {formatted.length > 0 ? formatted : (
-        <p className="text-sm text-muted-foreground/60 italic">Empty text widget</p>
+        <p className="text-sm text-muted-foreground italic">Empty text widget</p>
       )}
     </div>
   );

@@ -373,7 +373,7 @@ export default function DashboardBuilderPage() {
                 value={state.description}
                 onChange={(e) => dispatch({ type: "SET_DESCRIPTION", description: e.target.value })}
                 placeholder="Description (optional)"
-                className="block bg-transparent text-muted-foreground text-[11px] border-none outline-none w-64 placeholder:text-muted-foreground/50 mt-0.5"
+                className="block bg-transparent text-muted-foreground text-[11px] border-none outline-none w-64 placeholder:text-muted-foreground mt-0.5"
               />
             </div>
           </div>
@@ -385,7 +385,7 @@ export default function DashboardBuilderPage() {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="h-8 px-4 rounded-md bg-primary text-xs text-white font-body hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+              className="h-8 px-4 rounded-md bg-primary text-xs text-primary-foreground font-body hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-1.5"
             >
               <Save className="w-3.5 h-3.5" />
               {saving ? "Saving…" : isEdit ? "Update" : "Save"}
@@ -395,7 +395,7 @@ export default function DashboardBuilderPage() {
       </div>
 
       {saveError && (
-        <div className="px-4 py-2 bg-red-500/10 border-b border-red-500/20 text-xs text-red-400 flex items-center gap-2">
+        <div className="px-4 py-2 bg-red-500/10 border-b border-red-500/20 text-xs text-danger-foreground flex items-center gap-2">
           <AlertCircle className="w-3.5 h-3.5" />
           {saveError}
         </div>
@@ -587,7 +587,7 @@ function BuilderCanvas({
           <p className="text-sm text-muted-foreground font-body">
             Add widgets from the picker on the left
           </p>
-          <p className="text-[10px] text-muted-foreground/50 mt-2 font-mono-deck">
+          <p className="text-[10px] text-muted-foreground mt-2 font-mono-deck">
             Drag to move · resize from edges · Del to remove · Cmd+D to duplicate · Esc to deselect
           </p>
         </div>
@@ -696,7 +696,7 @@ function LiveWidgetCard({
           <button
             onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); dispatch({ type: "REMOVE_WIDGET", id: widget.id }); }}
-            className="p-1 text-muted-foreground hover:text-red-400 transition-colors rounded hover:bg-background/60"
+            className="p-1 text-muted-foreground hover:text-danger-foreground transition-colors rounded hover:bg-background/60"
             title="Delete (Del)"
           >
             <Trash2 className="w-3 h-3" />
@@ -769,7 +769,7 @@ function InlineHeadingEdit({
         onClick={(e) => e.stopPropagation()}
         placeholder="Heading"
         className={cn(
-          "w-full bg-transparent border-none outline-none font-display text-foreground placeholder:text-muted-foreground/40",
+          "w-full bg-transparent border-none outline-none font-display text-foreground placeholder:text-muted-foreground",
           sizeClass,
         )}
       />
@@ -799,7 +799,7 @@ function InlineTextEdit({
         onMouseDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
         placeholder="Add your text here. Use **bold** and `code`."
-        className="w-full h-full bg-transparent border-none outline-none resize-none text-sm text-muted-foreground font-body placeholder:text-muted-foreground/40 leading-relaxed"
+        className="w-full h-full bg-transparent border-none outline-none resize-none text-sm text-muted-foreground font-body placeholder:text-muted-foreground leading-relaxed"
       />
     </div>
   );
@@ -837,7 +837,7 @@ function CustomWidgetPreview({
   const Comp = components[name];
   if (!Comp) {
     return (
-      <div className="h-full flex flex-col items-center justify-center p-4 bg-card rounded-lg border border-red-500/30 text-red-400 text-xs">
+      <div className="h-full flex flex-col items-center justify-center p-4 bg-card rounded-lg border border-red-500/30 text-danger-foreground text-xs">
         Unknown component: {name}
       </div>
     );
@@ -847,7 +847,7 @@ function CustomWidgetPreview({
       context={`builder-preview:${name}`}
       fallback={(error, reset) => (
         <div className="h-full p-4 bg-card rounded-lg border border-amber-500/30 text-xs space-y-2">
-          <div className="text-amber-400 font-medium">
+          <div className="text-warning-foreground font-medium">
             {name} failed to render
           </div>
           <div className="text-muted-foreground">{error.message}</div>
@@ -905,7 +905,7 @@ function LiveWidgetPreview({ widget }: { widget: WidgetSpec }) {
   if (error) {
     return (
       <div className="bg-card rounded-lg border border-red-500/20 p-3">
-        <div className="flex items-center gap-2 text-red-400 text-xs">
+        <div className="flex items-center gap-2 text-danger-foreground text-xs">
           <AlertCircle className="w-3.5 h-3.5 shrink-0" />
           <span className="truncate">{error}</span>
         </div>
@@ -1068,7 +1068,7 @@ function WidgetConfigPanel({
                 className={cn(
                   "flex-1 h-8 rounded-md text-xs font-body transition-colors",
                   ((widget.config.level as string) || "h2") === lv
-                    ? "bg-primary text-white"
+                    ? "bg-primary text-primary-foreground"
                     : "bg-secondary text-muted-foreground hover:text-foreground",
                 )}
               >
@@ -1076,7 +1076,7 @@ function WidgetConfigPanel({
               </button>
             ))}
           </div>
-          <p className="text-[10px] text-muted-foreground/60 mt-1">
+          <p className="text-[10px] text-muted-foreground mt-1">
             Click the heading on the card to edit the text.
           </p>
         </div>
@@ -1084,7 +1084,7 @@ function WidgetConfigPanel({
 
       {/* Text-specific config — fully inline now; sidebar just guides. */}
       {isText && (
-        <p className="text-[10px] text-muted-foreground/60">
+        <p className="text-[10px] text-muted-foreground">
           Click the text on the card to edit. Supports <code className="text-foreground">**bold**</code> and <code className="text-foreground">`code`</code> in view mode.
         </p>
       )}
@@ -1256,7 +1256,7 @@ function WidgetConfigPanel({
 
       {/* Preview result */}
       {previewError && (
-        <div className="p-2 rounded bg-red-500/10 text-xs text-red-400 flex items-center gap-1.5">
+        <div className="p-2 rounded bg-red-500/10 text-xs text-danger-foreground flex items-center gap-1.5">
           <AlertCircle className="w-3.5 h-3.5 shrink-0" />
           {previewError}
         </div>

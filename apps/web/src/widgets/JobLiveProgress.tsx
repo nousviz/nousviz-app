@@ -153,13 +153,13 @@ export default function JobLiveProgress({ pluginSlug }: { pluginSlug: string }) 
           <RefreshCw
             className={cn(
               "w-3.5 h-3.5 shrink-0 animate-spin",
-              current.status === "cancelling" ? "text-amber-400" : "text-foreground"
+              current.status === "cancelling" ? "text-warning-foreground" : "text-foreground"
             )}
           />
           <span
             className={cn(
               "truncate",
-              current.status === "cancelling" ? "text-amber-400" : "text-foreground"
+              current.status === "cancelling" ? "text-warning-foreground" : "text-foreground"
             )}
           >
             {stateLabel}
@@ -174,7 +174,7 @@ export default function JobLiveProgress({ pluginSlug }: { pluginSlug: string }) 
               e.stopPropagation();
               cancelRun();
             }}
-            className="h-7 px-2.5 rounded-md bg-secondary text-[11px] text-foreground hover:bg-red-500/20 hover:text-red-300 transition-colors flex items-center gap-1 shrink-0"
+            className="h-7 px-2.5 rounded-md bg-secondary text-[11px] text-foreground hover:bg-red-500/20 hover:text-danger-foreground transition-colors flex items-center gap-1 shrink-0"
           >
             <XCircle className="w-3 h-3" />
             Cancel

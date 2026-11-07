@@ -69,10 +69,10 @@ function sourceIcon(type: string) {
 }
 
 function sourceBadgeClass(type: string) {
-  if (type === "postgres")        return "bg-blue-500/10 text-blue-400";
-  if (type === "plugin_postgres") return "bg-green-500/10 text-green-400";
-  if (type === "connection")      return "bg-purple-500/10 text-purple-400";
-  return "bg-green-500/10 text-green-400";
+  if (type === "postgres")        return "bg-blue-500/10 text-info-foreground";
+  if (type === "plugin_postgres") return "bg-green-500/10 text-success-foreground";
+  if (type === "connection")      return "bg-purple-500/10 text-purple-700 dark:text-purple-400";
+  return "bg-green-500/10 text-success-foreground";
 }
 
 // ── Modal ─────────────────────────────────────────────────────────────
@@ -300,7 +300,7 @@ function CreateAlertModal({ onClose, onCreate, outboundWebhooks }: {
                                    : "border-border hover:border-primary/30 hover:bg-secondary/30"
                           )}
                         >
-                          <div className="h-8 w-8 rounded-md flex items-center justify-center shrink-0 bg-purple-500/10 text-purple-400">
+                          <div className="h-8 w-8 rounded-md flex items-center justify-center shrink-0 bg-purple-500/10 text-purple-700 dark:text-purple-400">
                             <Link2 className="w-4 h-4" />
                           </div>
                           <div className="flex-1 min-w-0">
@@ -342,7 +342,7 @@ function CreateAlertModal({ onClose, onCreate, outboundWebhooks }: {
                                      : "border-border hover:border-primary/30 hover:bg-secondary/30"
                             )}
                           >
-                            <div className="h-8 w-8 rounded-md flex items-center justify-center shrink-0 bg-blue-500/10 text-blue-400">
+                            <div className="h-8 w-8 rounded-md flex items-center justify-center shrink-0 bg-blue-500/10 text-info-foreground">
                               <Database className="w-4 h-4" />
                             </div>
                             <div className="flex-1 min-w-0">
@@ -375,7 +375,7 @@ function CreateAlertModal({ onClose, onCreate, outboundWebhooks }: {
               </div>
 
               {selectedSource.last_error && (
-                <div className="flex items-start gap-2 rounded-lg border border-yellow-500/20 bg-yellow-500/5 px-3 py-2.5 text-xs text-yellow-400">
+                <div className="flex items-start gap-2 rounded-lg border border-yellow-500/20 bg-yellow-500/5 px-3 py-2.5 text-xs text-warning-foreground">
                   <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                   {selectedSource.last_error}
                 </div>
@@ -591,7 +591,7 @@ function CreateAlertModal({ onClose, onCreate, outboundWebhooks }: {
                 )}
               </div>
 
-              {error && <p className="text-xs text-red-400">{error}</p>}
+              {error && <p className="text-xs text-danger-foreground">{error}</p>}
             </form>
           )}
         </div>
@@ -829,7 +829,7 @@ export default function AlertsPage() {
               <div key={alert.id} className="bg-card rounded-lg border border-border px-4 py-3 flex items-center gap-4">
                 <div className={cn(
                   "h-8 w-8 rounded-lg flex items-center justify-center shrink-0",
-                  alert.enabled ? "bg-blue-500/10 text-blue-400" : "bg-secondary text-muted-foreground"
+                  alert.enabled ? "bg-blue-500/10 text-info-foreground" : "bg-secondary text-muted-foreground"
                 )}>
                   <Bell className="w-4 h-4" />
                 </div>
@@ -839,14 +839,14 @@ export default function AlertsPage() {
                     <span className="text-sm text-foreground font-display">{alert.label}</span>
                     <span className={cn(
                       "text-[10px] px-1.5 py-0.5 rounded font-mono-deck",
-                      alert.enabled ? "bg-green-500/10 text-green-400" : "bg-secondary text-muted-foreground"
+                      alert.enabled ? "bg-green-500/10 text-success-foreground" : "bg-secondary text-muted-foreground"
                     )}>
                       {alert.enabled ? "Active" : "Paused"}
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {alert.dataset} · <span className="font-mono-deck">{alert.metric}</span> · {alert.frequency_label || alert.check_frequency}
-                    {alert.trigger_count > 0 && <span className="text-yellow-400"> · fired {alert.trigger_count}×</span>}
+                    {alert.trigger_count > 0 && <span className="text-warning-foreground"> · fired {alert.trigger_count}×</span>}
                   </p>
                 </div>
 
@@ -858,13 +858,13 @@ export default function AlertsPage() {
                       className="text-muted-foreground hover:text-foreground transition-colors p-1"
                     >
                       {alert.enabled
-                        ? <ToggleRight className="w-5 h-5 text-blue-400" />
+                        ? <ToggleRight className="w-5 h-5 text-info-foreground" />
                         : <ToggleLeft className="w-5 h-5" />}
                     </button>
                     <button
                       onClick={() => setPendingDelete(alert)}
                       title="Delete"
-                      className="h-8 w-8 rounded-md hover:bg-red-500/10 hover:text-red-400 flex items-center justify-center text-muted-foreground transition-colors"
+                      className="h-8 w-8 rounded-md hover:bg-red-500/10 hover:text-danger-foreground flex items-center justify-center text-muted-foreground transition-colors"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>

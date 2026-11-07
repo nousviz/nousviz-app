@@ -6,6 +6,27 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Nou
 
 ## [Unreleased]
 
+### Fixed
+
+- **Text and buttons that were hard to read (B340)**, mostly in light mode.
+  - **Status text**: the plugin "update available" banner and **Update**
+    button, badges, success / warning / error messages and links across
+    74 files now use theme colours (`info`, `success`, `warning`,
+    `danger`) that reach 4.5 : 1 in every palette. In light mode they were
+    as low as 1.1 : 1.
+  - **Primary buttons**: white on the light-mode blue was 2.8 : 1; the
+    light-mode primary is a darker blue (5.2 : 1). In default dark, primary
+    buttons have dark text on the blue, as Sovereign already did. The logo
+    keeps its blue.
+  - **Grey secondary text**: darker in light mode, lighter in default dark
+    (was 3.4 : 1 on cards); faded hints and placeholders are no longer
+    faded.
+  - **Palettes**: Aurora, Nord, Gruvbox, Solarized and Paper: primary, grey
+    text and red buttons adjusted (lightness only) to 4.5 : 1.
+  - Red and blue solid buttons use darker shades for their white text.
+  - A unit test in CI blocks new low-contrast text classes; the developer
+    guide has a "Colours and contrast" section.
+
 ---
 
 ## [1.0.6] — 2026-11-03

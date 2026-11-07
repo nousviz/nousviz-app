@@ -56,7 +56,7 @@ function styleClasses(style?: "primary" | "secondary" | "danger"): string {
     case "primary":
       return "bg-primary text-primary-foreground hover:bg-primary/90";
     case "danger":
-      return "bg-red-500 text-white hover:bg-red-600";
+      return "bg-red-700 text-white hover:bg-red-800";
     default:
       return "bg-secondary text-foreground hover:bg-secondary/80";
   }
@@ -177,10 +177,10 @@ export default function PluginActions({ pluginId: _pluginId, actions, slot, onAf
           className={cn(
             "mt-2 text-xs px-3 py-2 rounded-md",
             toast.level === "error"
-              ? "bg-red-500/10 text-red-300"
+              ? "bg-red-500/10 text-danger-foreground"
               : toast.level === "warning"
-              ? "bg-amber-500/10 text-amber-300"
-              : "bg-emerald-500/10 text-emerald-300",
+              ? "bg-amber-500/10 text-warning-foreground"
+              : "bg-emerald-500/10 text-success-foreground",
           )}
           role="status"
         >

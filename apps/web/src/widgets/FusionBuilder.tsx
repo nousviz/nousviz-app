@@ -791,8 +791,8 @@ export function FusionBuilder({ graph, onChange, showPreview = true }: FusionBui
           banner reads as a real failure when it's just "incomplete". */}
       {!compileResult.ok && graph.sources.length > 0 && (
         <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3 flex items-start gap-2">
-          <AlertTriangle className="w-3.5 h-3.5 text-red-400 mt-0.5 shrink-0" />
-          <div className="text-xs text-red-300 space-y-0.5">
+          <AlertTriangle className="w-3.5 h-3.5 text-danger-foreground mt-0.5 shrink-0" />
+          <div className="text-xs text-danger-foreground space-y-0.5">
             <p className="font-semibold">Compile errors</p>
             <ul className="list-disc pl-4 opacity-90">
               {compileResult.errors.map((err, i) => <li key={i}>{err}</li>)}

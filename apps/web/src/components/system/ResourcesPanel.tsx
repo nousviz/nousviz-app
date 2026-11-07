@@ -98,39 +98,39 @@ interface ResourcesResponse {
 // ── Color thresholds ────────────────────────────────────────────────
 
 function diskColor(pct: number): string {
-  if (pct > 85) return "text-red-400";
-  if (pct > 70) return "text-yellow-400";
-  return "text-green-400";
+  if (pct > 85) return "text-danger-foreground";
+  if (pct > 70) return "text-warning-foreground";
+  return "text-success-foreground";
 }
 function memoryColor(free_mb: number, swap_mb: number): string {
-  if (free_mb < 200) return "text-red-400";
-  if (free_mb < 500) return swap_mb === 0 ? "text-red-400" : "text-yellow-400";
-  return "text-green-400";
+  if (free_mb < 200) return "text-danger-foreground";
+  if (free_mb < 500) return swap_mb === 0 ? "text-danger-foreground" : "text-warning-foreground";
+  return "text-success-foreground";
 }
 function swapColor(total_mb: number, mem_free_mb: number): string {
-  if (total_mb === 0 && mem_free_mb < 500) return "text-red-400";
-  if (total_mb === 0) return "text-yellow-400";
-  return "text-green-400";
+  if (total_mb === 0 && mem_free_mb < 500) return "text-danger-foreground";
+  if (total_mb === 0) return "text-warning-foreground";
+  return "text-success-foreground";
 }
 function syncCpuColor(pct: number): string {
-  if (pct > 60) return "text-red-400";
-  if (pct > 30) return "text-yellow-400";
-  return "text-green-400";
+  if (pct > 60) return "text-danger-foreground";
+  if (pct > 30) return "text-warning-foreground";
+  return "text-success-foreground";
 }
 function deadPctColor(pct: number): string {
-  if (pct > 30) return "text-red-400";
-  if (pct > 10) return "text-yellow-400";
+  if (pct > 30) return "text-danger-foreground";
+  if (pct > 10) return "text-warning-foreground";
   return "text-muted-foreground";
 }
 function seqScanColor(pct: number): string {
-  if (pct > 50) return "text-red-400";
-  if (pct > 25) return "text-yellow-400";
+  if (pct > 50) return "text-danger-foreground";
+  if (pct > 25) return "text-warning-foreground";
   return "text-muted-foreground";
 }
 function cacheHitColor(pct: number): string {
-  if (pct < 95) return "text-red-400";
-  if (pct < 99) return "text-yellow-400";
-  return "text-green-400";
+  if (pct < 95) return "text-danger-foreground";
+  if (pct < 99) return "text-warning-foreground";
+  return "text-success-foreground";
 }
 
 function fmtMb(mb: number): string {
@@ -294,7 +294,7 @@ export default function ResourcesPanel() {
   }
   if (error && !data) {
     return (
-      <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400">
+      <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-danger-foreground">
         {error}
       </div>
     );
@@ -363,7 +363,7 @@ export default function ResourcesPanel() {
           </div>
           <div className="bg-secondary/40 rounded-md p-3">
             <p className="text-meta uppercase tracking-wider text-muted-foreground">Failing syncs (24h)</p>
-            <p className={cn("text-section-header mt-1", failingSyncs.length > 0 ? "text-red-400" : "text-green-400")}>
+            <p className={cn("text-section-header mt-1", failingSyncs.length > 0 ? "text-danger-foreground" : "text-success-foreground")}>
               {failingSyncs.length}
             </p>
             <p className="text-meta text-muted-foreground mt-1">
@@ -392,13 +392,13 @@ export default function ResourcesPanel() {
           </div>
         </div>
         {(s.swap?.total_mb === 0 && (s.memory?.available_mb ?? 0) < 500) && (
-          <div className="rounded-md border border-yellow-500/20 bg-yellow-500/5 p-2 flex items-center gap-2 text-xs text-yellow-300">
+          <div className="rounded-md border border-yellow-500/20 bg-yellow-500/5 p-2 flex items-center gap-2 text-xs text-warning-foreground">
             <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
             No swap configured and memory free is low — OOM-kill risk if usage spikes.
           </div>
         )}
         {oldestVacuum && new Date(oldestVacuum.last_vacuum!).getTime() < Date.now() - 7 * 86400 * 1000 && (
-          <div className="rounded-md border border-yellow-500/20 bg-yellow-500/5 p-2 flex items-center gap-2 text-xs text-yellow-300">
+          <div className="rounded-md border border-yellow-500/20 bg-yellow-500/5 p-2 flex items-center gap-2 text-xs text-warning-foreground">
             <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
             <span>
               <span className="font-mono-deck">{oldestVacuum.name}</span> hasn't been vacuumed in {Math.round((Date.now() - new Date(oldestVacuum.last_vacuum!).getTime()) / (86400 * 1000))} days.
@@ -407,7 +407,7 @@ export default function ResourcesPanel() {
           </div>
         )}
         {unusedIndexCount > 0 && (
-          <div className="rounded-md border border-blue-500/20 bg-blue-500/5 p-2 flex items-center gap-2 text-xs text-blue-300">
+          <div className="rounded-md border border-blue-500/20 bg-blue-500/5 p-2 flex items-center gap-2 text-xs text-info-foreground">
             <Info className="w-3.5 h-3.5 shrink-0" />
             <span>{unusedIndexCount} index{unusedIndexCount > 1 ? "es" : ""} in the top-20 list have never been used. They occupy disk + slow writes; safe to drop.</span>
           </div>
@@ -477,7 +477,7 @@ export default function ResourcesPanel() {
           <StatCard
             label="pg_stat_statements"
             value={data.postgres.pg_stat_statements_installed ? "installed" : "missing"}
-            color={data.postgres.pg_stat_statements_installed ? "text-green-400" : "text-yellow-400"}
+            color={data.postgres.pg_stat_statements_installed ? "text-success-foreground" : "text-warning-foreground"}
             sub={data.postgres.pg_stat_statements_installed ? undefined : "slow-query visibility unavailable"}
           />
         </div>
@@ -527,7 +527,7 @@ export default function ResourcesPanel() {
             { key: "plugin_id", label: "Plugin", render: (r) => <span className="font-mono-deck">{r.plugin_id}</span> },
             { key: "schedule_cron", label: "Schedule", render: (r) => <span className="font-mono-deck text-muted-foreground">{r.schedule_cron || "—"}</span> },
             { key: "runs_24h", label: "Runs", render: (r) => r.runs_24h },
-            { key: "errors_24h", label: "Errors", render: (r) => <span className={r.errors_24h > 0 ? "text-red-400" : "text-muted-foreground"}>{r.errors_24h}</span> },
+            { key: "errors_24h", label: "Errors", render: (r) => <span className={r.errors_24h > 0 ? "text-danger-foreground" : "text-muted-foreground"}>{r.errors_24h}</span> },
             { key: "avg_duration_ms", label: "Avg duration", render: (r) => fmtMs(r.avg_duration_ms ?? null), sortValue: (r) => r.avg_duration_ms ?? 0 },
             { key: "max_duration_ms", label: "Max duration", render: (r) => fmtMs(r.max_duration_ms ?? null), sortValue: (r) => r.max_duration_ms ?? 0 },
             { key: "cpu_load_pct_estimate", label: "CPU est %", render: (r) => <span className={cn("font-semibold", syncCpuColor(r.cpu_load_pct_estimate))}>{r.cpu_load_pct_estimate.toFixed(1)}%</span> },
@@ -544,7 +544,7 @@ export default function ResourcesPanel() {
             { key: "name", label: "Index", render: (r) => <span className="font-mono-deck">{r.name}</span> },
             { key: "table", label: "Table", render: (r) => <span className="font-mono-deck text-muted-foreground">{r.table}</span> },
             { key: "size_mb", label: "Size", render: (r) => fmtMb(r.size_mb), sortValue: (r) => r.size_mb },
-            { key: "scans_lifetime", label: "Scans", render: (r) => <span className={r.scans_lifetime === 0 ? "text-yellow-400" : ""}>{r.scans_lifetime.toLocaleString()}</span> },
+            { key: "scans_lifetime", label: "Scans", render: (r) => <span className={r.scans_lifetime === 0 ? "text-warning-foreground" : ""}>{r.scans_lifetime.toLocaleString()}</span> },
             { key: "tuples_read", label: "Tuples read", render: (r) => r.tuples_read.toLocaleString() },
           ] as ColumnDef<IndexStat>[]}
           rows={data.indexes_largest}

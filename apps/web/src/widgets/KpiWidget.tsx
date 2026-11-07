@@ -40,7 +40,7 @@ export default function KpiWidget({ label, value, change, format, loading }: Kpi
           <span
             className={cn(
               "text-xs font-mono-deck flex items-center gap-0.5",
-              change > 0 ? "text-green-400" : change < 0 ? "text-red-400" : "text-muted-foreground"
+              change > 0 ? "text-success-foreground" : change < 0 ? "text-danger-foreground" : "text-muted-foreground"
             )}
           >
             {change > 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}

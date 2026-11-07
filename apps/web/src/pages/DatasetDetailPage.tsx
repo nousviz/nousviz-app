@@ -149,7 +149,7 @@ function Cell({
         }}
         className={cn(
           "text-left max-w-md truncate hover:underline cursor-pointer",
-          looksJson ? "font-mono-deck text-blue-400" : "",
+          looksJson ? "font-mono-deck text-info-foreground" : "",
         )}
         title="Click to expand"
       >
@@ -496,7 +496,7 @@ export default function DatasetDetailPage() {
         >
           <ArrowLeft className="w-3 h-3" /> Back to Datasets
         </Link>
-        <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400">
+        <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-danger-foreground">
           {error ?? "Failed to load table."}
         </div>
       </div>
@@ -601,7 +601,7 @@ export default function DatasetDetailPage() {
 
       {/* Error */}
       {error && (
-        <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400">
+        <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-danger-foreground">
           {error}
         </div>
       )}

@@ -212,7 +212,7 @@ export default function MaintenancePanel() {
             <button
               onClick={() => setConfirmRunAll(true)}
               disabled={actionInFlight !== null}
-              className="h-8 px-3 rounded-md text-xs font-medium border border-blue-500/30 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 flex items-center gap-2 disabled:opacity-50"
+              className="h-8 px-3 rounded-md text-xs font-medium border border-blue-500/30 bg-blue-500/10 text-info-foreground hover:bg-blue-500/20 flex items-center gap-2 disabled:opacity-50"
               title="Run every UNPAUSED policy now"
             >
               <Play className="w-3.5 h-3.5" />
@@ -233,7 +233,7 @@ export default function MaintenancePanel() {
       {/* Paused-by-default banner */}
       {policies.every((p) => p.paused) && (
         <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-4 py-3 flex items-start gap-3">
-          <AlertTriangle className="w-4 h-4 text-yellow-400 mt-0.5 shrink-0" />
+          <AlertTriangle className="w-4 h-4 text-warning-foreground mt-0.5 shrink-0" />
           <div>
             <p className="text-sm text-foreground font-medium">All retention policies are paused.</p>
             <p className="text-xs text-muted-foreground mt-1">
@@ -248,8 +248,8 @@ export default function MaintenancePanel() {
 
       {error && (
         <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2 flex items-center gap-2">
-          <XCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
-          <p className="text-xs text-red-300">Failed to load policies: {error}</p>
+          <XCircle className="w-3.5 h-3.5 text-danger-foreground shrink-0" />
+          <p className="text-xs text-danger-foreground">Failed to load policies: {error}</p>
         </div>
       )}
 
@@ -258,8 +258,8 @@ export default function MaintenancePanel() {
           className={cn(
             "rounded-lg px-4 py-2 border",
             toast.kind === "ok"
-              ? "bg-green-500/10 border-green-500/20 text-green-300"
-              : "bg-red-500/10 border-red-500/20 text-red-300",
+              ? "bg-green-500/10 border-green-500/20 text-success-foreground"
+              : "bg-red-500/10 border-red-500/20 text-danger-foreground",
           )}
         >
           <p className="text-xs">{toast.msg}</p>
@@ -287,12 +287,12 @@ export default function MaintenancePanel() {
               }
               badge={
                 p.paused ? (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-mono-deck px-1.5 py-0.5 rounded border border-yellow-500/30 bg-yellow-500/10 text-yellow-400">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-mono-deck px-1.5 py-0.5 rounded border border-yellow-500/30 bg-yellow-500/10 text-warning-foreground">
                     <Pause className="w-2.5 h-2.5" />
                     paused
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-mono-deck px-1.5 py-0.5 rounded border border-blue-500/30 bg-blue-500/10 text-blue-400">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-mono-deck px-1.5 py-0.5 rounded border border-blue-500/30 bg-blue-500/10 text-info-foreground">
                     <Check className="w-2.5 h-2.5" />
                     active
                   </span>
@@ -314,7 +314,7 @@ export default function MaintenancePanel() {
                   <button
                     onClick={() => setConfirmRun(p)}
                     disabled={actionInFlight === runKey}
-                    className="flex-1 text-xs px-2 py-1.5 rounded border border-blue-500/30 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 flex items-center justify-center gap-1 disabled:opacity-50"
+                    className="flex-1 text-xs px-2 py-1.5 rounded border border-blue-500/30 bg-blue-500/10 text-info-foreground hover:bg-blue-500/20 flex items-center justify-center gap-1 disabled:opacity-50"
                   >
                     <Play className="w-3 h-3" /> Run now
                   </button>
@@ -361,7 +361,7 @@ export default function MaintenancePanel() {
                 label="Would prune"
                 valueClassName={cn(
                   "tabular-nums font-mono-deck",
-                  p.rows_would_prune > 0 ? "text-yellow-400" : "text-muted-foreground",
+                  p.rows_would_prune > 0 ? "text-warning-foreground" : "text-muted-foreground",
                 )}
               >
                 {p.rows_would_prune > 0 ? p.rows_would_prune.toLocaleString() : "—"}
@@ -379,7 +379,7 @@ export default function MaintenancePanel() {
                 )}
               </MobileCardRow>
               {p.last_run_error && (
-                <div className="text-[10px] text-red-400 break-words" title={p.last_run_error}>
+                <div className="text-[10px] text-danger-foreground break-words" title={p.last_run_error}>
                   last error: {p.last_run_error}
                 </div>
               )}
@@ -414,7 +414,7 @@ export default function MaintenancePanel() {
                     <div className="font-mono-deck text-foreground">{p.key}</div>
                     <div className="text-[10px] text-muted-foreground mt-0.5">{p.description}</div>
                     {p.last_run_error && (
-                      <div className="text-[10px] text-red-400 mt-0.5 truncate" title={p.last_run_error}>
+                      <div className="text-[10px] text-danger-foreground mt-0.5 truncate" title={p.last_run_error}>
                         last error: {p.last_run_error}
                       </div>
                     )}
@@ -460,7 +460,7 @@ export default function MaintenancePanel() {
                   <td
                     className={cn(
                       "px-3 py-2 text-right tabular-nums font-mono-deck",
-                      p.rows_would_prune > 0 ? "text-yellow-400" : "text-muted-foreground",
+                      p.rows_would_prune > 0 ? "text-warning-foreground" : "text-muted-foreground",
                     )}
                   >
                     {p.rows_would_prune > 0 ? p.rows_would_prune.toLocaleString() : "—"}
@@ -479,12 +479,12 @@ export default function MaintenancePanel() {
                   </td>
                   <td className="px-3 py-2">
                     {p.paused ? (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-mono-deck px-1.5 py-0.5 rounded border border-yellow-500/30 bg-yellow-500/10 text-yellow-400">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-mono-deck px-1.5 py-0.5 rounded border border-yellow-500/30 bg-yellow-500/10 text-warning-foreground">
                         <Pause className="w-2.5 h-2.5" />
                         paused
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-mono-deck px-1.5 py-0.5 rounded border border-blue-500/30 bg-blue-500/10 text-blue-400">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-mono-deck px-1.5 py-0.5 rounded border border-blue-500/30 bg-blue-500/10 text-info-foreground">
                         <Check className="w-2.5 h-2.5" />
                         active
                       </span>
@@ -539,12 +539,12 @@ export default function MaintenancePanel() {
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
           <div className="bg-card border border-border rounded-lg p-5 max-w-md w-full space-y-3">
             <div className="flex items-start gap-3">
-              <Info className="w-5 h-5 text-yellow-400 shrink-0 mt-0.5" />
+              <Info className="w-5 h-5 text-warning-foreground shrink-0 mt-0.5" />
               <div>
                 <h3 className="text-sm font-display text-foreground">Run {confirmRun.key} now?</h3>
                 <p className="text-xs text-muted-foreground mt-1">
                   This will delete{" "}
-                  <span className="text-yellow-400 font-mono-deck font-semibold">
+                  <span className="text-warning-foreground font-mono-deck font-semibold">
                     {confirmRun.rows_would_prune.toLocaleString()}
                   </span>{" "}
                   row{confirmRun.rows_would_prune === 1 ? "" : "s"} from{" "}
@@ -565,7 +565,7 @@ export default function MaintenancePanel() {
               <button
                 onClick={() => runPolicy(confirmRun.key)}
                 disabled={actionInFlight !== null}
-                className="h-8 px-3 rounded-md bg-blue-500 text-white text-xs hover:bg-blue-600 disabled:opacity-50 flex items-center gap-1.5"
+                className="h-8 px-3 rounded-md bg-blue-700 text-white text-xs hover:bg-blue-800 disabled:opacity-50 flex items-center gap-1.5"
               >
                 <Play className="w-3 h-3" />
                 Run now
@@ -580,12 +580,12 @@ export default function MaintenancePanel() {
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
           <div className="bg-card border border-border rounded-lg p-5 max-w-md w-full space-y-3">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-yellow-400 shrink-0 mt-0.5" />
+              <AlertTriangle className="w-5 h-5 text-warning-foreground shrink-0 mt-0.5" />
               <div>
                 <h3 className="text-sm font-display text-foreground">Run all unpaused policies?</h3>
                 <p className="text-xs text-muted-foreground mt-1">
                   This will run every UNPAUSED policy and delete approximately{" "}
-                  <span className="text-yellow-400 font-mono-deck font-semibold">
+                  <span className="text-warning-foreground font-mono-deck font-semibold">
                     {policies
                       .filter((p) => !p.paused)
                       .reduce((s, p) => s + p.rows_would_prune, 0)
@@ -605,7 +605,7 @@ export default function MaintenancePanel() {
               <button
                 onClick={runAll}
                 disabled={actionInFlight !== null}
-                className="h-8 px-3 rounded-md bg-blue-500 text-white text-xs hover:bg-blue-600 disabled:opacity-50 flex items-center gap-1.5"
+                className="h-8 px-3 rounded-md bg-blue-700 text-white text-xs hover:bg-blue-800 disabled:opacity-50 flex items-center gap-1.5"
               >
                 <Play className="w-3 h-3" />
                 Run all
@@ -744,7 +744,7 @@ function DiagnosticAlertSubscriptionsSection() {
             <button
               onClick={sendTest}
               disabled={actionInFlight !== null}
-              className="h-8 px-3 rounded-md text-xs font-medium border border-blue-500/30 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 flex items-center gap-1.5 disabled:opacity-50"
+              className="h-8 px-3 rounded-md text-xs font-medium border border-blue-500/30 bg-blue-500/10 text-info-foreground hover:bg-blue-500/20 flex items-center gap-1.5 disabled:opacity-50"
               title="Fire a synthetic critical finding to every subscribed webhook"
             >
               <Play className="w-3 h-3" />
@@ -764,7 +764,7 @@ function DiagnosticAlertSubscriptionsSection() {
 
       {error && (
         <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2">
-          <p className="text-[11px] text-red-300">Failed to load: {error}</p>
+          <p className="text-[11px] text-danger-foreground">Failed to load: {error}</p>
         </div>
       )}
 
@@ -773,8 +773,8 @@ function DiagnosticAlertSubscriptionsSection() {
           className={cn(
             "rounded-lg px-4 py-2 border",
             toast.kind === "ok"
-              ? "bg-green-500/10 border-green-500/20 text-green-300"
-              : "bg-red-500/10 border-red-500/20 text-red-300",
+              ? "bg-green-500/10 border-green-500/20 text-success-foreground"
+              : "bg-red-500/10 border-red-500/20 text-danger-foreground",
           )}
         >
           <p className="text-xs">{toast.msg}</p>
@@ -803,7 +803,7 @@ function DiagnosticAlertSubscriptionsSection() {
                       <span className="font-mono-deck text-foreground text-sm break-words">{s.name}</span>
                       {s.channel_type === "slack" && (
                         <span
-                          className="text-[9px] font-mono-deck px-1 py-0.5 rounded border border-purple-500/30 bg-purple-500/10 text-purple-400"
+                          className="text-[9px] font-mono-deck px-1 py-0.5 rounded border border-purple-500/30 bg-purple-500/10 text-purple-700 dark:text-purple-400"
                           title="Block Kit formatting (B283)"
                         >
                           slack
@@ -815,7 +815,7 @@ function DiagnosticAlertSubscriptionsSection() {
                 }
                 badge={
                   s.is_active ? (
-                    <span className="text-[10px] font-mono-deck px-1.5 py-0.5 rounded border border-green-500/30 bg-green-500/10 text-green-400">
+                    <span className="text-[10px] font-mono-deck px-1.5 py-0.5 rounded border border-green-500/30 bg-green-500/10 text-success-foreground">
                       active
                     </span>
                   ) : (
@@ -831,7 +831,7 @@ function DiagnosticAlertSubscriptionsSection() {
                     className={cn(
                       "w-full text-xs px-2 py-1.5 rounded border flex items-center justify-center gap-1 disabled:opacity-50",
                       s.subscribed
-                        ? "border-blue-500/30 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20"
+                        ? "border-blue-500/30 bg-blue-500/10 text-info-foreground hover:bg-blue-500/20"
                         : "border-border bg-secondary/40 hover:bg-secondary text-muted-foreground hover:text-foreground",
                     )}
                   >
@@ -869,7 +869,7 @@ function DiagnosticAlertSubscriptionsSection() {
                       <span className="font-mono-deck text-foreground">{s.name}</span>
                       {s.channel_type === "slack" && (
                         <span
-                          className="text-[9px] font-mono-deck px-1 py-0.5 rounded border border-purple-500/30 bg-purple-500/10 text-purple-400"
+                          className="text-[9px] font-mono-deck px-1 py-0.5 rounded border border-purple-500/30 bg-purple-500/10 text-purple-700 dark:text-purple-400"
                           title="Block Kit formatting (B283)"
                         >
                           slack
@@ -888,7 +888,7 @@ function DiagnosticAlertSubscriptionsSection() {
                   </td>
                   <td className="px-3 py-2">
                     {s.is_active ? (
-                      <span className="text-[10px] font-mono-deck px-1.5 py-0.5 rounded border border-green-500/30 bg-green-500/10 text-green-400">
+                      <span className="text-[10px] font-mono-deck px-1.5 py-0.5 rounded border border-green-500/30 bg-green-500/10 text-success-foreground">
                         active
                       </span>
                     ) : (
@@ -904,7 +904,7 @@ function DiagnosticAlertSubscriptionsSection() {
                       className={cn(
                         "text-[11px] px-2 py-1 rounded border flex items-center gap-1 ml-auto disabled:opacity-50",
                         s.subscribed
-                          ? "border-blue-500/30 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20"
+                          ? "border-blue-500/30 bg-blue-500/10 text-info-foreground hover:bg-blue-500/20"
                           : "border-border bg-secondary/40 hover:bg-secondary text-muted-foreground hover:text-foreground",
                       )}
                       title={
@@ -1177,7 +1177,7 @@ function JobRunAlertsSection() {
           <button
             onClick={openCreateForm}
             disabled={actionInFlight !== null || webhooks.length === 0}
-            className="h-8 px-3 rounded-md text-xs font-medium border border-blue-500/30 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 flex items-center gap-1.5 disabled:opacity-50"
+            className="h-8 px-3 rounded-md text-xs font-medium border border-blue-500/30 bg-blue-500/10 text-info-foreground hover:bg-blue-500/20 flex items-center gap-1.5 disabled:opacity-50"
             title={
               webhooks.length === 0
                 ? "Install the webhooks plugin and add an outbound webhook first"
@@ -1200,7 +1200,7 @@ function JobRunAlertsSection() {
 
       {error && (
         <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2">
-          <p className="text-[11px] text-red-300">Failed to load: {error}</p>
+          <p className="text-[11px] text-danger-foreground">Failed to load: {error}</p>
         </div>
       )}
 
@@ -1209,8 +1209,8 @@ function JobRunAlertsSection() {
           className={cn(
             "rounded-lg px-4 py-2 border",
             toast.kind === "ok"
-              ? "bg-green-500/10 border-green-500/20 text-green-300"
-              : "bg-red-500/10 border-red-500/20 text-red-300",
+              ? "bg-green-500/10 border-green-500/20 text-success-foreground"
+              : "bg-red-500/10 border-red-500/20 text-danger-foreground",
           )}
         >
           <p className="text-xs">{toast.msg}</p>
@@ -1245,7 +1245,7 @@ function JobRunAlertsSection() {
                   className={cn(!s.enabled && "opacity-60")}
                   title={
                     <div className="font-mono-deck text-foreground text-sm break-words">
-                      {s.plugin_id === "*" ? <span className="text-blue-400">any plugin</span> : s.plugin_id}
+                      {s.plugin_id === "*" ? <span className="text-info-foreground">any plugin</span> : s.plugin_id}
                     </div>
                   }
                   badge={
@@ -1254,11 +1254,11 @@ function JobRunAlertsSection() {
                         disabled
                       </span>
                     ) : !s.webhook_active ? (
-                      <span className="text-[10px] font-mono-deck px-1.5 py-0.5 rounded border border-yellow-500/30 bg-yellow-500/10 text-yellow-400">
+                      <span className="text-[10px] font-mono-deck px-1.5 py-0.5 rounded border border-yellow-500/30 bg-yellow-500/10 text-warning-foreground">
                         webhook inactive
                       </span>
                     ) : (
-                      <span className="text-[10px] font-mono-deck px-1.5 py-0.5 rounded border border-green-500/30 bg-green-500/10 text-green-400">
+                      <span className="text-[10px] font-mono-deck px-1.5 py-0.5 rounded border border-green-500/30 bg-green-500/10 text-success-foreground">
                         active
                       </span>
                     )
@@ -1286,7 +1286,7 @@ function JobRunAlertsSection() {
                       <button
                         onClick={() => setConfirmDelete(s)}
                         disabled={actionInFlight === `delete-${s.id}`}
-                        className="flex-1 text-xs px-2 py-1.5 rounded border border-red-500/30 hover:bg-red-500/10 text-red-400 flex items-center justify-center gap-1 disabled:opacity-50"
+                        className="flex-1 text-xs px-2 py-1.5 rounded border border-red-500/30 hover:bg-red-500/10 text-danger-foreground flex items-center justify-center gap-1 disabled:opacity-50"
                       >
                         <Trash2 className="w-3 h-3" /> Delete
                       </button>
@@ -1298,7 +1298,7 @@ function JobRunAlertsSection() {
                       {s.on_status.map((st) => (
                         <span
                           key={st}
-                          className="text-[10px] font-mono-deck px-1.5 py-0.5 rounded border border-yellow-500/30 bg-yellow-500/10 text-yellow-400"
+                          className="text-[10px] font-mono-deck px-1.5 py-0.5 rounded border border-yellow-500/30 bg-yellow-500/10 text-warning-foreground"
                         >
                           {st}
                         </span>
@@ -1306,7 +1306,7 @@ function JobRunAlertsSection() {
                     </div>
                   </MobileCardRow>
                   {orphan ? (
-                    <MobileCardRow label="Webhook" valueClassName="text-red-400 italic text-[11px]">
+                    <MobileCardRow label="Webhook" valueClassName="text-danger-foreground italic text-[11px]">
                       missing (id: {s.webhook_id.slice(0, 8)}…)
                     </MobileCardRow>
                   ) : (
@@ -1316,7 +1316,7 @@ function JobRunAlertsSection() {
                           <span className="font-mono-deck text-foreground">{s.webhook_name}</span>
                           {s.webhook_channel_type === "slack" && (
                             <span
-                              className="text-[9px] font-mono-deck px-1 py-0.5 rounded border border-purple-500/30 bg-purple-500/10 text-purple-400"
+                              className="text-[9px] font-mono-deck px-1 py-0.5 rounded border border-purple-500/30 bg-purple-500/10 text-purple-700 dark:text-purple-400"
                               title="Block Kit formatting (B283)"
                             >
                               slack
@@ -1356,7 +1356,7 @@ function JobRunAlertsSection() {
                     <td className="px-3 py-2 sticky left-0 bg-card z-10 shadow-[inset_-1px_0_0_var(--border)]">
                       <div className="font-mono-deck text-foreground">
                         {s.plugin_id === "*" ? (
-                          <span className="text-blue-400">any plugin</span>
+                          <span className="text-info-foreground">any plugin</span>
                         ) : (
                           s.plugin_id
                         )}
@@ -1367,7 +1367,7 @@ function JobRunAlertsSection() {
                         {s.on_status.map((st) => (
                           <span
                             key={st}
-                            className="text-[10px] font-mono-deck px-1.5 py-0.5 rounded border border-yellow-500/30 bg-yellow-500/10 text-yellow-400"
+                            className="text-[10px] font-mono-deck px-1.5 py-0.5 rounded border border-yellow-500/30 bg-yellow-500/10 text-warning-foreground"
                           >
                             {st}
                           </span>
@@ -1376,7 +1376,7 @@ function JobRunAlertsSection() {
                     </td>
                     <td className="px-3 py-2">
                       {orphan ? (
-                        <span className="text-[11px] text-red-400 italic">
+                        <span className="text-[11px] text-danger-foreground italic">
                           webhook missing (id: {s.webhook_id.slice(0, 8)}…)
                         </span>
                       ) : (
@@ -1385,7 +1385,7 @@ function JobRunAlertsSection() {
                             <span className="font-mono-deck text-foreground">{s.webhook_name}</span>
                             {s.webhook_channel_type === "slack" && (
                               <span
-                                className="text-[9px] font-mono-deck px-1 py-0.5 rounded border border-purple-500/30 bg-purple-500/10 text-purple-400"
+                                className="text-[9px] font-mono-deck px-1 py-0.5 rounded border border-purple-500/30 bg-purple-500/10 text-purple-700 dark:text-purple-400"
                                 title="Block Kit formatting (B283)"
                               >
                                 slack
@@ -1407,11 +1407,11 @@ function JobRunAlertsSection() {
                           disabled
                         </span>
                       ) : !s.webhook_active ? (
-                        <span className="text-[10px] font-mono-deck px-1.5 py-0.5 rounded border border-yellow-500/30 bg-yellow-500/10 text-yellow-400">
+                        <span className="text-[10px] font-mono-deck px-1.5 py-0.5 rounded border border-yellow-500/30 bg-yellow-500/10 text-warning-foreground">
                           webhook inactive
                         </span>
                       ) : (
-                        <span className="text-[10px] font-mono-deck px-1.5 py-0.5 rounded border border-green-500/30 bg-green-500/10 text-green-400">
+                        <span className="text-[10px] font-mono-deck px-1.5 py-0.5 rounded border border-green-500/30 bg-green-500/10 text-success-foreground">
                           active
                         </span>
                       )}
@@ -1454,7 +1454,7 @@ function JobRunAlertsSection() {
                         <button
                           onClick={() => setConfirmDelete(s)}
                           disabled={actionInFlight === `delete-${s.id}`}
-                          className="text-[10px] px-1.5 py-0.5 rounded border border-red-500/30 hover:bg-red-500/10 text-red-400 flex items-center gap-1 disabled:opacity-50"
+                          className="text-[10px] px-1.5 py-0.5 rounded border border-red-500/30 hover:bg-red-500/10 text-danger-foreground flex items-center gap-1 disabled:opacity-50"
                           title="Delete this subscription"
                         >
                           <Trash2 className="w-2.5 h-2.5" />
@@ -1476,7 +1476,7 @@ function JobRunAlertsSection() {
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
           <div className="bg-card border border-border rounded-lg p-5 max-w-lg w-full space-y-4">
             <div className="flex items-start gap-3">
-              <Bell className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
+              <Bell className="w-5 h-5 text-info-foreground shrink-0 mt-0.5" />
               <div className="flex-1">
                 <h3 className="text-sm font-display text-foreground">Add job-alert subscription</h3>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -1515,7 +1515,7 @@ function JobRunAlertsSection() {
                       className={cn(
                         "text-[11px] font-mono-deck px-2 py-1 rounded border cursor-pointer flex items-center gap-1.5",
                         formStatuses.has(s)
-                          ? "border-yellow-500/30 bg-yellow-500/10 text-yellow-400"
+                          ? "border-yellow-500/30 bg-yellow-500/10 text-warning-foreground"
                           : "border-border bg-secondary/40 text-muted-foreground hover:text-foreground",
                       )}
                     >
@@ -1553,7 +1553,7 @@ function JobRunAlertsSection() {
 
               {formError && (
                 <div className="bg-red-500/10 border border-red-500/20 rounded px-3 py-2">
-                  <p className="text-[11px] text-red-300">{formError}</p>
+                  <p className="text-[11px] text-danger-foreground">{formError}</p>
                 </div>
               )}
             </div>
@@ -1572,7 +1572,7 @@ function JobRunAlertsSection() {
               <button
                 onClick={submitCreate}
                 disabled={actionInFlight === "create"}
-                className="h-8 px-3 rounded-md bg-blue-500 text-white text-xs hover:bg-blue-600 disabled:opacity-50 flex items-center gap-1.5"
+                className="h-8 px-3 rounded-md bg-blue-700 text-white text-xs hover:bg-blue-800 disabled:opacity-50 flex items-center gap-1.5"
               >
                 <Plus className="w-3 h-3" />
                 Create subscription
@@ -1587,7 +1587,7 @@ function JobRunAlertsSection() {
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
           <div className="bg-card border border-border rounded-lg p-5 max-w-md w-full space-y-3">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+              <AlertTriangle className="w-5 h-5 text-danger-foreground shrink-0 mt-0.5" />
               <div>
                 <h3 className="text-sm font-display text-foreground">Delete subscription?</h3>
                 <p className="text-xs text-muted-foreground mt-1">
@@ -1614,7 +1614,7 @@ function JobRunAlertsSection() {
               <button
                 onClick={() => deleteSubscription(confirmDelete)}
                 disabled={actionInFlight !== null}
-                className="h-8 px-3 rounded-md bg-red-500 text-white text-xs hover:bg-red-600 disabled:opacity-50 flex items-center gap-1.5"
+                className="h-8 px-3 rounded-md bg-red-700 text-white text-xs hover:bg-red-800 disabled:opacity-50 flex items-center gap-1.5"
               >
                 <Trash2 className="w-3 h-3" />
                 Delete

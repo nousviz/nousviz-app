@@ -273,7 +273,7 @@ function AlertBuilder({
       </div>
 
       {columnsError && (
-        <div className="flex items-center gap-2 p-3 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
+        <div className="flex items-center gap-2 p-3 rounded-md bg-red-500/10 border border-red-500/20 text-danger-foreground text-xs">
           <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
           Failed to load columns for <span className="font-mono-deck">{form.dataset}</span>: {columnsError}
         </div>
@@ -485,7 +485,7 @@ export default function PluginAlerts({ pluginId, tables = [] }: { pluginId: stri
                         <Clock className="w-3 h-3" />{FREQ_LABEL[alert.check_frequency] ?? alert.frequency_label} · {PERIOD_LABEL[alert.check_period] ?? alert.period_label}
                       </span>
                       {alert.enabled && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-400">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/10 text-success-foreground">
                           Active
                         </span>
                       )}
@@ -513,7 +513,7 @@ export default function PluginAlerts({ pluginId, tables = [] }: { pluginId: stri
                     <button
                       onClick={() => setPendingDelete(alert)}
                       title="Delete"
-                      className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-red-400"
+                      className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-danger-foreground"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>

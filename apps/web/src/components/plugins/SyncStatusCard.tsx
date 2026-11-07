@@ -354,8 +354,8 @@ export default function SyncStatusCard({
           className={cn(
             "rounded-lg border px-4 py-3 text-xs font-body flex items-center gap-2",
             completionBanner.kind === "success"
-              ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-300"
-              : "bg-red-500/10 border-red-500/20 text-red-300"
+              ? "bg-emerald-500/10 border-emerald-500/20 text-success-foreground"
+              : "bg-red-500/10 border-red-500/20 text-danger-foreground"
           )}
         >
           {completionBanner.kind === "success" ? (
@@ -380,11 +380,11 @@ export default function SyncStatusCard({
           <h3 className="font-display text-sm text-foreground">Sync</h3>
           {schedule && (
             schedule.scheduler_alive ? (
-              <span className="text-[10px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <span className="text-[10px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/10 text-success-foreground border border-emerald-500/20">
                 scheduler online
               </span>
             ) : (
-              <span className="text-[10px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+              <span className="text-[10px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/10 text-warning-foreground border border-amber-500/20">
                 scheduler not detected
               </span>
             )
@@ -403,7 +403,7 @@ export default function SyncStatusCard({
         )}
 
         {triggerError && (
-          <div className="text-xs text-red-400">{triggerError}</div>
+          <div className="text-xs text-danger-foreground">{triggerError}</div>
         )}
 
         {/* Schedule summary — always visible */}
@@ -419,7 +419,7 @@ export default function SyncStatusCard({
                 </span>
                 <span className="ml-2 text-[10px] uppercase tracking-wider">
                   {schedule.source === "override" ? (
-                    <span className="text-blue-400">Custom override</span>
+                    <span className="text-info-foreground">Custom override</span>
                   ) : (
                     <span className="text-muted-foreground">Manifest default</span>
                   )}
@@ -514,7 +514,7 @@ function IdleRow({
         )}
         {showFailure && lastFailure && (
           <div className="space-y-1">
-            <div className="flex items-start gap-1.5 text-red-400">
+            <div className="flex items-start gap-1.5 text-danger-foreground">
               <AlertCircle className="w-3 h-3 shrink-0 mt-0.5" />
               <span className="break-words">
                 Last attempt {lastFailure.status}: {lastFailure.error ?? "(no error message)"}
@@ -584,14 +584,14 @@ function ActiveRunRow({
           <RefreshCw
             className={cn(
               "w-3.5 h-3.5 shrink-0",
-              current.status === "cancelling" ? "text-amber-400" : "text-foreground",
+              current.status === "cancelling" ? "text-warning-foreground" : "text-foreground",
               "animate-spin"
             )}
           />
           <span
             className={cn(
               "truncate",
-              current.status === "cancelling" ? "text-amber-400" : "text-foreground"
+              current.status === "cancelling" ? "text-warning-foreground" : "text-foreground"
             )}
           >
             {stateLabel}
@@ -603,7 +603,7 @@ function ActiveRunRow({
         {current.status !== "cancelling" && (
           <button
             onClick={() => onCancel(current.run_id)}
-            className="h-8 px-3 rounded-md bg-secondary text-xs text-foreground font-body hover:bg-red-500/20 hover:text-red-300 transition-colors flex items-center gap-1.5 shrink-0"
+            className="h-8 px-3 rounded-md bg-secondary text-xs text-foreground font-body hover:bg-red-500/20 hover:text-danger-foreground transition-colors flex items-center gap-1.5 shrink-0"
           >
             <XCircle className="w-3.5 h-3.5" />
             Cancel
@@ -832,11 +832,11 @@ function ScheduleEditor({
         )}
       </div>
 
-      {message && <div className="text-emerald-400">{message}</div>}
-      {error && <div className="text-red-400">{error}</div>}
+      {message && <div className="text-success-foreground">{message}</div>}
+      {error && <div className="text-danger-foreground">{error}</div>}
 
       {schedule.registry?.last_error && (
-        <div className="text-red-400 pt-1 border-t border-border">
+        <div className="text-danger-foreground pt-1 border-t border-border">
           Last scheduler error: {schedule.registry.last_error}
         </div>
       )}

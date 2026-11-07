@@ -255,7 +255,7 @@ function makeBrokenBundlePlaceholder(
       },
       React.createElement(
         "div",
-        { className: "text-amber-400 font-medium" },
+        { className: "text-warning-foreground font-medium" },
         `Plugin widget failed to load: ${pluginId}/${componentName}`,
       ),
       React.createElement(

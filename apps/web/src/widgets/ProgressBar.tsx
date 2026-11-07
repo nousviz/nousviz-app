@@ -39,12 +39,12 @@ function clamp(n: number, lo: number, hi: number): number {
 }
 
 const STATUS_COLORS: Record<ProgressStatus, { fill: string; text: string }> = {
-  running:   { fill: "bg-blue-500",   text: "text-blue-400" },
-  success:   { fill: "bg-green-500",  text: "text-green-400" },
-  error:     { fill: "bg-red-500",    text: "text-red-400" },
+  running:   { fill: "bg-blue-500",   text: "text-info-foreground" },
+  success:   { fill: "bg-green-500",  text: "text-success-foreground" },
+  error:     { fill: "bg-red-500",    text: "text-danger-foreground" },
   cancelled: { fill: "bg-gray-500",   text: "text-gray-400" },
   skipped:   { fill: "bg-gray-500",   text: "text-gray-400" },
-  timeout:   { fill: "bg-amber-500",  text: "text-amber-400" },
+  timeout:   { fill: "bg-amber-500",  text: "text-warning-foreground" },
 };
 
 export default function ProgressBar({

@@ -227,20 +227,20 @@ export default function LogsPanel() {
   const levelIcon = (lvl: string) => {
     switch (lvl) {
       case "error":
-        return <AlertCircle className="w-3.5 h-3.5 text-red-400" />;
+        return <AlertCircle className="w-3.5 h-3.5 text-danger-foreground" />;
       case "warning":
-        return <AlertTriangle className="w-3.5 h-3.5 text-yellow-400" />;
+        return <AlertTriangle className="w-3.5 h-3.5 text-warning-foreground" />;
       default:
-        return <Info className="w-3.5 h-3.5 text-blue-400" />;
+        return <Info className="w-3.5 h-3.5 text-info-foreground" />;
     }
   };
 
   const levelColor = (lvl: string) => {
     switch (lvl) {
       case "error":
-        return "text-red-400";
+        return "text-danger-foreground";
       case "warning":
-        return "text-yellow-400";
+        return "text-warning-foreground";
       default:
         return "text-muted-foreground";
     }
@@ -412,7 +412,7 @@ export default function LogsPanel() {
       ) : logs.length === 0 ? (
         <div className="py-12 text-center border border-dashed border-border rounded-lg">
           <p className="text-sm text-muted-foreground">No logs found</p>
-          <p className="text-xs text-muted-foreground/60 mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             {anyFilterActive
               ? "Try adjusting filters or clearing all."
               : "Logs appear here when plugin operations occur."}
@@ -536,7 +536,7 @@ function LogRow({
           <div className="truncate">{log.message}</div>
           {log.error_summary && (
             <div
-              className="mt-0.5 text-[10px] text-red-300/90 truncate font-mono-deck"
+              className="mt-0.5 text-[10px] text-danger-foreground truncate font-mono-deck"
               title={log.error_summary}
             >
               {log.error_summary}
@@ -567,8 +567,8 @@ function DetailChips({
   return (
     <div className="space-y-2">
       {log.error_summary && (
-        <div className="rounded-md border border-red-500/30 bg-red-500/5 px-3 py-2 text-[11px] text-red-200 font-mono-deck">
-          <span className="text-red-400/70 mr-1.5">error:</span>
+        <div className="rounded-md border border-red-500/30 bg-red-500/5 px-3 py-2 text-[11px] text-danger-foreground font-mono-deck">
+          <span className="text-danger-foreground mr-1.5">error:</span>
           {log.error_summary}
         </div>
       )}

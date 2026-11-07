@@ -308,10 +308,32 @@ Keep the script fast (< 3 s). The platform enforces a 10 s timeout.
 
 ### Styling
 
-- Dark theme only (for now)
+- Light mode, dark mode and the palettes (Sovereign, Aurora, Nord, Gruvbox, Solarized, Paper) are all
+  supported: never pick a colour that only reads on one of them
 - Font: Instrument Sans 600 (display), Instrument Sans 400 (body), Geist Mono (data/code)
 - CSS utility classes: `font-display`, `font-body`, `font-mono-deck`
-- Primary color: `hsl(210 100% 60%)` — see `apps/web/src/index.css` for all tokens
+- Colours come from the theme tokens in `apps/web/src/index.css` (and the presets in
+  `apps/web/src/hooks/useTheme.tsx`)
+
+### Colours and contrast (B340)
+
+Every text colour must reach WCAG AA, 4.5 : 1, on its background in every palette.
+
+- **Status text**: `text-info-foreground`, `text-success-foreground`, `text-warning-foreground`,
+  `text-danger-foreground`. Tints and borders under it can stay `bg-blue-500/10`,
+  `border-red-500/40` (or `bg-info/10`, `border-danger/40`).
+- **Never** a bare palette text shade 100–400 (`text-blue-300`, `text-red-400`): those read on dark
+  only. A category colour keeps its hue with a pair: `text-purple-700 dark:text-purple-300`.
+  `src/lib/contrast-guard.test.ts` (in CI) fails on a bare one; a line that truly needs one (a chart
+  colour) carries `contrast-ok: <reason>`.
+- **Filled buttons**: `bg-primary text-primary-foreground` (never `text-white` on `bg-primary`: the
+  dark themes put dark text on a light blue). Solid status buttons use the 700 shade with white text
+  (`bg-red-700 hover:bg-red-800`), or `bg-destructive text-destructive-foreground`.
+- **Secondary text**: `text-muted-foreground` without an opacity suffix. `/30`–`/40` only for
+  decorative icons, separators and disabled items.
+- **Brand**: `brand` (`hsl(var(--brand))`) is the favicon blue, for decoration only, never behind
+  text. `primary` is darker in light mode so white text on it reads.
+- Plugin widgets can use the same variables: `hsl(var(--info-foreground))` etc.
 - Use `cn()` utility for conditional class merging (re-export of `clsx` + `tailwind-merge`)
 
 ### Component patterns

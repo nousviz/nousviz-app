@@ -69,7 +69,7 @@ export default function ParametersTable({
                     </td>
                     <td className="px-3 py-1.5 align-top">
                       {p.required ? (
-                        <span className="text-[10px] text-rose-400 uppercase tracking-wide">
+                        <span className="text-[10px] text-danger-foreground uppercase tracking-wide">
                           required
                         </span>
                       ) : (

@@ -107,7 +107,7 @@ export default function DocsPage() {
         )}
 
         {error ? (
-          <div className="flex items-center gap-3 p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400">
+          <div className="flex items-center gap-3 p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-danger-foreground">
             <AlertCircle className="w-5 h-5 shrink-0" />
             <span className="text-sm">{error}</span>
           </div>

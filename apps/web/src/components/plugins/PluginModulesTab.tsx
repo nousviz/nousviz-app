@@ -86,7 +86,7 @@ export default function PluginModulesTab({ pluginId }: { pluginId: string }) {
       </div>
 
       {restartNeeded && (
-        <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-orange-500/10 border border-orange-500/20 text-sm text-orange-400">
+        <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-orange-500/10 border border-orange-500/20 text-sm text-warning-foreground">
           <AlertTriangle className="w-4 h-4 shrink-0" />
           API restart required to apply module changes.
         </div>
@@ -111,7 +111,7 @@ export default function PluginModulesTab({ pluginId }: { pluginId: string }) {
                 </div>
                 <div className={cn(
                   "flex items-center gap-1 text-[10px] font-mono-deck px-2 py-0.5 rounded-full",
-                  mod.enabled ? "bg-green-500/10 text-green-400" : "bg-secondary text-muted-foreground"
+                  mod.enabled ? "bg-green-500/10 text-success-foreground" : "bg-secondary text-muted-foreground"
                 )}>
                   {mod.enabled ? <CheckCircle2 className="w-2.5 h-2.5" /> : <XCircle className="w-2.5 h-2.5" />}
                   {mod.enabled ? "Enabled" : "Disabled"}
@@ -161,13 +161,13 @@ export default function PluginModulesTab({ pluginId }: { pluginId: string }) {
                     </a>
                   )}
                   <button onClick={() => setDisableTarget(mod)} disabled={toggling === mod.name}
-                    className={cn("h-8 px-3 rounded-md text-xs transition-colors inline-flex items-center justify-center text-muted-foreground hover:text-red-400 hover:bg-red-500/10", !mod.has_settings && "flex-1")}>
+                    className={cn("h-8 px-3 rounded-md text-xs transition-colors inline-flex items-center justify-center text-muted-foreground hover:text-danger-foreground hover:bg-red-500/10", !mod.has_settings && "flex-1")}>
                     {toggling === mod.name ? "Disabling…" : "Disable"}
                   </button>
                 </>
               ) : (
                 <button onClick={() => toggle(mod.name, true)} disabled={toggling === mod.name}
-                  className="h-8 px-4 rounded-md bg-primary text-xs text-white hover:bg-primary/90 transition-colors flex-1 flex items-center justify-center gap-1.5 disabled:opacity-50">
+                  className="h-8 px-4 rounded-md bg-primary text-xs text-primary-foreground hover:bg-primary/90 transition-colors flex-1 flex items-center justify-center gap-1.5 disabled:opacity-50">
                   {toggling === mod.name ? "Enabling…" : "Enable Module"}
                 </button>
               )}
@@ -181,7 +181,7 @@ export default function PluginModulesTab({ pluginId }: { pluginId: string }) {
           <div className="bg-card border border-border rounded-xl p-6 max-w-md mx-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-3 mb-4">
               <div className="h-10 w-10 rounded-xl bg-red-500/10 flex items-center justify-center">
-                <Package className="w-5 h-5 text-red-400" />
+                <Package className="w-5 h-5 text-danger-foreground" />
               </div>
               <div>
                 <h3 className="font-display text-base text-foreground">Disable {disableTarget.display_name}?</h3>
@@ -191,24 +191,24 @@ export default function PluginModulesTab({ pluginId }: { pluginId: string }) {
             <div className="space-y-2 text-sm mb-5">
               {disableTarget.dashboards.length > 0 && (
                 <p className="flex items-start gap-2 text-muted-foreground">
-                  <XCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                  <XCircle className="w-4 h-4 text-danger-foreground shrink-0 mt-0.5" />
                   <span>Removes: <strong className="text-foreground">{disableTarget.dashboards.map((d) => d.label).join(", ")}</strong></span>
                 </p>
               )}
               {disableTarget.has_routes && (
                 <p className="flex items-start gap-2 text-muted-foreground">
-                  <XCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                  <XCircle className="w-4 h-4 text-danger-foreground shrink-0 mt-0.5" />
                   Unloads API routes
                 </p>
               )}
               {disableTarget.tables.length > 0 && (
                 <p className="flex items-start gap-2 text-muted-foreground">
-                  <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0 mt-0.5" />
+                  <CheckCircle2 className="w-4 h-4 text-success-foreground shrink-0 mt-0.5" />
                   <span>Data in <strong className="font-mono-deck text-foreground">{disableTarget.tables.join(", ")}</strong> preserved</span>
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-500/5 border border-orange-500/20 text-xs text-orange-400 mb-5">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-500/5 border border-orange-500/20 text-xs text-warning-foreground mb-5">
               <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
               Requires API restart to take effect
             </div>
@@ -216,7 +216,7 @@ export default function PluginModulesTab({ pluginId }: { pluginId: string }) {
               <button onClick={() => setDisableTarget(null)}
                 className="h-9 px-4 rounded-md bg-secondary text-sm text-foreground hover:bg-secondary/80 transition-colors">Cancel</button>
               <button onClick={() => toggle(disableTarget.name, false)} disabled={toggling === disableTarget.name}
-                className="h-9 px-4 rounded-md bg-red-500 text-sm text-white hover:bg-red-600 transition-colors disabled:opacity-50">
+                className="h-9 px-4 rounded-md bg-red-700 text-sm text-white hover:bg-red-800 transition-colors disabled:opacity-50">
                 {toggling === disableTarget.name ? "Disabling…" : "Disable Module"}
               </button>
             </div>
