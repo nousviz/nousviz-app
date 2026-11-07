@@ -26,6 +26,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Nou
   - Red and blue solid buttons use darker shades for their white text.
   - A unit test in CI blocks new low-contrast text classes; the developer
     guide has a "Colours and contrast" section.
+- **Plugin syncs failed at startup once a plugin stored many credentials
+  (B341).** The SDK stopped reading the credential broker's reply at
+  64 KiB (a few hundred accounts in a connector plugin), then retried with
+  its already-used token, so the run failed with "broker denied: token
+  invalid or expired". The SDK now reads the whole reply (up to 16 MiB),
+  waits up to 60 s for the broker to answer, and reports the first error
+  instead of retrying with a spent token. No plugin change needed.
 
 ---
 
