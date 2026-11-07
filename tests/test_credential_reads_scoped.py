@@ -343,6 +343,8 @@ def _sdk_env(monkeypatch, path, token, plugin="big-plugin"):
     monkeypatch.setenv("NOUSVIZ_CREDS_SOCKET", path)
     monkeypatch.setenv("NOUSVIZ_CREDS_TOKEN", token)
     monkeypatch.setenv("NOUSVIZ_PLUGIN_ID", plugin)
+    monkeypatch.setenv("NOUSVIZ_CREDS_MODE", "per_key")
+    monkeypatch.delenv("NOUSVIZ_CREDS_TOKEN_FD", raising=False)
     return bc
 
 
@@ -350,7 +352,7 @@ def test_sdk_fetches_each_key_when_needed_and_caches(broker, monkeypatch):
     from sdk.nousviz_sdk import get_credential, get_credentials
 
     b, path, calls = broker
-    bc = _sdk_env(monkeypatch, path, b.register_spawn("big-plugin", 9))
+    bc = _sdk_env(monkeypatch, path, b.register_spawn("big-plugin", 9, per_key=True))
     try:
         assert get_credential("big-plugin", "password:acct-1") == "pw-1"
         assert get_credential("big-plugin", "password:acct-1") == "pw-1"          # cached
@@ -371,7 +373,7 @@ def test_sdk_after_run_released_is_denied_once(broker, monkeypatch):
     from sdk.nousviz_sdk import get_credential
 
     b, path, calls = broker
-    bc = _sdk_env(monkeypatch, path, b.register_spawn("big-plugin", 9))
+    bc = _sdk_env(monkeypatch, path, b.register_spawn("big-plugin", 9, per_key=True))
     try:
         assert get_credential("big-plugin", "password:acct-1") == "pw-1"
         b.release_run(9)
@@ -450,3 +452,155 @@ def test_retention_policies_cover_reads_and_keep_lifecycle():
     assert reads.additional_where == "action IN ('fetch', 'used')"
     usage = POLICIES_BY_KEY["credential_usage_daily"]
     assert usage.table == "credential_usage_daily" and usage.field == "last_at" and usage.default_days == 400
+
+
+# ── Addendum: opt-in run-scoped tokens, token on a pipe ──────────────
+
+
+def test_startup_mode_is_one_full_fetch_with_a_single_use_token(broker, monkeypatch):
+    from sdk.nousviz_sdk import get_credential, get_credentials
+
+    b, path, calls = broker
+    bc = _sdk_env(monkeypatch, path, b.register_spawn("big-plugin", 9))
+    monkeypatch.setenv("NOUSVIZ_CREDS_MODE", "startup")
+    try:
+        assert get_credential("big-plugin", "password:acct-1") == "pw-1"
+        assert get_credentials("big-plugin", ["password:acct-2", "sdi_token"]) == {
+            "password:acct-2": "pw-2", "sdi_token": "tok"}
+        assert get_credential("big-plugin", "password:none") is None
+        assert [k for _, k, _ in calls] == [None]          # one full fetch
+    finally:
+        bc.reset_cache_for_tests()
+
+
+def test_startup_mode_error_is_not_retried(monkeypatch):
+    """A single-use token is spent by any answered request (B341 rule)."""
+    import threading
+
+    d = tempfile.mkdtemp(prefix="nv_", dir="/tmp")
+    path = str(Path(d) / "e.sock")
+    srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    srv.bind(path)
+    srv.listen(4)
+    seen = []
+
+    def serve():
+        while True:
+            try:
+                c, _ = srv.accept()
+            except OSError:
+                return
+            seen.append(c.recv(4096))
+            c.sendall(b"ERROR\ndb down\n")
+            c.close()
+
+    threading.Thread(target=serve, daemon=True).start()
+    from sdk.nousviz_sdk import get_credential
+
+    bc = _sdk_env(monkeypatch, path, "tok", plugin="p")
+    monkeypatch.setenv("NOUSVIZ_CREDS_MODE", "startup")
+    try:
+        for _ in range(2):
+            with pytest.raises(bc.CredentialBrokerError, match="db down"):
+                get_credential("p", "a")
+        assert len(seen) == 1
+    finally:
+        srv.close()
+        bc.reset_cache_for_tests()
+
+
+def test_worker_hands_the_token_over_on_a_pipe(monkeypatch):
+    import stat as _stat
+    from apps.worker.src import credential_broker as cb
+    from apps.worker.src import run_jobs
+
+    b = cb.CredentialBroker(socket_path="/tmp/unused.sock")
+    monkeypatch.setattr(run_jobs, "_broker", b)
+    for per_key, mode in ((False, "startup"), (True, "per_key")):
+        env, fds = run_jobs._broker_handover("big-plugin", 5, per_key=per_key)
+        try:
+            assert "NOUSVIZ_CREDS_TOKEN" not in env
+            assert env["NOUSVIZ_CREDS_MODE"] == mode and env["NOUSVIZ_CREDS_SOCKET"] == "/tmp/unused.sock"
+            fd = int(env["NOUSVIZ_CREDS_TOKEN_FD"])
+            assert fds == (fd,) and _stat.S_ISFIFO(os.fstat(fd).st_mode)
+            token = os.read(fd, 4096).decode()
+            spawn = b._pending[token]
+            assert spawn.single_use is (not per_key) and spawn.run_id == 5
+        finally:
+            run_jobs._close_fds(fds)
+
+
+def test_sdk_reads_the_pipe_once_and_forgets_it(monkeypatch):
+    from sdk.nousviz_sdk import _broker_client as bc
+
+    bc.reset_cache_for_tests()
+    r, w = os.pipe()
+    os.write(w, b"tok-from-pipe")
+    os.close(w)
+    monkeypatch.setenv("NOUSVIZ_CREDS_TOKEN_FD", str(r))
+    monkeypatch.delenv("NOUSVIZ_CREDS_TOKEN", raising=False)
+    try:
+        assert bc._read_token() == "tok-from-pipe"
+        assert "NOUSVIZ_CREDS_TOKEN_FD" not in os.environ
+        with pytest.raises(OSError):
+            os.fstat(r)                       # closed
+        assert bc._read_token() == "tok-from-pipe"   # kept in memory
+    finally:
+        bc.reset_cache_for_tests()
+
+
+def test_sdk_refuses_a_descriptor_that_is_not_a_pipe(monkeypatch, tmp_path):
+    from sdk.nousviz_sdk import _broker_client as bc
+
+    bc.reset_cache_for_tests()
+    f = tmp_path / "not-a-pipe"
+    f.write_text("secret-file-content")
+    fd = os.open(f, os.O_RDONLY)
+    monkeypatch.setenv("NOUSVIZ_CREDS_TOKEN_FD", str(fd))
+    try:
+        with pytest.raises(bc.CredentialBrokerUnavailable, match="not a pipe"):
+            bc._read_token()
+        assert os.lseek(fd, 0, os.SEEK_CUR) == 0       # nothing was read
+    finally:
+        os.close(fd)
+        bc.reset_cache_for_tests()
+
+
+def test_spawned_child_gets_the_token_and_its_own_child_does_not(tmp_path):
+    """End to end with real processes: the sync (child) reads the token from
+    the pipe at SDK import; a process it starts (grandchild) has neither the
+    variable nor the descriptor."""
+    import subprocess
+    import textwrap
+
+    child = tmp_path / "child.py"
+    child.write_text(textwrap.dedent(f"""
+        import os, subprocess, sys
+        sys.path.insert(0, {str(REPO_ROOT)!r})
+        fd = int(os.environ["NOUSVIZ_CREDS_TOKEN_FD"])
+        import sdk.nousviz_sdk._broker_client as bc
+        print("token=" + str(bc._TOKEN))
+        print("env_after=" + str("NOUSVIZ_CREDS_TOKEN_FD" in os.environ))
+        try:
+            os.fstat(fd); print("fd_open=True")
+        except OSError:
+            print("fd_open=False")
+        g = subprocess.run([sys.executable, "-c",
+            "import os; print('grand_env=' + str(os.environ.get('NOUSVIZ_CREDS_TOKEN_FD'))); "
+            "print('grand_token_env=' + str(os.environ.get('NOUSVIZ_CREDS_TOKEN')))"],
+            capture_output=True, text=True)
+        print(g.stdout.strip())
+    """))
+    r, w = os.pipe()
+    os.write(w, b"tok-xyz")
+    os.close(w)
+    env = {"PATH": os.environ.get("PATH", ""), "NOUSVIZ_CREDS_TOKEN_FD": str(r),
+           "NOUSVIZ_CREDS_SOCKET": "/tmp/none.sock", "NOUSVIZ_PLUGIN_ID": "p"}
+    try:
+        out = subprocess.run([sys.executable, str(child)], env=env, pass_fds=(r,),
+                             capture_output=True, text=True, timeout=60)
+    finally:
+        os.close(r)
+    lines = dict(line.split("=", 1) for line in out.stdout.split() if "=" in line)
+    assert lines == {"token": "tok-xyz", "env_after": "False", "fd_open": "False",
+                     "grand_env": "None", "grand_token_env": "None"}, out.stderr

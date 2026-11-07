@@ -95,9 +95,26 @@ for acct in accounts:                      # however many there are
     sync_account(acct, creds)
 ```
 
-A sync's broker token is valid for the whole run (revoked when the run
-ends), so fetching per account is the recommended pattern for plugins that
-hold many credentials.
+Per-account fetching in a **sync** needs the plugin to opt in, in
+`plugin.yaml`:
+
+```yaml
+sync:
+  credential_fetch: per_key   # default: startup
+```
+
+- `startup` (default): the sync's broker token is single-use (30 s); the
+  first `get_credential` / `get_credentials` fetches every credential of the
+  plugin once and later calls are served from memory. Same as before v1.0.8.
+- `per_key`: the token is valid for the whole run (revoked when the run
+  ends, 24 h cap); each key is fetched the first time it is asked for. Use it
+  when a plugin holds many credentials and works through them a few at a
+  time, so the sync never holds every secret at once.
+
+Either way the token is handed to the sync on a private pipe, never in its
+environment, and the SDK reads it when it is imported. Plugin code is the
+same in both modes. In plugin routes (API process) only the keys asked for
+are read, with no opt-in.
 
 Every read is counted in the credential telemetry: `credentials.last_used_at`
 / `last_used_by` and a daily per-credential count in `credential_usage_daily`

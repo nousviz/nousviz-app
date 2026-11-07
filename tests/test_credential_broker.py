@@ -49,12 +49,22 @@ def test_consume_token_happy_path():
     assert spawn.run_id == 42
 
 
-def test_consume_token_reusable_until_run_released():
-    """B342: a token serves every request of its run, then is revoked."""
+def test_consume_token_single_use_by_default():
     from apps.worker.src.credential_broker import CredentialBroker
     b = CredentialBroker(socket_path="/tmp/ignored.sock")
     t = b.register_spawn("plug", 1)
-    other = b.register_spawn("plug", 2)
+    assert b._consume_token(t, "plug") is not None
+    # Second attempt: already consumed
+    assert b._consume_token(t, "plug") is None
+
+
+def test_consume_token_reusable_until_run_released():
+    """B342: a per-key (run-scoped) token serves every request of its run,
+    then is revoked."""
+    from apps.worker.src.credential_broker import CredentialBroker
+    b = CredentialBroker(socket_path="/tmp/ignored.sock")
+    t = b.register_spawn("plug", 1, per_key=True)
+    other = b.register_spawn("plug", 2, per_key=True)
     assert b._consume_token(t, "plug") is not None
     assert b._consume_token(t, "plug") is not None
     assert b.release_run(1) == 1
@@ -229,12 +239,18 @@ def test_broker_end_to_end_token_reuse_denied(broker_with_stub_decrypt):
     token = broker.register_spawn("my-plugin", 1)
     first = _broker_fetch(sock_path, token, "my-plugin")
     assert first.startswith("OK\n")
-    # B342: reuse within the run is served; after the run is released, DENIED.
     second = _broker_fetch(sock_path, token, "my-plugin")
-    assert second.startswith("OK\n")
+    assert second.startswith("DENIED\n")
+
+
+def test_broker_end_to_end_per_key_token_reused_until_released(broker_with_stub_decrypt):
+    """B342: a per-key token is served again within its run; DENIED after."""
+    broker, sock_path = broker_with_stub_decrypt
+    token = broker.register_spawn("my-plugin", 1, per_key=True)
+    assert _broker_fetch(sock_path, token, "my-plugin").startswith("OK\n")
+    assert _broker_fetch(sock_path, token, "my-plugin").startswith("OK\n")
     broker.release_run(1)
-    third = _broker_fetch(sock_path, token, "my-plugin")
-    assert third.startswith("DENIED\n")
+    assert _broker_fetch(sock_path, token, "my-plugin").startswith("DENIED\n")
 
 
 def test_broker_end_to_end_plugin_mismatch_denied(broker_with_stub_decrypt):

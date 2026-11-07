@@ -55,13 +55,21 @@ worker passes the token to the subprocess via `NOUSVIZ_CREDS_TOKEN`
 The subprocess's SDK connects to the socket, sends `AUTH/PLUGIN/[KEYS]/GET`,
 and receives its credentials.
 
-B342 (v1.0.8): the token is **run-scoped**. It may be used again during
-its run, so a sync can fetch each account's credentials when it reaches
-that account (`KEYS`) instead of holding every secret from the start.
+B342 (v1.0.8): two kinds of token.
 
-- Run-bound: the worker calls `release_run(run_id)` when the run is
-  finalized; after that the token returns `DENIED`
-- Time-bound: hard cap of 24 h (`RUN_TOKEN_MAX_SEC`) even if never released
+- **Single-use (default, every hook, every sync that doesn't opt in):**
+  valid for one request within 30 s of the spawn, as in v0.9.0. The SDK
+  fetches the full set at its first `get_credential`.
+- **Run-scoped (`sync.credential_fetch: per_key` in the manifest):** may be
+  used again during its run, so a sync can fetch each account's credentials
+  when it reaches that account (`KEYS`) instead of holding every secret from
+  the start. Revoked by `release_run(run_id)` when the run is finalized;
+  hard cap of 24 h (`RUN_TOKEN_MAX_SEC`).
+
+Both kinds:
+- Delivered on a private pipe, not in the environment (the worker's
+  `_broker_handover`); a process's environment is readable by any process
+  of the same user, a pipe held only by the child is not
 - Plugin-scoped: `PLUGIN <plugin_id>` must match what was registered;
   a token presented for another plugin is **burned** and yields `DENIED`
 - Every request is recorded: one `fetch` row in `credential_audit_log`
@@ -71,9 +79,11 @@ that account (`KEYS`) instead of holding every secret from the start.
 
 - Broker runs as the worker user; socket dir is mode 0700 (plugin
   subprocesses share UID, so they can connect).
-- A token leaked outside its run is useless once the run ends; while
-  the run is alive it reads only that plugin's own credentials, which the
-  run could read anyway.
+- The token never sits in the subprocess environment (pipe hand-over),
+  so another process of the same user can't copy it from
+  `/proc/<pid>/environ`. A single-use token is spent at the first fetch;
+  a run-scoped one only exists for plugins that ask for it and dies with
+  the run.
 - A compromised plugin trying to `AUTH <other_plugin_token> / PLUGIN other`
   is stopped by the plugin_id binding check.
 - Broker holds decrypted values only in-memory during the handler;
@@ -105,7 +115,8 @@ logger = logging.getLogger("nousviz.broker")
 # B342: tokens live for their run (released by the worker when the run is
 # finalized), with this hard cap for a run that is never released.
 RUN_TOKEN_MAX_SEC = 24 * 60 * 60
-TOKEN_TTL_SEC = RUN_TOKEN_MAX_SEC  # name kept from v0.9.0
+# Single-use tokens (the default) must be used within this many seconds.
+TOKEN_TTL_SEC = 30
 TOKEN_BYTES = 32
 # A KEYS line names one account's fields or a batch of them; 64 KiB is
 # about a thousand keys. Larger requests are refused as abuse.
@@ -141,6 +152,7 @@ class _PendingSpawn:
     plugin_id: str
     run_id: int | None
     expires_at: float
+    single_use: bool = True
 
 
 class CredentialBroker:
@@ -172,16 +184,22 @@ class CredentialBroker:
 
     # ── Token registration (called by worker parent) ─────────────────
 
-    def register_spawn(self, plugin_id: str, run_id: int | None = None) -> str:
-        """Generate a token bound to (plugin_id, run_id), valid until
-        `release_run(run_id)` / `release_spawn(token)` or RUN_TOKEN_MAX_SEC.
-        Call this RIGHT before `subprocess.Popen(...)`."""
+    def register_spawn(self, plugin_id: str, run_id: int | None = None, *, per_key: bool = False) -> str:
+        """Generate a token bound to (plugin_id, run_id). Call this RIGHT
+        before `subprocess.Popen(...)`.
+
+        Default: single-use, valid TOKEN_TTL_SEC (v0.9.0 behaviour).
+        `per_key=True` (B342, manifest `sync.credential_fetch: per_key`):
+        reusable until `release_run(run_id)` / `release_spawn(token)` or
+        RUN_TOKEN_MAX_SEC."""
         token = secrets.token_urlsafe(TOKEN_BYTES)
+        ttl = RUN_TOKEN_MAX_SEC if per_key else TOKEN_TTL_SEC
         with self._lock:
             self._pending[token] = _PendingSpawn(
                 plugin_id=plugin_id,
                 run_id=run_id,
-                expires_at=time.time() + RUN_TOKEN_MAX_SEC,
+                expires_at=time.time() + ttl,
+                single_use=not per_key,
             )
         return token
 
@@ -356,12 +374,14 @@ class CredentialBroker:
 
     def _consume_token(self, token: str, plugin_id: str) -> Optional[_PendingSpawn]:
         """The token's spawn when it may be used for `plugin_id`, else None.
-        B342: a valid token stays registered for further requests of its
-        run; an expired one is dropped, a mismatched one is burned."""
+        A single-use token is removed on use; a run-scoped one (B342) stays
+        for further requests of its run. An expired token is dropped and a
+        mismatched one is burned."""
         now = time.time()
         with self._lock:
             spawn = self._pending.get(token)
-            if spawn is not None and (spawn.expires_at < now or spawn.plugin_id != plugin_id):
+            if spawn is not None and (spawn.single_use or spawn.expires_at < now
+                                      or spawn.plugin_id != plugin_id):
                 del self._pending[token]
         if spawn is None:
             return None

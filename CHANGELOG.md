@@ -42,10 +42,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Nou
   - `get_credential` reads and decrypts only the key asked for, in plugin
     routes and in syncs. New `get_credentials(plugin_id, keys)` (SDK
     0.7.0) fetches several in one round trip.
-  - The broker token is valid for the whole run (revoked when the run ends,
-    24 h cap), so a sync can fetch each account's credentials when it
-    reaches that account. Broker requests may name keys (`KEYS`); a request
-    without keys still gets the full set.
+  - A plugin can opt in to fetching per key in its syncs
+    (`sync.credential_fetch: per_key`): its broker token is then valid for
+    the whole run (revoked when the run ends, 24 h cap), so a sync can fetch
+    each account's credentials when it reaches that account. Every other
+    sync, and every hook, keeps the single-use 30-second token. Broker
+    requests may name keys (`KEYS`); a request without keys gets the full
+    set.
+  - The broker token is handed to every plugin subprocess on a private
+    pipe instead of in its environment, which any process of the same user
+    can read. The SDK reads it on import and closes the pipe.
   - Telemetry: `last_used_at / last_used_by` are kept (written at most once
     a minute per credential); new `credential_usage_daily` counts reads per
     credential, day and accessor; `credential_audit_log` records events and

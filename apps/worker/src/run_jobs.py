@@ -397,7 +397,47 @@ def _load_plugin_sync_config(plugin_id: str) -> Optional[dict]:
         "script": sync_script_rel,
         "execution_mode": sync.get("execution_mode", "sync"),
         "timeout_seconds": int(sync.get("timeout_seconds", DEFAULT_JOB_TIMEOUT_SEC)),
+        # B342: "per_key" asks for a run-scoped broker token; anything else
+        # (the default "startup") keeps the single-use token.
+        "credential_fetch": "per_key" if str(sync.get("credential_fetch") or "").strip() == "per_key" else "startup",
     }
+
+
+def _broker_handover(plugin_id: str, run_id: int, *, per_key: bool = False) -> tuple[dict, tuple[int, ...]]:
+    """B342: the broker token for one spawn, handed over on a private pipe.
+
+    Returns (env additions, fds to pass). The child reads the token from
+    the descriptor named in NOUSVIZ_CREDS_TOKEN_FD; it is never in the
+    environment, which any process of the same user can read
+    (/proc/<pid>/environ). The caller passes the fds with `pass_fds` (only
+    the direct child gets them; `close_fds` keeps them from grandchildren)
+    and closes them in the parent right after the spawn.
+
+    `per_key` (manifest `sync.credential_fetch: per_key`) asks for a
+    run-scoped token; otherwise single-use, 30 s.
+    """
+    if _broker is None:
+        return {}, ()
+    token = _broker.register_spawn(plugin_id=plugin_id, run_id=run_id, per_key=per_key)
+    r, w = os.pipe()
+    try:
+        os.write(w, token.encode("ascii"))
+    finally:
+        os.close(w)
+    env = {
+        "NOUSVIZ_CREDS_SOCKET": _broker._socket_path,  # noqa: SLF001
+        "NOUSVIZ_CREDS_TOKEN_FD": str(r),
+        "NOUSVIZ_CREDS_MODE": "per_key" if per_key else "startup",
+    }
+    return env, (r,)
+
+
+def _close_fds(fds: tuple[int, ...]) -> None:
+    for fd in fds:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
 
 
 def _run_hook_job(job: dict) -> None:
@@ -464,13 +504,10 @@ def _run_hook_job(job: dict) -> None:
     # path it uses for `get_credential()`. One contract, no env transport,
     # no parent-env mutation, no cross-plugin contamination.
 
-    # P208: register a broker token for this spawn and pass the socket
-    # path + token to the subprocess via env. B342: the token is valid for
-    # this run only (revoked in _finalize_run, 24 h cap).
-    if _broker is not None:
-        broker_token = _broker.register_spawn(plugin_id=plugin_id, run_id=run_id)
-        env["NOUSVIZ_CREDS_SOCKET"] = _broker._socket_path  # noqa: SLF001
-        env["NOUSVIZ_CREDS_TOKEN"] = broker_token
+    # P208: register a broker token for this spawn. B342: single-use (hooks
+    # never get a run-scoped token), handed over on a pipe, not in env.
+    broker_env, broker_fds = _broker_handover(plugin_id, run_id)
+    env.update(broker_env)
 
     # Hooks have a shorter default timeout than sync — they're meant to be
     # quick. 5 min is plenty for credential checks or a remote ping.
@@ -479,14 +516,18 @@ def _run_hook_job(job: dict) -> None:
     logger.info(f"Running hook {plugin_id}/{hook_name} (run {run_id}, target={target})")
 
     try:
-        proc = subprocess.run(
-            cmd,
-            cwd=str(plugin_dir),
-            env=env,
-            capture_output=True,
-            text=True,
-            timeout=HOOK_TIMEOUT_SEC,
-        )
+        try:
+            proc = subprocess.run(
+                cmd,
+                cwd=str(plugin_dir),
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=HOOK_TIMEOUT_SEC,
+                pass_fds=broker_fds,
+            )
+        finally:
+            _close_fds(broker_fds)  # exactly once, whatever happened
     except subprocess.TimeoutExpired:
         _finalize_run(run_id, "timeout",
                       error=f"Hook exceeded timeout of {HOOK_TIMEOUT_SEC}s")
@@ -624,12 +665,12 @@ def _run_job(job: dict) -> None:
     # to read host/port/db from the plugin_settings table.
 
     # P208: register a broker token for this spawn. Subprocess's SDK uses
-    # it to fetch credentials over the Unix socket. B342: valid for this run
-    # only (revoked in _finalize_run, 24 h cap).
-    if _broker is not None:
-        broker_token = _broker.register_spawn(plugin_id=plugin_id, run_id=run_id)
-        env["NOUSVIZ_CREDS_SOCKET"] = _broker._socket_path  # noqa: SLF001
-        env["NOUSVIZ_CREDS_TOKEN"] = broker_token
+    # it to fetch credentials over the Unix socket. B342: handed over on a
+    # pipe, not in env; run-scoped only when the manifest asks for
+    # `sync.credential_fetch: per_key` (revoked in _finalize_run, 24 h cap),
+    # single-use otherwise.
+    broker_env, broker_fds = _broker_handover(plugin_id, run_id, per_key=cfg.get("credential_fetch") == "per_key")
+    env.update(broker_env)
 
     timeout_sec = cfg["timeout_seconds"]
     logger.info(
@@ -638,15 +679,19 @@ def _run_job(job: dict) -> None:
 
     cmd = [sys.executable, str(sync_script), "--source=cron"]
     # Start the subprocess detached so we can signal it cleanly.
-    proc = subprocess.Popen(
-        cmd,
-        cwd=str(plugin_dir),
-        env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        start_new_session=True,  # own process group — makes SIGTERM propagate
-    )
+    try:
+        proc = subprocess.Popen(
+            cmd,
+            cwd=str(plugin_dir),
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            start_new_session=True,  # own process group — makes SIGTERM propagate
+            pass_fds=broker_fds,
+        )
+    finally:
+        _close_fds(broker_fds)  # the child has its copy; exactly once
 
     start = time.monotonic()
     cancel_requested_at: Optional[float] = None

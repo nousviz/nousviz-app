@@ -40,6 +40,7 @@ import json
 import logging
 import os
 import socket
+import stat
 import threading
 from typing import Any, Callable, Iterable, Optional
 
@@ -62,6 +63,11 @@ _FAILURE: Exception | None = None
 _FULL = False
 _MISSING: set[str] = set()
 _LOCK = threading.Lock()   # sync scripts call get_credential from several threads
+
+# B342: the token arrives on a pipe (NOUSVIZ_CREDS_TOKEN_FD), not in the
+# environment. It is read once, kept here, and the descriptor closed.
+_TOKEN: Optional[str] = None
+_TOKEN_ERROR: Optional[Exception] = None
 
 # B341: the broker sends every credential of the plugin in one reply. Read
 # it all (up to this ceiling) and allow time for the broker to decrypt a
@@ -196,6 +202,55 @@ def _socket_recv_all(conn: socket.socket, max_bytes: int | None = None) -> bytes
     return b"".join(parts)
 
 
+def _read_token() -> Optional[str]:
+    """The broker token for this process (B342).
+
+    From the pipe named by NOUSVIZ_CREDS_TOKEN_FD: checked to be a pipe,
+    read to EOF once, closed, and the variable removed so a child process
+    doesn't inherit a stale descriptor number. Falls back to
+    NOUSVIZ_CREDS_TOKEN (tests, workers from before B342)."""
+    global _TOKEN, _TOKEN_ERROR
+    if _TOKEN is not None:
+        return _TOKEN
+    if _TOKEN_ERROR is not None:
+        raise _TOKEN_ERROR
+    fd_text = os.environ.pop("NOUSVIZ_CREDS_TOKEN_FD", None)
+    if fd_text is not None:
+        try:
+            fd = int(fd_text)
+            if not stat.S_ISFIFO(os.fstat(fd).st_mode):
+                raise CredentialBrokerUnavailable(
+                    f"NOUSVIZ_CREDS_TOKEN_FD={fd_text} is not a pipe; refusing to read it")
+            chunks = []
+            while True:
+                chunk = os.read(fd, 4096)
+                if not chunk:
+                    break
+                chunks.append(chunk)
+            os.close(fd)
+            token = b"".join(chunks).decode("ascii", errors="replace").strip()
+            if not token:
+                raise CredentialBrokerError(
+                    "the broker token pipe was empty (already read by another process?)")
+        except CredentialBrokerError as exc:
+            _TOKEN_ERROR = exc
+            raise
+        except (ValueError, OSError) as exc:
+            _TOKEN_ERROR = CredentialBrokerUnavailable(
+                f"could not read the broker token from NOUSVIZ_CREDS_TOKEN_FD={fd_text}: {exc}")
+            raise _TOKEN_ERROR from exc
+        _TOKEN = token
+        return _TOKEN
+    return os.environ.get("NOUSVIZ_CREDS_TOKEN") or None
+
+
+def _per_key_mode() -> bool:
+    """B342: the worker runs this sync with a run-scoped token
+    (`sync.credential_fetch: per_key`). Otherwise the token is single-use
+    and the SDK fetches the full set once."""
+    return os.environ.get("NOUSVIZ_CREDS_MODE", "").strip() == "per_key"
+
+
 def _fetch_once(keys: Optional[list[str]] = None) -> dict[str, Any]:
     """Open socket, authenticate, receive credentials JSON, return dict.
 
@@ -206,12 +261,12 @@ def _fetch_once(keys: Optional[list[str]] = None) -> dict[str, Any]:
     Raises CredentialBrokerError if broker responds DENIED / ERROR.
     """
     socket_path = os.environ.get("NOUSVIZ_CREDS_SOCKET")
-    token = os.environ.get("NOUSVIZ_CREDS_TOKEN")
     plugin_id = os.environ.get("NOUSVIZ_PLUGIN_ID")
+    token = _read_token() if socket_path and plugin_id else None
 
     if not socket_path or not token or not plugin_id:
         raise CredentialBrokerUnavailable(
-            "NOUSVIZ_CREDS_SOCKET / NOUSVIZ_CREDS_TOKEN / NOUSVIZ_PLUGIN_ID "
+            "NOUSVIZ_CREDS_SOCKET / NOUSVIZ_CREDS_TOKEN(_FD) / NOUSVIZ_PLUGIN_ID "
             "not set in environment. This usually means your plugin code "
             "is running outside a NousViz-spawned subprocess. Plugin "
             "credentials are only available when the NousViz jobs-worker "
@@ -324,7 +379,9 @@ def get_cached(plugin_id: str | None = None, keys: Optional[Iterable[str]] = Non
             raise _FAILURE
         cache = _CACHE if _CACHE is not None else {}
         try:
-            if wanted is None:
+            if wanted is None or not _per_key_mode():
+                # Full set: asked for, or a single-use token (startup mode),
+                # which allows one request only.
                 if not _FULL:
                     cache.update(_fetch_once())
                     cache.pop("__scope__", None)
@@ -346,11 +403,13 @@ def get_cached(plugin_id: str | None = None, keys: Optional[Iterable[str]] = Non
                     cache.update(got)
                     if not _FULL:
                         _MISSING.update(k for k in missing if k not in got)
-        except CredentialBrokerDenied as exc:
-            # The token is no longer valid (run released, expired, or a
-            # pre-B342 single-use token already spent): asking again can
-            # only be denied, so keep the real error (B341).
-            _FAILURE = exc
+        except CredentialBrokerError as exc:
+            # A single-use token (startup mode) is spent by any request the
+            # broker answered, and DENIED means the token is no longer valid
+            # in either mode: asking again can only be denied, so keep the
+            # real error (B341). A per-key token survives other errors.
+            if isinstance(exc, CredentialBrokerDenied) or not _per_key_mode():
+                _FAILURE = exc
             raise
         _CACHE = cache
         if wanted is None:
@@ -364,8 +423,20 @@ def get_cached(plugin_id: str | None = None, keys: Optional[Iterable[str]] = Non
 def reset_cache_for_tests() -> None:
     """Test-only: clear the cache so a subsequent call triggers a fresh
     fetch. Production code never calls this."""
-    global _CACHE, _FAILURE, _FULL
+    global _CACHE, _FAILURE, _FULL, _TOKEN, _TOKEN_ERROR
     _CACHE = None
     _FAILURE = None
     _FULL = False
     _MISSING.clear()
+    _TOKEN = None
+    _TOKEN_ERROR = None
+
+
+# B342: read the token as soon as the SDK is imported in a spawned
+# subprocess, so the pipe is emptied and closed before plugin code (or
+# anything it starts) runs. Errors are kept and raised at first use.
+if os.environ.get("NOUSVIZ_CREDS_TOKEN_FD"):
+    try:
+        _read_token()
+    except Exception:  # noqa: BLE001 — surfaced at the first credential call
+        pass

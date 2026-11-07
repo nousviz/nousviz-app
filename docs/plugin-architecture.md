@@ -88,14 +88,16 @@ A plugin must **never**:
 
 1. **API (`apps/api`, gunicorn)** — serves HTTP. Loads plugin routes at startup from `plugins/installed/{slug}/api/routes.py`. Holds `NOUSVIZ_ENCRYPTION_KEY` and connects as the high-privilege `nousviz` DB role.
 2. **Worker (`apps/worker/src/run_jobs.py`, PM2)** — runs sync and hook subprocesses. Holds the same secrets as the API. Hosts the **credential broker** (new in v0.9.0) on a Unix domain socket at `<repo>/run/creds.sock`.
-3. **Plugin subprocess** — what sync scripts and hook callables run inside. Spawned by the worker. Gets a minimal env: identity (plugin_id, run_id), socket path, a run-scoped broker token, non-secret connection fields. **No decryption key. No core DB password. No decrypted secrets in env.**
+3. **Plugin subprocess** — what sync scripts and hook callables run inside. Spawned by the worker. Gets a minimal env: identity (plugin_id, run_id), socket path, a broker token on a private pipe (not in env), non-secret connection fields. **No decryption key. No core DB password. No decrypted secrets in env.**
 
 ### How a plugin reads a credential (v0.9.0, scoped in v1.0.8 / B342)
 
 ```
-worker registers token T for plugin X, run R
+worker registers token T for plugin X, run R (single-use, 30 s — or run-scoped
+when the manifest says `sync.credential_fetch: per_key`)
    ↓
-subprocess starts, env has NOUSVIZ_CREDS_TOKEN=T
+subprocess starts with T on a private pipe (NOUSVIZ_CREDS_TOKEN_FD), not in its
+environment; the SDK reads it on import and closes the pipe
    ↓
 plugin calls nousviz_sdk.get_credential("X", "password:acct-01")
    ↓
@@ -109,10 +111,16 @@ and records one `fetch` audit row (run R) plus per-credential daily usage
    ↓
 SDK caches the answer (and "not stored") in subprocess memory for its lifetime
    ↓
-later keys are fetched the same way when the plugin first asks for them
-   ↓
+per_key: later keys are fetched the same way when the plugin first asks for them;
 worker revokes T when run R is finalized (24 h cap)
+startup (default): the first call fetches the full set; T is spent
 ```
+
+Why a pipe: every plugin subprocess (and the browsers they start) runs as
+the same Linux user, and a process's environment is readable by any process
+of that user (`/proc/<pid>/environ`). The pipe is held only by the direct
+child (`pass_fds`; `close_fds` keeps it from grandchildren), read once, and
+closed.
 
 A key already fetched is served from the cache. `get_credentials()` fetches
 several keys in one round trip. A request without `KEYS` returns every
