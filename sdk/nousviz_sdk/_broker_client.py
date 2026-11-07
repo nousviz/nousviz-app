@@ -49,6 +49,18 @@ logger = logging.getLogger("nousviz_sdk._broker_client")
 # for the nousviz_plugin role.
 _CACHE: dict[str, Any] | None = None
 
+# B341: a fetch that failed after the request was sent. The token is
+# single-use, so dialling again can only be DENIED and would hide the real
+# error; later calls re-raise this one instead.
+_FAILURE: Exception | None = None
+
+# B341: the broker sends every credential of the plugin in one reply. Read
+# it all (up to this ceiling) and allow time for the broker to decrypt a
+# large set before the first byte arrives.
+MAX_REPLY_BYTES = 16 * 1024 * 1024
+CONNECT_TIMEOUT_SECONDS = 5.0
+REPLY_TIMEOUT_SECONDS = 60.0
+
 # Resolver registry — the API process registers an in-process resolver
 # at startup. Signature: resolver(plugin_id) -> dict[str, Any] including
 # decrypted credentials and (optionally) the special "__db__" key.
@@ -140,16 +152,25 @@ class CredentialBrokerError(RuntimeError):
     """Raised when the broker returns DENIED or ERROR."""
 
 
-def _socket_recv_all(conn: socket.socket, max_bytes: int = 64 * 1024) -> bytes:
-    """Read until EOF or max_bytes. Broker closes the connection after
-    sending the response."""
-    buf = b""
-    while len(buf) < max_bytes:
-        chunk = conn.recv(4096)
+def _socket_recv_all(conn: socket.socket, max_bytes: int | None = None) -> bytes:
+    """Read until EOF. The broker closes the connection after sending the
+    response. A reply over `max_bytes` (MAX_REPLY_BYTES) is an error rather
+    than a silently truncated read (B341: it used to stop at 64 KiB)."""
+    limit = MAX_REPLY_BYTES if max_bytes is None else max_bytes
+    parts: list[bytes] = []
+    size = 0
+    while True:
+        chunk = conn.recv(65536)
         if not chunk:
             break
-        buf += chunk
-    return buf
+        size += len(chunk)
+        if size > limit:
+            raise CredentialBrokerError(
+                f"broker reply is larger than {limit:,} bytes (read {size:,} so far); "
+                f"raise MAX_REPLY_BYTES if this plugin really stores that many credentials"
+            )
+        parts.append(chunk)
+    return b"".join(parts)
 
 
 def _fetch_once() -> dict[str, Any]:
@@ -172,7 +193,7 @@ def _fetch_once() -> dict[str, Any]:
         )
 
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    sock.settimeout(5.0)
+    sock.settimeout(CONNECT_TIMEOUT_SECONDS)
     try:
         try:
             sock.connect(socket_path)
@@ -183,12 +204,23 @@ def _fetch_once() -> dict[str, Any]:
             ) from exc
 
         request = f"AUTH {token}\nPLUGIN {plugin_id}\nGET\n".encode("ascii")
-        sock.sendall(request)
-
-        response = _socket_recv_all(sock)
+        # From here the token is spent: failures are CredentialBrokerError.
+        try:
+            sock.sendall(request)
+            # The broker decrypts every credential before it answers.
+            sock.settimeout(REPLY_TIMEOUT_SECONDS)
+            response = _socket_recv_all(sock)
+        except OSError as exc:  # includes socket.timeout
+            raise CredentialBrokerError(f"broker exchange failed: {type(exc).__name__}: {exc}") from exc
         text = response.decode("ascii", errors="replace")
     finally:
         sock.close()
+
+    # Every reply ends in a newline; without it the reply was cut short.
+    if not text.endswith("\n"):
+        raise CredentialBrokerError(
+            f"incomplete reply from the broker ({len(response):,} bytes, no final newline)"
+        )
 
     # Parse response: "OK\n<json>\n" or "DENIED\n<reason>\n" or "ERROR\n<reason>\n"
     lines = text.split("\n", 1)
@@ -228,7 +260,7 @@ def get_cached(plugin_id: str | None = None) -> dict[str, Any]:
 
     Plugin authors never call this directly.
     """
-    global _CACHE
+    global _CACHE, _FAILURE
 
     # Path 1: API process resolver
     if _RESOLVER is not None:
@@ -241,12 +273,20 @@ def get_cached(plugin_id: str | None = None) -> dict[str, Any]:
 
     # Path 2: subprocess broker (cached per-process)
     if _CACHE is None:
-        _CACHE = _fetch_once()
+        if _FAILURE is not None:
+            raise _FAILURE
+        try:
+            _CACHE = _fetch_once()
+        except CredentialBrokerError as exc:
+            # The token was sent and is now spent (B341): keep the real error.
+            _FAILURE = exc
+            raise
     return _CACHE
 
 
 def reset_cache_for_tests() -> None:
     """Test-only: clear the cache so a subsequent call triggers a fresh
     fetch. Production code never calls this."""
-    global _CACHE
+    global _CACHE, _FAILURE
     _CACHE = None
+    _FAILURE = None

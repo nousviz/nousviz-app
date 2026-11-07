@@ -532,3 +532,148 @@ def test_writer_independent_of_resolver():
 
     reset_resolver_for_tests()
     reset_writer_for_tests()
+
+
+# ── B341: large and slow replies, and no retry with a spent token ────
+
+
+def _use_broker(monkeypatch, broker, sock_path, plugin_id="big-plugin"):
+    from sdk.nousviz_sdk._broker_client import reset_cache_for_tests, reset_resolver_for_tests
+
+    reset_resolver_for_tests()
+    reset_cache_for_tests()
+    token = broker.register_spawn(plugin_id, 1)
+    monkeypatch.setenv("NOUSVIZ_CREDS_SOCKET", sock_path)
+    monkeypatch.setenv("NOUSVIZ_CREDS_TOKEN", token)
+    monkeypatch.setenv("NOUSVIZ_PLUGIN_ID", plugin_id)
+
+
+def _stub_decrypt(monkeypatch, fn):
+    import apps.api.src.plugin_credentials as real_plugin_creds
+    monkeypatch.setattr(real_plugin_creds, "list_plugin_credentials_decrypted", fn, raising=False)
+
+
+def test_b341_reply_larger_than_64k_is_read_whole(monkeypatch, broker_with_stub_decrypt):
+    from sdk.nousviz_sdk._broker_client import get_cached
+
+    broker, sock_path = broker_with_stub_decrypt
+    many = {f"password:acct-{i:05d}": f"pw-{i:05d}-" + "x" * 20 for i in range(20_000)}
+    _stub_decrypt(monkeypatch, lambda plugin_id: dict(many))
+    _use_broker(monkeypatch, broker, sock_path)
+
+    creds = get_cached()
+    assert len(json.dumps(creds)) > 900_000
+    assert len([k for k in creds if k != "__db__"]) == 20_000
+    assert creds["password:acct-19999"] == "pw-19999-" + "x" * 20
+
+
+def test_b341_slow_broker_reply_is_waited_for(monkeypatch, broker_with_stub_decrypt):
+    from sdk.nousviz_sdk._broker_client import get_cached
+
+    broker, sock_path = broker_with_stub_decrypt
+
+    def slow(plugin_id):
+        time.sleep(7)
+        return {"password": "late-but-fine"}
+
+    _stub_decrypt(monkeypatch, slow)
+    _use_broker(monkeypatch, broker, sock_path)
+    assert get_cached()["password"] == "late-but-fine"
+
+
+def test_b341_reply_over_the_ceiling_names_its_size(monkeypatch, broker_with_stub_decrypt):
+    import sdk.nousviz_sdk._broker_client as bc
+
+    broker, sock_path = broker_with_stub_decrypt
+    _stub_decrypt(monkeypatch, lambda plugin_id: {f"k{i}": "v" * 50 for i in range(2_000)})
+    monkeypatch.setattr(bc, "MAX_REPLY_BYTES", 10_000)
+    _use_broker(monkeypatch, broker, sock_path)
+    with pytest.raises(bc.CredentialBrokerError, match="larger than"):
+        bc.get_cached()
+
+
+class _OneShotServer:
+    """A fake broker that sends a fixed reply and counts connections."""
+
+    def __init__(self, path: str, reply: bytes):
+        self.connections = 0
+        self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.sock.bind(path)
+        self.sock.listen(4)
+        self.reply = reply
+        threading.Thread(target=self._serve, daemon=True).start()
+
+    def _serve(self):
+        while True:
+            try:
+                conn, _ = self.sock.accept()
+            except OSError:
+                return
+            self.connections += 1
+            try:
+                conn.recv(1024)
+                conn.sendall(self.reply)
+            finally:
+                conn.close()
+
+    def close(self):
+        self.sock.close()
+
+
+def test_b341_cut_short_reply_is_an_incomplete_reply(monkeypatch, _short_sock_dir):
+    import sdk.nousviz_sdk._broker_client as bc
+
+    path = str(_short_sock_dir / "fake.sock")
+    server = _OneShotServer(path, b'OK\n{"password": "s3')
+    try:
+        bc.reset_resolver_for_tests()
+        bc.reset_cache_for_tests()
+        monkeypatch.setenv("NOUSVIZ_CREDS_SOCKET", path)
+        monkeypatch.setenv("NOUSVIZ_CREDS_TOKEN", "tok")
+        monkeypatch.setenv("NOUSVIZ_PLUGIN_ID", "p")
+        with pytest.raises(bc.CredentialBrokerError, match="incomplete reply"):
+            bc.get_cached()
+    finally:
+        server.close()
+
+
+def test_b341_failed_fetch_is_not_retried_with_the_spent_token(monkeypatch, _short_sock_dir):
+    import sdk.nousviz_sdk._broker_client as bc
+    from sdk.nousviz_sdk import get_credential
+
+    path = str(_short_sock_dir / "fake.sock")
+    server = _OneShotServer(path, b"ERROR\nboom\n")
+    try:
+        bc.reset_resolver_for_tests()
+        bc.reset_cache_for_tests()
+        monkeypatch.setenv("NOUSVIZ_CREDS_SOCKET", path)
+        monkeypatch.setenv("NOUSVIZ_CREDS_TOKEN", "tok")
+        monkeypatch.setenv("NOUSVIZ_PLUGIN_ID", "p")
+        with pytest.raises(bc.CredentialBrokerError, match="boom"):
+            get_credential("p", "password")
+        with pytest.raises(bc.CredentialBrokerError, match="boom"):
+            get_credential("p", "password")
+        assert server.connections == 1
+    finally:
+        server.close()
+        bc.reset_cache_for_tests()
+
+
+def test_b341_broker_not_reachable_can_be_retried(monkeypatch, _short_sock_dir):
+    """No token was spent, so a later call may try again."""
+    import sdk.nousviz_sdk._broker_client as bc
+
+    path = str(_short_sock_dir / "later.sock")
+    bc.reset_resolver_for_tests()
+    bc.reset_cache_for_tests()
+    monkeypatch.setenv("NOUSVIZ_CREDS_SOCKET", path)
+    monkeypatch.setenv("NOUSVIZ_CREDS_TOKEN", "tok")
+    monkeypatch.setenv("NOUSVIZ_PLUGIN_ID", "p")
+    with pytest.raises(bc.CredentialBrokerUnavailable):
+        bc.get_cached()
+    server = _OneShotServer(path, b'OK\n{"password": "ok"}\n')
+    try:
+        assert bc.get_cached()["password"] == "ok"
+    finally:
+        server.close()
+        bc.reset_cache_for_tests()
