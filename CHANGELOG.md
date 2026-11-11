@@ -6,7 +6,34 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Nou
 
 ## [Unreleased]
 
+### Added
+
+- **Alerts on any database (P230).** Alerts run on Postgres, ClickHouse and
+  MySQL sources, and you map your own columns:
+  - any date column;
+  - a value, or a ratio computed from totals;
+  - up to three group-by columns;
+  - filters;
+  - a minimum volume;
+  - a currency column, which makes the alert check each currency on its
+    own and never add money across currencies.
+
+  New periods (this month, last full month, last 30 days) and comparisons
+  (previous period, same period last month). **Preview** shows what would
+  fire, and the SQL, before saving. Plugins can ship ready-made alerts in
+  `alerts.yaml`, and keep a dataset out of direct alerts with
+  `alertable: false`. Alert definitions and history stay in Postgres; only
+  the data being read moves.
+- **Insights on any database (P231).** `insights.yaml` queries can set
+  `db:` and `connection:`, and run read-only on ClickHouse or MySQL.
+
 ### Fixed
+
+- **Alert Test and builder (B345).** Test no longer fails on every alert,
+  and reports the same verdict as the scheduled run. The builder saves
+  grouping, period, filters and the database. Alerts can use a date column
+  that isn't named `date`.
+
 
 - **Text and buttons that were hard to read (B340)**, mostly in light mode.
   - **Status text**: the plugin "update available" banner and **Update**
