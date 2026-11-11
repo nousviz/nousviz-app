@@ -118,6 +118,17 @@ If `NOUSVIZ_ENCRYPTION_KEY` is compromised:
 - Validated by unique slug (URL-safe token)
 - Optional HMAC-SHA256 signature verification per endpoint
 
+### Outbound Webhooks
+
+- Endpoints with a secret are signed by one helper,
+  `apps/api/src/services/webhook_dispatch.py:sign_headers`
+- `X-Webhook-Signature`: hex HMAC-SHA256(secret, body). Body-only, kept for
+  back-compat.
+- `X-Webhook-Timestamp` + `X-Webhook-Signature-V2`: hex
+  HMAC-SHA256(secret, `"{timestamp}." + body`). Consumers use this to reject
+  replays; the consumer sets the tolerance window (B346).
+- See `plugins/utilities/webhooks/README.md` for verification steps
+
 ---
 
 ## Network Security

@@ -294,7 +294,7 @@ async def test_outbound(endpoint_id: str):
         "timestamp": timestamp_iso,
         "message": "This is a test webhook from NousViz.",
     }
-    from apps.api.src.services.webhook_dispatch import format_for_channel
+    from apps.api.src.services.webhook_dispatch import format_for_channel, sign_headers
     payload = format_for_channel(
         flat_payload,
         endpoint["channel_type"],
@@ -302,9 +302,7 @@ async def test_outbound(endpoint_id: str):
     )
 
     headers = {"Content-Type": "application/json"}
-    if endpoint["secret"]:
-        sig = _hmac.new(endpoint["secret"].encode(), payload, hashlib.sha256).hexdigest()
-        headers["X-Webhook-Signature"] = sig
+    headers.update(sign_headers(endpoint["secret"], payload))  # B346: V1 + timestamp + V2
 
     try:
         req = urllib.request.Request(endpoint["url"], data=payload, headers=headers)
