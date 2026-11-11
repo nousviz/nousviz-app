@@ -6,6 +6,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Nou
 
 ## [Unreleased]
 
+### Security
+
+- **Replay-protected webhook signatures (B346).** Signed outbound webhooks
+  now send `X-Webhook-Timestamp` (Unix seconds) and `X-Webhook-Signature-V2`
+  (hex HMAC-SHA256 of `"{timestamp}." + body`). Consumers can now reject
+  replayed deliveries, and NousViz works with Standard Webhooks-style
+  receivers. The body-only `X-Webhook-Signature` is unchanged, so existing
+  consumers keep working. This covers alert webhooks, job-failure and
+  diagnostic alerts, and the endpoint **Test** button, which all now share
+  one signer (`webhook_dispatch.sign_headers`). An endpoint with no secret
+  still sends no signature headers. No database migration.
+
 ---
 
 ## [1.1.0] — 2026-11-11

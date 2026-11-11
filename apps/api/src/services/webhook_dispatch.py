@@ -11,7 +11,12 @@ the POST so HMAC signing always sees the actual transmitted body.
 
 Contract:
   - POST <url> with Content-Type: application/json
-  - X-Webhook-Signature: hex(sha256(secret, body)) when secret present
+  - When a secret is present (B346), three headers via `sign_headers`:
+      X-Webhook-Signature    = hex(HMAC-SHA256(secret, body))         (V1, kept for back-compat)
+      X-Webhook-Timestamp    = unix epoch seconds, integer, as string
+      X-Webhook-Signature-V2 = hex(HMAC-SHA256(secret, f"{ts}." + body))
+    V2 lets consumers reject replays (Standard Webhooks style). No secret
+    → no signature headers.
   - 10s timeout
   - Returns nothing on success; raises on failure (caller wraps with
     per-target try/except for isolation)
@@ -23,6 +28,7 @@ import hashlib
 import hmac
 import json
 import logging
+import time
 import urllib.error
 import urllib.request
 from typing import Optional
@@ -62,13 +68,36 @@ def format_for_channel(
     return json.dumps(payload).encode()
 
 
+def sign_headers(
+    secret: Optional[str],
+    body: bytes,
+    timestamp: Optional[int] = None,
+) -> dict[str, str]:
+    """B346 — signature headers for an outbound webhook POST.
+
+    `body` must be the exact bytes being sent. Returns {} when there is
+    no secret. `timestamp` is for tests; production uses the current
+    unix time. Every outbound signer (this module, the alert worker,
+    the webhooks plugin /test route) goes through here.
+    """
+    if not secret:
+        return {}
+    key = secret.encode()
+    ts = str(int(time.time()) if timestamp is None else int(timestamp))
+    return {
+        "X-Webhook-Signature": hmac.new(key, body, hashlib.sha256).hexdigest(),
+        "X-Webhook-Timestamp": ts,
+        "X-Webhook-Signature-V2": hmac.new(
+            key, ts.encode() + b"." + body, hashlib.sha256
+        ).hexdigest(),
+    }
+
+
 def post_webhook(url: str, secret: Optional[str], body: bytes) -> None:
     """HMAC-signed POST. Raises on transport / HTTP error; caller
     handles per-target failure isolation.
     """
     headers = {"Content-Type": "application/json"}
-    if secret:
-        sig = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
-        headers["X-Webhook-Signature"] = sig
+    headers.update(sign_headers(secret, body))
     req = urllib.request.Request(url, data=body, headers=headers)
     urllib.request.urlopen(req, timeout=WEBHOOK_TIMEOUT_SECONDS)

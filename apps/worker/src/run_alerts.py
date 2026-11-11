@@ -217,12 +217,9 @@ def _build_webhook_payload(alert: dict, trigger_data: dict, message: str) -> byt
 
 def _post_webhook(url: str, payload: bytes, secret: str | None = None) -> None:
     import urllib.request
-    import hmac as _hmac
-    import hashlib as _hl
+    from apps.api.src.services.webhook_dispatch import sign_headers
     headers = {"Content-Type": "application/json"}
-    if secret:
-        sig = _hmac.new(secret.encode(), payload, _hl.sha256).hexdigest()
-        headers["X-Webhook-Signature"] = sig
+    headers.update(sign_headers(secret, payload))  # B346: V1 + timestamp + V2
     req = urllib.request.Request(url, data=payload, headers=headers)
     urllib.request.urlopen(req, timeout=10)
 
