@@ -193,7 +193,7 @@ def spec_from_alert(alert: dict) -> AlertSpec:
         currency_column=alert.get("currency_column") or None,
         condition=alert.get("condition_type") or "absolute_above",
         threshold=float(threshold) if threshold not in (None, "") else 0.0,
-        compare_to=alert.get("compare_to") or "7d_avg",
+        compare_to={"prev_period": "previous_period"}.get(alert.get("compare_to") or "", alert.get("compare_to") or "7d_avg"),
         period=alert.get("check_period") or "yesterday",
         min_baseline=float(alert.get("min_baseline") or 0),
         query_id=alert.get("query_id"),
@@ -391,8 +391,14 @@ def judge(spec: AlertSpec, built: BuiltQuery, rows: list[dict]) -> list[dict]:
         # An N-day average, scaled to the checked period's length.
         period_days = max(1, (built.period[1] - built.period[0]).days)
         scale = period_days / built.avg_days
+    # A ratio with a zero denominator, or an average/min/max over no rows, has
+    # no value: it must not read as 0 and fire "falls below". Sums and counts
+    # over no rows really are 0 (that is what "drops to zero" checks).
+    no_value_is_zero = spec.value_kind == "count" or (spec.value_kind == "column" and spec.aggregation in ADDITIVE)
     for r in rows:
         group = GROUP_SEPARATOR.join(str(r.get(a)) for a in built.group_aliases) or "Total"
+        if r.get("current_value") is None and not no_value_is_zero:
+            continue
         current = _num(r.get("current_value"))
         baseline = _num(r.get("baseline_value")) * scale
         if spec.min_baseline and baseline < spec.min_baseline and spec.condition in ("threshold_drop", "threshold_rise"):

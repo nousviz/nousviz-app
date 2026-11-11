@@ -236,3 +236,12 @@ def test_dialects_exist():
         assert dialect_for(e).engine == e
     with pytest.raises(QueryError):
         dialect_for("oracle")
+
+
+def test_ratio_without_a_denominator_does_not_fire_below():
+    rows = [{"g_0": "A", "current_value": None, "baseline_value": 0.3},
+            {"g_0": "B", "current_value": 0.05, "baseline_value": 0.3}]
+    ev = ae.evaluate_alert(alert(group_by_columns=["program"], value_kind="ratio", metric="rs_com",
+                                 denominator="net_rev", condition_type="absolute_below", threshold=0.15),
+                           today=TODAY, driver_factory=factory(FakeDriver(rows=rows)))
+    assert [r["group"] for r in ev.rows] == ["B"] and ev.rows[0]["fired"] is True
