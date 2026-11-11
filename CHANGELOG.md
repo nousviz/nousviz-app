@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Nou
 
 ## [Unreleased]
 
+---
+
+## [1.1.0] — 2026-11-11
+
 ### Added
 
 - **Alerts on any database (P230).** Alerts run on Postgres, ClickHouse and
@@ -29,6 +33,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Nou
 
 ### Fixed
 
+- **`nousviz plugin install` works again (nousviz-docs#11).** The CLI called a
+  route that doesn't exist (`POST /api/plugins/install`) without signing in, so
+  every install failed with `Method Not Allowed`. It now calls
+  `POST /api/plugins/{slug}/install`, signs in first (`NOUSVIZ_SESSION_TOKEN`, or
+  an email and password prompt), and explains a missing `plugins.install`
+  permission clearly. `cli.py`.
 - **Alert Test and builder (B345).** Test no longer fails on every alert,
   and reports the same verdict as the scheduled run. The builder saves
   grouping, period, filters and the database. Alerts can use a date column
