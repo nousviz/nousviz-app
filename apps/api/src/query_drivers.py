@@ -26,7 +26,7 @@ Connection resolution (`resolve`):
 
 ClickHouse tables are found by name across databases when the default
 database doesn't hold them: each plugin keeps its own database
-(e.g. `statsdrone_benchmark`), while the default connection points at
+(e.g. `my_plugin_db`), while the default connection points at
 `default`. A plugin dataset can name its `database:` to remove any doubt.
 
 Everything here is stdlib + psycopg2 (+ pymysql when MySQL is used), like
