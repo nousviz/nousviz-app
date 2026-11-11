@@ -625,7 +625,7 @@
           "plugins"
         ],
         "summary": "Install a plugin",
-        "description": "Install a plugin. Three-tier source resolution (P19):\n\n- Tier 1 (official): no repository_url \u2014 clones github.com/nousviz/plugin-{slug}\n- Tier 2 (community): no repository_url \u2014 reads URL from plugins/community/{slug}/plugin.yaml\n- Tier 3 (private): explicit repository_url in request body\n\nIdempotent if already installed. Restart the API after installing to activate routes.\n\nSecurity (P22):\n- Rate limited: 5 installs per 5 minutes per IP (G3)\n- Git clone pins to declared version tag (G2) \u2014 refuses HEAD installs\n- pip runs with a sanitised environment \u2014 no NOUSVIZ_* vars exposed (G5)\n- repository_url validated against SSRF blocklist (P19)",
+        "description": "Install a plugin. Three-tier source resolution (P19):\n\n- Tier 1 (official): no repository_url \u2014 clones github.com/nousviz/plugin-{slug}\n- Tier 2 (community): no repository_url \u2014 reads URL from plugins/community/{slug}/plugin.yaml\n- Tier 3 (private): explicit repository_url in request body\n\nIdempotent if already installed. Routes activate without a manual restart:\nthe handling worker hot-reloads its own `app.routes` in-process, and a\nbackground `SIGHUP` to the gunicorn master cycles sibling workers so they\npick up the new routes too (B306). No API restart needed.\n\nSecurity (P22):\n- Rate limited: 5 installs per 5 minutes per IP (G3)\n- Git clone pins to declared version tag (G2) \u2014 refuses HEAD installs\n- pip runs with a sanitised environment \u2014 no NOUSVIZ_* vars exposed (G5)\n- repository_url validated against SSRF blocklist (P19)",
         "operationId": "plugins.install",
         "parameters": [
           {
@@ -3575,7 +3575,7 @@
           "alerts"
         ],
         "summary": "Create an alert rule",
-        "description": "Create a new alert.",
+        "description": "Create a new alert.\n\nP230: send `source_id` (and `table` for a connection) plus the column\nmapping; the server resolves where the data is and refuses a mapping\nthat can't run (422 with the reason).",
         "operationId": "alerts.create",
         "requestBody": {
           "required": true,
@@ -3679,7 +3679,7 @@
           "alerts"
         ],
         "summary": "Patch an alert (partial \u2014 null fields skipped)",
-        "description": "Update an alert (toggle, change threshold, etc.).",
+        "description": "Update an alert (toggle, change threshold, mapping, source \u2026).\n\nThe merged alert is checked like a new one whenever its source or\nmapping changes.",
         "operationId": "alerts.update",
         "parameters": [
           {
@@ -3843,7 +3843,7 @@
           "alerts"
         ],
         "summary": "Dry-run an alert against current data",
-        "description": "Test-run an alert against current data without triggering notifications.\n\nImports the worker's evaluator at request time. If the worker module\nisn't importable on this server, returns `{error: ...}` instead of\na fired/checked breakdown.",
+        "description": "Test-run an alert against current data without triggering notifications.\n\nB345: uses the same evaluator as the scheduled run (apps/api/src/\nalert_engine.py), on whatever database the alert reads. Nothing is\nsent and no trigger is recorded.",
         "operationId": "alerts.test",
         "parameters": [
           {
@@ -3903,6 +3903,304 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/alerts/sources/columns": {
+      "get": {
+        "tags": [
+          "alerts"
+        ],
+        "summary": "Real columns of an alert source table, with their kinds",
+        "description": "List a source table's columns (name, engine type, kind) so the user can map them.",
+        "operationId": "alerts.sources.columns",
+        "parameters": [
+          {
+            "name": "source_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "A source id from /api/alerts/sources.",
+              "title": "Source Id"
+            },
+            "description": "A source id from /api/alerts/sources."
+          },
+          {
+            "name": "table",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "For conn: sources \u2014 a table on that connection.",
+              "title": "Table"
+            },
+            "description": "For conn: sources \u2014 a table on that connection."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertSourceColumnsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDetail"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the alerts.read permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RBACErrorDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unknown source, unreachable database or table not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/alerts/sources/tables": {
+      "get": {
+        "tags": [
+          "alerts"
+        ],
+        "summary": "Tables on a registered connection",
+        "description": "List the tables an alert can read on a registered connection.",
+        "operationId": "alerts.sources.tables",
+        "parameters": [
+          {
+            "name": "source_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "A conn:<uuid> source id.",
+              "title": "Source Id"
+            },
+            "description": "A conn:<uuid> source id."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertSourceTablesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDetail"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the alerts.read permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RBACErrorDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Not a connection source, or the connection is unreachable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/alerts/sources/values": {
+      "get": {
+        "tags": [
+          "alerts"
+        ],
+        "summary": "Most common values of a column, for filter suggestions",
+        "description": "Return up to 50 of the most common values of one column.",
+        "operationId": "alerts.sources.values",
+        "parameters": [
+          {
+            "name": "source_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Source Id"
+            }
+          },
+          {
+            "name": "column",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Column"
+            }
+          },
+          {
+            "name": "table",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Table"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertSourceValuesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDetail"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the alerts.read permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RBACErrorDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unknown source or column.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/alerts/preview": {
+      "post": {
+        "tags": [
+          "alerts"
+        ],
+        "summary": "Evaluate an unsaved alert (nothing is sent or recorded)",
+        "description": "Run an alert as it is in the builder and show which groups would fire, and the SQL.",
+        "operationId": "alerts.preview",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlertPreview"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertPreviewResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDetail"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the alerts.write permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RBACErrorDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unknown source or a dataset kept out of direct alerts.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDetail"
                 }
               }
             }
@@ -13948,6 +14246,150 @@
       },
       "AlertCreate": {
         "properties": {
+          "source_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Id",
+            "description": "pg:<table> | plugin:<id>:<dataset> | conn:<uuid> | query:<plugin>:<id>."
+          },
+          "table": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Table",
+            "description": "For conn: sources only \u2014 a table on that connection."
+          },
+          "date_column": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Column"
+          },
+          "value_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Kind",
+            "description": "'column' | 'count' | 'ratio'."
+          },
+          "denominator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denominator"
+          },
+          "denominator_aggregation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denominator Aggregation"
+          },
+          "group_by_columns": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group By Columns"
+          },
+          "filters": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filters",
+            "description": "[{column, op, value}]; op: eq neq in not_in gt gte lt lte contains empty not_empty."
+          },
+          "min_volume_column": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Volume Column"
+          },
+          "min_volume": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Volume"
+          },
+          "currency_column": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency Column"
+          },
+          "query_params": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Query Params"
+          },
           "name": {
             "type": "string",
             "title": "Name"
@@ -13969,15 +14411,18 @@
           },
           "plugin_id": {
             "type": "string",
-            "title": "Plugin Id"
+            "title": "Plugin Id",
+            "default": "core"
           },
           "dataset": {
             "type": "string",
-            "title": "Dataset"
+            "title": "Dataset",
+            "default": ""
           },
           "metric": {
             "type": "string",
-            "title": "Metric"
+            "title": "Metric",
+            "default": ""
           },
           "aggregation": {
             "type": "string",
@@ -14071,10 +14516,7 @@
         "type": "object",
         "required": [
           "name",
-          "label",
-          "plugin_id",
-          "dataset",
-          "metric"
+          "label"
         ],
         "title": "AlertCreate"
       },
@@ -14090,6 +14532,490 @@
         "type": "object",
         "title": "AlertDeleteResponse",
         "description": "DELETE /api/alerts/{alert_id}."
+      },
+      "AlertEvaluationRow": {
+        "properties": {
+          "group": {
+            "type": "string",
+            "title": "Group"
+          },
+          "current_value": {
+            "type": "number",
+            "title": "Current Value"
+          },
+          "baseline": {
+            "type": "number",
+            "title": "Baseline"
+          },
+          "change_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Pct"
+          },
+          "fired": {
+            "type": "boolean",
+            "title": "Fired"
+          }
+        },
+        "type": "object",
+        "required": [
+          "group",
+          "current_value",
+          "baseline",
+          "fired"
+        ],
+        "title": "AlertEvaluationRow"
+      },
+      "AlertPreview": {
+        "properties": {
+          "source_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Id",
+            "description": "pg:<table> | plugin:<id>:<dataset> | conn:<uuid> | query:<plugin>:<id>."
+          },
+          "table": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Table",
+            "description": "For conn: sources only \u2014 a table on that connection."
+          },
+          "date_column": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Column"
+          },
+          "value_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Kind",
+            "description": "'column' | 'count' | 'ratio'."
+          },
+          "denominator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denominator"
+          },
+          "denominator_aggregation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denominator Aggregation"
+          },
+          "group_by_columns": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group By Columns"
+          },
+          "filters": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filters",
+            "description": "[{column, op, value}]; op: eq neq in not_in gt gte lt lte contains empty not_empty."
+          },
+          "min_volume_column": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Volume Column"
+          },
+          "min_volume": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Volume"
+          },
+          "currency_column": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency Column"
+          },
+          "query_params": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Query Params"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": "preview"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "default": "Preview"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "plugin_id": {
+            "type": "string",
+            "title": "Plugin Id",
+            "default": "core"
+          },
+          "dataset": {
+            "type": "string",
+            "title": "Dataset",
+            "default": ""
+          },
+          "metric": {
+            "type": "string",
+            "title": "Metric",
+            "default": ""
+          },
+          "aggregation": {
+            "type": "string",
+            "title": "Aggregation",
+            "default": "sum"
+          },
+          "condition_type": {
+            "type": "string",
+            "title": "Condition Type",
+            "default": "threshold_drop"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold"
+          },
+          "compare_to": {
+            "type": "string",
+            "title": "Compare To",
+            "default": "7d_avg"
+          },
+          "scope": {
+            "type": "string",
+            "title": "Scope",
+            "default": "all"
+          },
+          "group_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group By"
+          },
+          "scope_filters": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Scope Filters",
+            "default": {}
+          },
+          "check_frequency": {
+            "type": "string",
+            "title": "Check Frequency",
+            "default": "daily"
+          },
+          "check_period": {
+            "type": "string",
+            "title": "Check Period",
+            "default": "yesterday"
+          },
+          "cooldown_hours": {
+            "type": "integer",
+            "title": "Cooldown Hours",
+            "default": 24
+          },
+          "min_baseline": {
+            "type": "number",
+            "title": "Min Baseline",
+            "default": 0
+          },
+          "notify_channels": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notify Channels",
+            "default": [
+              "log"
+            ]
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": true
+          },
+          "is_template": {
+            "type": "boolean",
+            "title": "Is Template",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "AlertPreview",
+        "description": "An unsaved alert, for POST /api/alerts/preview."
+      },
+      "AlertPreviewResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "'ok' | 'no_data' | 'error'."
+          },
+          "engine": {
+            "type": "string",
+            "title": "Engine"
+          },
+          "sql": {
+            "type": "string",
+            "title": "Sql",
+            "default": ""
+          },
+          "rows_checked": {
+            "type": "integer",
+            "title": "Rows Checked",
+            "default": 0
+          },
+          "elapsed_ms": {
+            "type": "integer",
+            "title": "Elapsed Ms",
+            "default": 0
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "fired": {
+            "type": "boolean",
+            "title": "Fired",
+            "default": false
+          },
+          "fired_count": {
+            "type": "integer",
+            "title": "Fired Count",
+            "default": 0
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/AlertEvaluationRow"
+            },
+            "type": "array",
+            "title": "Rows"
+          },
+          "period": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period",
+            "description": "[start, end) of the checked period."
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "engine"
+        ],
+        "title": "AlertPreviewResponse",
+        "description": "POST /api/alerts/preview \u2014 evaluate an unsaved alert. Nothing is sent or recorded."
+      },
+      "AlertQueryEntry": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "query_id": {
+            "type": "string",
+            "title": "Query Id"
+          },
+          "plugin_id": {
+            "type": "string",
+            "title": "Plugin Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          },
+          "engine": {
+            "type": "string",
+            "title": "Engine"
+          },
+          "params": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Params"
+          },
+          "default_condition": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Default Condition"
+          },
+          "default_period": {
+            "type": "string",
+            "title": "Default Period",
+            "default": "yesterday"
+          },
+          "value_label": {
+            "type": "string",
+            "title": "Value Label",
+            "default": ""
+          },
+          "sql": {
+            "type": "string",
+            "title": "Sql",
+            "default": ""
+          },
+          "available": {
+            "type": "boolean",
+            "title": "Available",
+            "default": true
+          },
+          "unavailable_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable Reason"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "required": [
+          "id",
+          "query_id",
+          "plugin_id",
+          "label",
+          "engine"
+        ],
+        "title": "AlertQueryEntry",
+        "description": "A ready-made alert from a plugin's alerts.yaml."
       },
       "AlertRow": {
         "properties": {
@@ -14341,6 +15267,237 @@
               }
             ],
             "title": "Period Label"
+          },
+          "source_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Id",
+            "description": "pg:<table> | plugin:<id>:<dataset> | conn:<uuid> | query:<plugin>:<id>."
+          },
+          "source_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Kind"
+          },
+          "db_engine": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Db Engine"
+          },
+          "connection_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection Id"
+          },
+          "date_column": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Column"
+          },
+          "value_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Kind",
+            "description": "'column' | 'count' | 'ratio'."
+          },
+          "denominator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denominator"
+          },
+          "denominator_aggregation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denominator Aggregation"
+          },
+          "group_by_columns": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group By Columns"
+          },
+          "filters": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filters"
+          },
+          "min_volume_column": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Volume Column"
+          },
+          "min_volume": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Volume"
+          },
+          "currency_column": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency Column"
+          },
+          "query_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Query Id"
+          },
+          "query_params": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Query Params"
+          },
+          "last_run_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Run At"
+          },
+          "last_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Status",
+            "description": "'fired' | 'ok' | 'no_data' | 'error'."
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "last_duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Duration Ms"
+          },
+          "last_rows_checked": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Rows Checked"
           }
         },
         "additionalProperties": true,
@@ -14355,6 +15512,107 @@
         ],
         "title": "AlertRow",
         "description": "A single alert_rules row.\n\nextra='allow' covers any future columns and the human-readable\n`frequency_label` / `period_label` injected by `_serialize_alert`."
+      },
+      "AlertSourceColumn": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind",
+            "description": "'date' | 'datetime' | 'number' | 'text' | 'bool' | 'other'."
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "type",
+          "kind"
+        ],
+        "title": "AlertSourceColumn"
+      },
+      "AlertSourceColumnsResponse": {
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "title": "Source Id"
+          },
+          "engine": {
+            "type": "string",
+            "title": "Engine"
+          },
+          "table": {
+            "type": "string",
+            "title": "Table"
+          },
+          "database": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Database"
+          },
+          "table_engine": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Table Engine",
+            "description": "e.g. ReplacingMergeTree (read with FINAL)."
+          },
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/AlertSourceColumn"
+            },
+            "type": "array",
+            "title": "Columns"
+          },
+          "suggested_date_column": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Date Column"
+          },
+          "suggested_currency_column": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Currency Column"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_id",
+          "engine",
+          "table",
+          "columns"
+        ],
+        "title": "AlertSourceColumnsResponse",
+        "description": "GET /api/alerts/sources/columns \u2014 the real columns of a source table."
       },
       "AlertSourceEntry": {
         "properties": {
@@ -14403,7 +15661,36 @@
             },
             "type": "array",
             "title": "Columns",
-            "description": "Column metadata when introspectable (postgres + plugin_postgres); empty for connection sources."
+            "description": "Column metadata when known up front; otherwise load it from /api/alerts/sources/columns."
+          },
+          "engine": {
+            "type": "string",
+            "title": "Engine",
+            "description": "Where the data is: 'postgres' | 'clickhouse' | 'mysql'.",
+            "default": "postgres"
+          },
+          "available": {
+            "type": "boolean",
+            "title": "Available",
+            "description": "False when the engine has no usable connection or the plugin keeps the dataset out of direct alerts.",
+            "default": true
+          },
+          "unavailable_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable Reason"
+          },
+          "needs_table": {
+            "type": "boolean",
+            "title": "Needs Table",
+            "description": "True for connections: pick a table with /api/alerts/sources/tables.",
+            "default": false
           }
         },
         "additionalProperties": true,
@@ -14416,6 +15703,53 @@
         ],
         "title": "AlertSourceEntry",
         "description": "Single source entry under postgres / connections / plugins."
+      },
+      "AlertSourceTablesResponse": {
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "title": "Source Id"
+          },
+          "engine": {
+            "type": "string",
+            "title": "Engine"
+          },
+          "tables": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tables"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_id",
+          "engine",
+          "tables"
+        ],
+        "title": "AlertSourceTablesResponse",
+        "description": "GET /api/alerts/sources/tables \u2014 tables on a registered connection."
+      },
+      "AlertSourceValuesResponse": {
+        "properties": {
+          "column": {
+            "type": "string",
+            "title": "Column"
+          },
+          "values": {
+            "items": {},
+            "type": "array",
+            "title": "Values"
+          }
+        },
+        "type": "object",
+        "required": [
+          "column",
+          "values"
+        ],
+        "title": "AlertSourceValuesResponse",
+        "description": "GET /api/alerts/sources/values \u2014 the most common values of a column, for filters."
       },
       "AlertSourcesResponse": {
         "properties": {
@@ -14439,6 +15773,13 @@
             },
             "type": "array",
             "title": "Plugins"
+          },
+          "queries": {
+            "items": {
+              "$ref": "#/components/schemas/AlertQueryEntry"
+            },
+            "type": "array",
+            "title": "Queries"
           }
         },
         "type": "object",
@@ -14448,7 +15789,7 @@
           "plugins"
         ],
         "title": "AlertSourcesResponse",
-        "description": "GET /api/alerts/sources \u2014 grouped by origin (postgres / connections / plugins)."
+        "description": "GET /api/alerts/sources \u2014 grouped by origin (postgres / connections / plugins / ready-made queries)."
       },
       "AlertSparklineDay": {
         "properties": {
@@ -14642,6 +15983,64 @@
               }
             ],
             "title": "Error"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "engine": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engine"
+          },
+          "sql": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sql"
+          },
+          "elapsed_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Elapsed Ms"
+          },
+          "rows": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/AlertEvaluationRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rows"
           }
         },
         "type": "object",
@@ -14653,6 +16052,150 @@
       },
       "AlertUpdate": {
         "properties": {
+          "source_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Id",
+            "description": "pg:<table> | plugin:<id>:<dataset> | conn:<uuid> | query:<plugin>:<id>."
+          },
+          "table": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Table",
+            "description": "For conn: sources only \u2014 a table on that connection."
+          },
+          "date_column": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Column"
+          },
+          "value_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Kind",
+            "description": "'column' | 'count' | 'ratio'."
+          },
+          "denominator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denominator"
+          },
+          "denominator_aggregation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denominator Aggregation"
+          },
+          "group_by_columns": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group By Columns"
+          },
+          "filters": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filters",
+            "description": "[{column, op, value}]; op: eq neq in not_in gt gte lt lte contains empty not_empty."
+          },
+          "min_volume_column": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Volume Column"
+          },
+          "min_volume": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Volume"
+          },
+          "currency_column": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency Column"
+          },
+          "query_params": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Query Params"
+          },
           "label": {
             "anyOf": [
               {
@@ -14686,6 +16229,39 @@
             ],
             "title": "Enabled"
           },
+          "metric": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metric"
+          },
+          "aggregation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aggregation"
+          },
+          "condition_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Condition Type"
+          },
           "threshold": {
             "anyOf": [
               {
@@ -14707,6 +16283,17 @@
               }
             ],
             "title": "Compare To"
+          },
+          "check_frequency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Check Frequency"
           },
           "check_period": {
             "anyOf": [
@@ -18916,6 +20503,18 @@
             "title": "Smtp Configured",
             "description": "True iff SMTP_HOST is set."
           },
+          "smtp_last_send_failed": {
+            "type": "boolean",
+            "title": "Smtp Last Send Failed",
+            "description": "P215: True iff SMTP is configured and the last send attempt (test or real) failed.",
+            "default": false
+          },
+          "email_alerts_undeliverable": {
+            "type": "integer",
+            "title": "Email Alerts Undeliverable",
+            "description": "P215: enabled alert rules that notify by email while SMTP is not configured (0 when it is).",
+            "default": 0
+          },
           "update_available": {
             "type": "boolean",
             "title": "Update Available",
@@ -18944,18 +20543,6 @@
             ],
             "title": "Update Current",
             "description": "Currently-running version."
-          },
-          "email_alerts_undeliverable": {
-            "default": 0,
-            "description": "P215: enabled alert rules that notify by email while SMTP is not configured (0 when it is).",
-            "title": "Email Alerts Undeliverable",
-            "type": "integer"
-          },
-          "smtp_last_send_failed": {
-            "default": false,
-            "description": "P215: True iff SMTP is configured and the last send attempt (test or real) failed.",
-            "title": "Smtp Last Send Failed",
-            "type": "boolean"
           }
         },
         "type": "object",

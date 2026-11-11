@@ -44,6 +44,27 @@ class AlertRow(BaseModel):
         description="Human-readable injection — 'Runs every hour', 'Runs once a day', etc.",
     )
     period_label: Optional[str] = None
+    # P230: where the data is and how the user mapped it.
+    source_id: Optional[str] = Field(default=None, description="pg:<table> | plugin:<id>:<dataset> | conn:<uuid> | query:<plugin>:<id>.")
+    source_kind: Optional[str] = None
+    db_engine: Optional[str] = None
+    connection_id: Optional[str] = None
+    date_column: Optional[str] = None
+    value_kind: Optional[str] = Field(default=None, description="'column' | 'count' | 'ratio'.")
+    denominator: Optional[str] = None
+    denominator_aggregation: Optional[str] = None
+    group_by_columns: Optional[list[str]] = None
+    filters: Optional[list[dict[str, Any]]] = None
+    min_volume_column: Optional[str] = None
+    min_volume: Optional[float] = None
+    currency_column: Optional[str] = None
+    query_id: Optional[str] = None
+    query_params: Optional[dict[str, Any]] = None
+    last_run_at: Optional[str] = None
+    last_status: Optional[str] = Field(default=None, description="'fired' | 'ok' | 'no_data' | 'error'.")
+    last_error: Optional[str] = None
+    last_duration_ms: Optional[int] = None
+    last_rows_checked: Optional[int] = None
 
 
 class AlertsListResponse(BaseModel):
@@ -70,15 +91,93 @@ class AlertSourceEntry(BaseModel):
     table: Optional[str] = None
     columns: list[AlertColumn] = Field(
         default_factory=list,
-        description="Column metadata when introspectable (postgres + plugin_postgres); empty for connection sources.",
+        description="Column metadata when known up front; otherwise load it from /api/alerts/sources/columns.",
     )
+    engine: str = Field(default="postgres", description="Where the data is: 'postgres' | 'clickhouse' | 'mysql'.")
+    available: bool = Field(default=True, description="False when the engine has no usable connection or the plugin keeps the dataset out of direct alerts.")
+    unavailable_reason: Optional[str] = None
+    needs_table: bool = Field(default=False, description="True for connections: pick a table with /api/alerts/sources/tables.")
+
+
+class AlertQueryEntry(BaseModel):
+    """A ready-made alert from a plugin's alerts.yaml."""
+    model_config = ConfigDict(extra="allow")
+
+    id: str
+    query_id: str
+    plugin_id: str
+    label: str
+    description: str = ""
+    engine: str
+    params: dict[str, Any] = Field(default_factory=dict)
+    default_condition: dict[str, Any] = Field(default_factory=dict)
+    default_period: str = "yesterday"
+    value_label: str = ""
+    sql: str = ""
+    available: bool = True
+    unavailable_reason: Optional[str] = None
+    error: Optional[str] = None
 
 
 class AlertSourcesResponse(BaseModel):
-    """GET /api/alerts/sources — grouped by origin (postgres / connections / plugins)."""
+    """GET /api/alerts/sources — grouped by origin (postgres / connections / plugins / ready-made queries)."""
     postgres: list[AlertSourceEntry]
     connections: list[AlertSourceEntry]
     plugins: list[AlertSourceEntry]
+    queries: list[AlertQueryEntry] = Field(default_factory=list)
+
+
+class AlertSourceColumn(BaseModel):
+    name: str
+    type: str
+    kind: str = Field(..., description="'date' | 'datetime' | 'number' | 'text' | 'bool' | 'other'.")
+
+
+class AlertSourceColumnsResponse(BaseModel):
+    """GET /api/alerts/sources/columns — the real columns of a source table."""
+    source_id: str
+    engine: str
+    table: str
+    database: Optional[str] = None
+    table_engine: Optional[str] = Field(default=None, description="e.g. ReplacingMergeTree (read with FINAL).")
+    columns: list[AlertSourceColumn]
+    suggested_date_column: Optional[str] = None
+    suggested_currency_column: Optional[str] = None
+
+
+class AlertSourceTablesResponse(BaseModel):
+    """GET /api/alerts/sources/tables — tables on a registered connection."""
+    source_id: str
+    engine: str
+    tables: list[str]
+
+
+class AlertSourceValuesResponse(BaseModel):
+    """GET /api/alerts/sources/values — the most common values of a column, for filters."""
+    column: str
+    values: list[Any]
+
+
+class AlertEvaluationRow(BaseModel):
+    group: str
+    current_value: float
+    baseline: float
+    change_pct: Optional[float] = None
+    fired: bool
+
+
+class AlertPreviewResponse(BaseModel):
+    """POST /api/alerts/preview — evaluate an unsaved alert. Nothing is sent or recorded."""
+    status: str = Field(..., description="'ok' | 'no_data' | 'error'.")
+    engine: str
+    sql: str = ""
+    rows_checked: int = 0
+    elapsed_ms: int = 0
+    error: Optional[str] = None
+    fired: bool = False
+    fired_count: int = 0
+    rows: list[AlertEvaluationRow] = Field(default_factory=list)
+    period: Optional[list[str]] = Field(default=None, description="[start, end) of the checked period.")
 
 
 class AlertDeleteResponse(BaseModel):
@@ -107,6 +206,12 @@ class AlertTestResponse(BaseModel):
         description="Up to 5 rows that would have triggered.",
     )
     error: Optional[str] = None
+    # P230 / B345: the same evaluation the scheduled run does.
+    status: Optional[str] = None
+    engine: Optional[str] = None
+    sql: Optional[str] = None
+    elapsed_ms: Optional[int] = None
+    rows: Optional[list[AlertEvaluationRow]] = None
 
 
 class AlertSparklineDay(BaseModel):

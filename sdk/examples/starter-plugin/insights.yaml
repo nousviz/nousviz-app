@@ -31,3 +31,15 @@ queries:
       ORDER BY created_at DESC
       LIMIT 1
     fallback_empty: true
+
+  # P231: an insight can read ClickHouse or MySQL. It runs read-only through
+  # the default connection of that database (10 s timeout, 1,000 rows).
+  # - id: events_per_day_clickhouse
+  #   label: Events per day (ClickHouse)
+  #   db: clickhouse
+  #   sql: >
+  #     SELECT toDate(created_at) AS day, count() AS events
+  #     FROM starter_db.starter_events_ch
+  #     WHERE created_at >= today() - 7
+  #     GROUP BY day ORDER BY day
+  #   fallback_empty: true

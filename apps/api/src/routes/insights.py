@@ -32,6 +32,47 @@ register_route("GET", "/api/insights/", "dashboards.read")
 PLUGINS_INSTALLED = Path(__file__).resolve().parents[4] / "plugins" / "installed"
 
 
+INSIGHT_TIMEOUT_S = 10
+INSIGHT_MAX_ROWS = 1000
+
+
+def _engine_of(query_spec: dict) -> str:
+    return str(query_spec.get("db") or "postgres").lower()
+
+
+def _run_external_insights(plugin_slug: str, queries: list[dict]) -> list[dict]:
+    """P231: insights.yaml queries on ClickHouse / MySQL, read-only.
+
+    `connection:` may name a registered connection's id; otherwise the
+    engine's default connection is used (the convention dashboards follow).
+    A missing connection or a failing query never blocks other cards.
+    """
+    from ..query_drivers import ConnectionMissing, QueryError, get_driver
+    out: list[dict] = []
+    for q in queries:
+        engine = _engine_of(q)
+        card = {"plugin": plugin_slug, "id": q.get("id"), "label": q.get("label", q.get("id")),
+                "description": q.get("description", ""), "severity": q.get("severity", "info"), "rows": []}
+        try:
+            driver = get_driver(engine, connection_id=q.get("connection") or None)
+            card["rows"] = driver.run(q["sql"], {}, timeout_s=INSIGHT_TIMEOUT_S, max_rows=INSIGHT_MAX_ROWS)
+        except (ConnectionMissing, QueryError, KeyError) as e:
+            if q.get("fallback_empty"):
+                logger.info(f"Insight '{q.get('id')}' in {plugin_slug} skipped ({engine}): {e}")
+                continue
+            logger.warning(f"Insight '{q.get('id')}' in {plugin_slug} failed on {engine}: {e}")
+            card["severity"] = "warning"
+            card["description"] = f"Could not run on {engine}: {e}"
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"Insight '{q.get('id')}' in {plugin_slug} failed: {e}")
+            if q.get("fallback_empty"):
+                continue
+            card["severity"] = "warning"
+            card["description"] = f"Could not run on {engine}."
+        out.append(card)
+    return out
+
+
 def _run_yaml_insights() -> list[dict]:
     """Tier 1: run static SQL queries from installed plugins' insights.yaml files."""
     results = []
@@ -41,6 +82,15 @@ def _run_yaml_insights() -> list[dict]:
             cfg = yaml.safe_load(path.read_text())
         except Exception as e:
             logger.warning(f"insights.yaml parse error for {plugin_slug}: {e}")
+            continue
+
+        queries = cfg.get("queries", []) or []
+        # P231: queries with `db:` other than postgres run through the
+        # shared read-only drivers; Postgres queries keep the path below.
+        external = [q for q in queries if _engine_of(q) != "postgres" or q.get("connection")]
+        results.extend(_run_external_insights(plugin_slug, external))
+        pg_queries = [q for q in queries if q not in external]
+        if not pg_queries:
             continue
 
         with get_pg_conn() as conn:
@@ -53,7 +103,7 @@ def _run_yaml_insights() -> list[dict]:
             cur.execute("SET TRANSACTION READ ONLY")
             cur.execute("SET LOCAL ROLE nousviz_query")
             cur.execute("SET LOCAL statement_timeout = '10s'")
-            for query_spec in cfg.get("queries", []):
+            for query_spec in pg_queries:
                 try:
                     cur.execute(query_spec["sql"])
                     cols = [d[0] for d in cur.description]

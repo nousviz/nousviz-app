@@ -9,20 +9,22 @@ Storage: Postgres `alert_rules` table (migration 025).
 
 import json
 import logging
-import os
-from pathlib import Path
 from datetime import datetime, timezone, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel, Field
 
 from ..db import get_pg_conn, rows_as_dicts
 from ..rbac import requires, register_route
 from ..models import ErrorDetail, RBACErrorDetail
 from ..models.alerts import (
     AlertDeleteResponse,
+    AlertPreviewResponse,
     AlertRow,
+    AlertSourceColumnsResponse,
     AlertSourcesResponse,
+    AlertSourceTablesResponse,
+    AlertSourceValuesResponse,
     AlertSparklineResponse,
     AlertTestResponse,
     AlertsListResponse,
@@ -40,17 +42,43 @@ register_route("PUT", "/api/alerts/{alert_id}", "alerts.write")
 register_route("DELETE", "/api/alerts/{alert_id}", "alerts.write")
 register_route("POST", "/api/alerts/{alert_id}/test", "alerts.write")
 register_route("GET", "/api/alerts/{alert_id}/sparkline", "alerts.read")
+# P230: column mapping and preview.
+register_route("GET", "/api/alerts/sources/columns", "alerts.read")
+register_route("GET", "/api/alerts/sources/tables", "alerts.read")
+register_route("GET", "/api/alerts/sources/values", "alerts.read")
+register_route("POST", "/api/alerts/preview", "alerts.write")
 
 
 # ── Models ────────────────────────────────────────────────────────────
 
-class AlertCreate(BaseModel):
+class AlertMapping(BaseModel):
+    """P230: where the data is and how the user mapped its columns.
+
+    Send `source_id` (from /api/alerts/sources); the server works out the
+    engine, connection, table and plugin from it. `table` is only needed for
+    a connection source.
+    """
+    source_id: str | None = Field(default=None, description="pg:<table> | plugin:<id>:<dataset> | conn:<uuid> | query:<plugin>:<id>.")
+    table: str | None = Field(default=None, description="For conn: sources only — a table on that connection.")
+    date_column: str | None = None
+    value_kind: str | None = Field(default=None, description="'column' | 'count' | 'ratio'.")
+    denominator: str | None = None
+    denominator_aggregation: str | None = None
+    group_by_columns: list[str] | None = None
+    filters: list[dict] | None = Field(default=None, description="[{column, op, value}]; op: eq neq in not_in gt gte lt lte contains empty not_empty.")
+    min_volume_column: str | None = None
+    min_volume: float | None = None
+    currency_column: str | None = None
+    query_params: dict | None = None
+
+
+class AlertCreate(AlertMapping):
     name: str
     label: str
     description: str | None = None
-    plugin_id: str
-    dataset: str
-    metric: str
+    plugin_id: str = "core"
+    dataset: str = ""
+    metric: str = ""
     aggregation: str = "sum"
     condition_type: str = "threshold_drop"
     threshold: float | None = None
@@ -68,18 +96,85 @@ class AlertCreate(BaseModel):
     is_template: bool = False
 
 
-class AlertUpdate(BaseModel):
+class AlertPreview(AlertCreate):
+    """An unsaved alert, for POST /api/alerts/preview."""
+    name: str = "preview"
+    label: str = "Preview"
+
+
+class AlertUpdate(AlertMapping):
     label: str | None = None
     description: str | None = None
     enabled: bool | None = None
+    metric: str | None = None
+    aggregation: str | None = None
+    condition_type: str | None = None
     threshold: float | None = None
     compare_to: str | None = None
+    check_frequency: str | None = None
     check_period: str | None = None
     group_by: str | None = None
     scope_filters: dict | None = None
     cooldown_hours: int | None = None
     min_baseline: float | None = None
     notify_channels: list[str] | None = None
+
+
+# Columns a create/update may write. Source fields come from the resolver.
+_MAPPING_COLS = ("date_column", "value_kind", "denominator", "denominator_aggregation", "group_by_columns",
+                 "filters", "min_volume_column", "min_volume", "currency_column", "query_params")
+_JSON_COLS = ("scope_filters", "filters", "query_params")
+
+
+def _apply_source(alert: dict, source_id: str | None, table: str | None, cur=None) -> None:
+    """Fill engine / connection / dataset / plugin from the source id (server-side)."""
+    from ..alert_sources import SourceError, resolve
+    if not source_id:
+        alert.setdefault("source_kind", "table")
+        alert.setdefault("db_engine", "postgres")
+        return
+    try:
+        src = resolve(source_id, table=table, pg_cursor=cur)
+    except SourceError as e:
+        raise HTTPException(422, str(e))
+    if src.source_kind == "plugin_dataset" and not src.alertable:
+        raise HTTPException(422, f"{src.plugin_id} keeps '{src.table}' out of direct alerts. "
+                                 "Use one of its ready-made alerts instead.")
+    if src.source_kind == "connection_table" and not src.table:
+        raise HTTPException(422, "Choose a table on this connection.")
+    alert.update(src.alert_fields())
+    if src.source_kind == "plugin_query":
+        alert["metric"] = alert.get("metric") or "*"
+        alert["value_kind"] = "column"
+    else:
+        alert.setdefault("date_column", None)
+        if not alert.get("date_column") and src.date_column:
+            alert["date_column"] = src.date_column
+
+
+def _check_alert(alert: dict, cur=None) -> None:
+    """Refuse a mapping that can't run: unknown columns, wrong kinds, bad params."""
+    from ..alert_engine import AlertConfigError, resolve_table, spec_from_alert, validate
+    from ..query_drivers import ConnectionMissing, QueryError, get_driver
+    spec = spec_from_alert(alert)
+    try:
+        if spec.source_kind == "plugin_query":
+            from ..alert_queries import find_query, render
+            from ..query_drivers import dialect_for
+            q = find_query(spec.plugin_id or "", spec.query_id or "")
+            if q is None or q.error:
+                raise AlertConfigError(q.error if q else "Ready-made alert not found.")
+            from datetime import date as _d
+            render(q, dialect_for(q.engine), spec.query_params,
+                   {k: _d.today() for k in ("period_start", "period_end", "baseline_start", "baseline_end")})
+            return
+        driver = get_driver(spec.engine, connection_id=spec.connection_id, pg_cursor=cur)
+        table = resolve_table(driver, spec)
+        validate(spec, {c.name: c for c in driver.columns(table)})
+    except (AlertConfigError, ValueError) as e:
+        raise HTTPException(422, str(e))
+    except (ConnectionMissing, QueryError) as e:
+        raise HTTPException(422, f"Can't reach the data: {e}")
 
 
 # ── Frequency / period label helpers ──────────────────────────────────
@@ -96,14 +191,21 @@ _PERIOD_LABELS = {
     "today_or_yesterday": "checks today or yesterday",
     "this_week":          "checks this week",
     "rolling_7d":         "checks the last 7 days",
+    "rolling_30d":        "checks the last 30 days",
+    "this_month":         "checks this month",
+    "last_month":         "checks the last full month",
 }
 
 
 def _serialize_alert(row: dict) -> dict:
     """Serialize a DB row for JSON response."""
-    for k in ("created_at", "updated_at", "last_triggered"):
+    from ..alert_sources import source_id_for_alert
+    for k in ("created_at", "updated_at", "last_triggered", "last_run_at"):
         if row.get(k) and hasattr(row[k], "isoformat"):
             row[k] = row[k].isoformat()
+    if row.get("connection_id") is not None:
+        row["connection_id"] = str(row["connection_id"])
+    row["source_id"] = source_id_for_alert(row)
     # Inject human-readable labels
     freq = row.get("check_frequency", "daily")
     period = row.get("check_period", "yesterday")
@@ -180,6 +282,7 @@ async def alert_sources(_: None = Depends(requires("alerts.read"))):
     postgres_tables: list[dict] = []
     connections_list: list[dict] = []
     plugin_datasets: list[dict] = []
+    availability: dict = {}
 
     # Plugin → owned tables, from the mtime-cached catalog map.
     ownership_map = catalog_mod._build_plugin_ownership_map()  # {table: plugin_id}, cached
@@ -242,26 +345,42 @@ async def alert_sources(_: None = Depends(requires("alerts.read"))):
                     "columns": columns_by_table.get(tname, []),
                 })
 
+            # P230: registered connections whose engine has a driver. The
+            # `plugin:<id>` rows are each plugin's internal Postgres handle,
+            # not a data source a user picks.
             try:
+                from ..query_drivers import DRIVERS
                 cur.execute("""
-                    SELECT id, plugin_id, name, connection_type, status,
-                           last_successful_sync, last_error
-                    FROM connections ORDER BY created_at
-                """)
-                for row in cur.fetchall():
+                    SELECT id, name, type, is_active
+                    FROM connections
+                    WHERE type = ANY(%s) AND name NOT LIKE 'plugin:%%'
+                    ORDER BY is_default DESC, name
+                """, (list(DRIVERS),))
+                for cid, cname, ctype, active in cur.fetchall():
                     connections_list.append({
-                        "id": f"conn:{row[0]}",
-                        "connection_id": str(row[0]),
-                        "plugin_id": row[1],
-                        "label": row[2],
-                        "connection_type": row[3],
-                        "status": row[4],
-                        "last_sync": row[5].isoformat() if row[5] else None,
-                        "last_error": row[6],
+                        "id": f"conn:{cid}",
+                        "connection_id": str(cid),
+                        "label": cname,
+                        "connection_type": ctype,
                         "source_type": "connection",
-                        "source_label": row[2],
+                        "source_label": cname,
+                        "engine": ctype,
                         "columns": [],
+                        "needs_table": True,
+                        "available": active is not False,
+                        "unavailable_reason": None if active is not False else "This connection is switched off.",
                     })
+                # Availability per engine from the rows just read (no extra query).
+                for e in DRIVERS:
+                    rows_e = [c for c in connections_list if c["engine"] == e]
+                    if e == "postgres" or any(c["available"] for c in rows_e):
+                        availability[e] = (True, "")
+                    elif rows_e:
+                        availability[e] = (False, f"The {e} connection is switched off.")
+                    else:
+                        hint = " Install the ClickHouse utility or add a connection." if e == "clickhouse" \
+                            else " Add one on the Connections page."
+                        availability[e] = (False, f"No {e} connection.{hint}")
             except Exception:
                 conn.rollback()
 
@@ -286,6 +405,10 @@ async def alert_sources(_: None = Depends(requires("alerts.read"))):
                     {"name": fld.get("name", ""), "type": fld.get("type", "unknown")}
                     for fld in ds.get("fields", [])
                 ]
+                engine = str(ds.get("db") or "postgres").lower()
+                ok, reason = availability.get(engine, (engine == "postgres", f"No driver for '{engine}'."))
+                if ok and ds.get("alertable", True) is False:
+                    ok, reason = False, "This plugin keeps this dataset out of direct alerts; use its ready-made alerts."
                 plugin_datasets.append({
                     "id": f"plugin:{plugin_id}:{ds_name}",
                     "label": ds.get("label") or ds_name,
@@ -294,17 +417,36 @@ async def alert_sources(_: None = Depends(requires("alerts.read"))):
                     "plugin_id": plugin_id,
                     "table": ds_name,
                     "columns": columns,
+                    "engine": engine,
+                    "available": ok,
+                    "unavailable_reason": None if ok else reason,
                 })
         except Exception as e:
             logger.warning(f"Could not read manifest for {plugin_id}: {e}")
 
     pg_table_names = {t["table"] for t in postgres_tables}
-    plugin_datasets_deduped = [ds for ds in plugin_datasets if ds["table"] not in pg_table_names]
+    plugin_datasets_deduped = [ds for ds in plugin_datasets
+                               if not (ds["engine"] == "postgres" and ds["table"] in pg_table_names)]
+
+    # P230 §5: ready-made alerts from plugins' alerts.yaml.
+    queries: list[dict] = []
+    try:
+        from ..alert_queries import list_queries
+        for q in list_queries():
+            entry = q.as_dict()
+            ok, reason = availability.get(q.engine, (q.engine == "postgres", f"No driver for '{q.engine}'."))
+            if q.error:
+                ok, reason = False, f"alerts.yaml: {q.error}"
+            entry.update(available=ok, unavailable_reason=None if ok else reason)
+            queries.append(entry)
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"Could not read alerts.yaml files: {e}")
 
     return {
         "postgres": postgres_tables,
         "connections": connections_list,
         "plugins": plugin_datasets_deduped,
+        "queries": queries,
     }
 
 
@@ -324,30 +466,47 @@ async def create_alert(
     request: Request,
     _: None = Depends(requires("alerts.write")),
 ):
-    """Create a new alert."""
+    """Create a new alert.
+
+    P230: send `source_id` (and `table` for a connection) plus the column
+    mapping; the server resolves where the data is and refuses a mapping
+    that can't run (422 with the reason).
+    """
+    alert = req.model_dump(exclude={"source_id", "table"})
     with get_pg_conn() as conn:
         cur = conn.cursor()
-        cur.execute("""
-            INSERT INTO alert_rules (
-                name, label, description, plugin_id, dataset,
-                metric, aggregation, condition_type, threshold, compare_to,
-                scope, group_by, scope_filters, check_frequency, check_period,
-                cooldown_hours, min_baseline, notify_channels, enabled, is_template
-            ) VALUES (
-                %s, %s, %s, %s, %s,
-                %s, %s, %s, %s, %s,
-                %s, %s, %s, %s, %s,
-                %s, %s, %s, %s, %s
-            ) RETURNING *
-        """, (
-            req.name, req.label, req.description, req.plugin_id, req.dataset,
-            req.metric, req.aggregation, req.condition_type, req.threshold, req.compare_to,
-            req.scope, req.group_by, json.dumps(req.scope_filters), req.check_frequency, req.check_period,
-            req.cooldown_hours, req.min_baseline, req.notify_channels, req.enabled, req.is_template,
-        ))
+        _apply_source(alert, req.source_id, req.table, cur)
+        if not alert.get("group_by_columns") and alert.get("group_by"):
+            alert["group_by_columns"] = [alert["group_by"]]
+        if alert.get("value_kind") == "count" and not alert.get("metric"):
+            alert["metric"] = "*"
+        _check_alert(alert, cur)
+
+        cols = ["name", "label", "description", "plugin_id", "dataset", "metric", "aggregation", "condition_type",
+                "threshold", "compare_to", "scope", "group_by", "scope_filters", "check_frequency", "check_period",
+                "cooldown_hours", "min_baseline", "notify_channels", "enabled", "is_template",
+                "source_kind", "db_engine", "connection_id", "query_id", *_MAPPING_COLS]
+        values = []
+        for c in cols:
+            v = alert.get(c)
+            if c in _JSON_COLS:
+                v = json.dumps(v if v is not None else ([] if c == "filters" else {}))
+            elif c == "group_by_columns":
+                v = list(v or [])
+            elif c == "denominator_aggregation":
+                v = v or "sum"
+            elif c == "value_kind":
+                v = v or "column"
+            elif c == "date_column":
+                v = v or "date"
+            values.append(v)
+        cur.execute(
+            f"INSERT INTO alert_rules ({', '.join(cols)}) VALUES ({', '.join(['%s'] * len(cols))}) RETURNING *",
+            values,
+        )
         row = rows_as_dicts(cur)[0]
 
-    logger.info(f"Alert created: {req.label}")
+    logger.info(f"Alert created: {req.label} ({alert.get('db_engine')})")
     return _serialize_alert(row)
 
 
@@ -370,28 +529,43 @@ async def update_alert(
     request: Request,
     _: None = Depends(requires("alerts.write")),
 ):
-    """Update an alert (toggle, change threshold, etc.)."""
-    updates = req.model_dump(exclude_none=True)
-    if not updates:
+    """Update an alert (toggle, change threshold, mapping, source …).
+
+    The merged alert is checked like a new one whenever its source or
+    mapping changes.
+    """
+    updates = req.model_dump(exclude_none=True, exclude={"source_id", "table"})
+    if not updates and not req.source_id:
         raise HTTPException(400, "Nothing to update")
-
-    # Serialize scope_filters to JSON string for Postgres
-    if "scope_filters" in updates:
-        updates["scope_filters"] = json.dumps(updates["scope_filters"])
-    if "notify_channels" in updates:
-        updates["notify_channels"] = updates["notify_channels"]  # TEXT[] handled by psycopg2
-
-    updates["updated_at"] = datetime.now(timezone.utc)
-    set_parts = ", ".join(f"{k} = %s" for k in updates)
-    values = list(updates.values()) + [alert_id]
 
     with get_pg_conn() as conn:
         cur = conn.cursor()
-        cur.execute(f"UPDATE alert_rules SET {set_parts} WHERE id = %s RETURNING *", values)
+        cur.execute("SELECT * FROM alert_rules WHERE id = %s", (alert_id,))
+        found = rows_as_dicts(cur)
+        if not found:
+            raise HTTPException(404, "Alert not found")
+        merged = {**found[0], **updates}
+        if req.source_id:
+            _apply_source(merged, req.source_id, req.table, cur)
+            for k in ("source_kind", "db_engine", "connection_id", "plugin_id", "dataset", "query_id"):
+                updates[k] = merged.get(k)
+        if "group_by" in updates and "group_by_columns" not in updates:
+            updates["group_by_columns"] = [updates["group_by"]] if updates["group_by"] else []
+            merged["group_by_columns"] = updates["group_by_columns"]
+        mapping_keys = {"metric", "aggregation", "condition_type", "compare_to", "check_period", "group_by",
+                        "scope_filters", *_MAPPING_COLS}
+        if req.source_id or mapping_keys & set(updates):
+            _check_alert(merged, cur)
+
+        for k in _JSON_COLS:
+            if k in updates:
+                updates[k] = json.dumps(updates[k])
+        updates["updated_at"] = datetime.now(timezone.utc)
+        set_parts = ", ".join(f"{k} = %s" for k in updates)
+        cur.execute(f"UPDATE alert_rules SET {set_parts} WHERE id = %s RETURNING *",
+                    list(updates.values()) + [alert_id])
         rows = rows_as_dicts(cur)
 
-    if not rows:
-        raise HTTPException(404, "Alert not found")
     return _serialize_alert(rows[0])
 
 
@@ -441,60 +615,187 @@ async def test_alert(
 ):
     """Test-run an alert against current data without triggering notifications.
 
-    Imports the worker's evaluator at request time. If the worker module
-    isn't importable on this server, returns `{error: ...}` instead of
-    a fired/checked breakdown.
+    B345: uses the same evaluator as the scheduled run (apps/api/src/
+    alert_engine.py), on whatever database the alert reads. Nothing is
+    sent and no trigger is recorded.
     """
+    from ..alert_engine import evaluate_alert
+
     with get_pg_conn() as conn:
         cur = conn.cursor()
         cur.execute("SELECT * FROM alert_rules WHERE id = %s", (alert_id,))
         rows = rows_as_dicts(cur)
+        if not rows:
+            raise HTTPException(404, "Alert not found")
+        ev = evaluate_alert(rows[0], pg_cursor=cur)
 
-    if not rows:
-        raise HTTPException(404, "Alert not found")
-    alert = rows[0]
+    out = ev.as_dict(limit=50)
+    if ev.status == "error":
+        return {"alert_id": alert_id, "error": ev.error, "status": "error", "engine": ev.engine, "sql": ev.sql,
+                "elapsed_ms": ev.elapsed_ms}
+    fired = ev.fired_rows
+    if ev.status == "no_data":
+        message = "No data for this alert's period and filters."
+    elif fired:
+        message = f"Would fire on {len(fired)} of {ev.rows_checked} group(s)"
+    else:
+        message = "Would not fire — all values within threshold"
+    return {
+        "alert_id": alert_id, "fired": bool(fired), "message": message, "rows_checked": ev.rows_checked,
+        "triggered_rows": fired[:5], "status": ev.status, "engine": ev.engine, "sql": ev.sql,
+        "elapsed_ms": ev.elapsed_ms, "rows": out["rows"],
+    }
 
-    # Run the alert check in dry-run mode (no notifications, no recording)
+
+# ── P230: column mapping and preview ──────────────────────────────────
+
+def _resolved_table(source_id: str, table: str | None, cur):
+    from ..alert_sources import SourceError, resolve
+    from ..query_drivers import ConnectionMissing, QueryError, get_driver
     try:
-        import sys
-        sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
-        from apps.worker.src.run_alerts import build_check_sql, evaluate_row, query_postgres
-        import psycopg2
+        src = resolve(source_id, table=table, pg_cursor=cur)
+        if src.source_kind == "plugin_query":
+            raise HTTPException(422, "Ready-made alerts have no columns to map.")
+        if src.source_kind == "plugin_dataset" and not src.alertable:
+            raise HTTPException(422, f"{src.plugin_id} keeps '{src.table}' out of direct alerts.")
+        if not src.table:
+            raise HTTPException(422, "Choose a table on this connection.")
+        driver = get_driver(src.engine, connection_id=src.connection_id, pg_cursor=cur)
+        return src, driver, driver.locate(src.table, src.database)
+    except SourceError as e:
+        raise HTTPException(422, str(e))
+    except (ConnectionMissing, QueryError) as e:
+        raise HTTPException(422, f"Can't reach the data: {e}")
 
-        pg = psycopg2.connect(
-            host=os.environ.get("POSTGRES_HOST", "localhost"),
-            port=int(os.environ.get("POSTGRES_PORT", "5432")),
-            dbname=os.environ.get("POSTGRES_DB", "nousviz"),
-            user=os.environ.get("POSTGRES_USER", "nousviz"),
-            password=os.environ.get("POSTGRES_PASSWORD", ""),
-        )
-        pg.autocommit = True
 
-        sql, params = build_check_sql(alert)
-        rows_data = query_postgres(pg, sql, params)
-        pg.close()
+@router.get(
+    "/alerts/sources/columns",
+    operation_id="alerts.sources.columns",
+    response_model=AlertSourceColumnsResponse,
+    response_model_exclude_none=True,
+    summary="Real columns of an alert source table, with their kinds",
+    responses={
+        401: {"model": ErrorDetail, "description": "Missing or invalid session token."},
+        403: {"model": RBACErrorDetail, "description": "Caller lacks the alerts.read permission."},
+        422: {"model": ErrorDetail, "description": "Unknown source, unreachable database or table not found."},
+    },
+)
+def alert_source_columns(
+    source_id: str = Query(..., description="A source id from /api/alerts/sources."),
+    table: str | None = Query(None, description="For conn: sources — a table on that connection."),
+    _: None = Depends(requires("alerts.read")),
+):
+    """List a source table's columns (name, engine type, kind) so the user can map them."""
+    from ..query_drivers import ConnectionMissing, QueryError
+    with get_pg_conn() as conn:
+        cur = conn.cursor()
+        src, driver, ref = _resolved_table(source_id, table, cur)
+        try:
+            cols = driver.columns(ref)
+        except (ConnectionMissing, QueryError) as e:
+            raise HTTPException(422, f"Can't read the columns: {e}")
+    dates = [c.name for c in cols if c.kind in ("date", "datetime")]
+    suggested = src.date_column if src.date_column in dates else next(
+        (n for n in ("date", "day", "report_date", "event_date", "created_at", "ts") if n in dates),
+        dates[0] if dates else None)
+    texts = [c.name for c in cols if c.kind == "text"]
+    currency = src.currency_column if src.currency_column in texts else ("currency" if "currency" in texts else None)
+    return {"source_id": source_id, "engine": src.engine, "table": ref.name, "database": ref.database,
+            "table_engine": ref.engine_name, "columns": [c.as_dict() for c in cols],
+            "suggested_date_column": suggested, "suggested_currency_column": currency}
 
-        if not rows_data:
-            return {"alert_id": alert_id, "fired": False, "message": "No data returned for this alert's query.", "rows_checked": 0}
 
-        triggered = []
-        for row in rows_data:
-            result = evaluate_row(alert, row)
-            if result:
-                triggered.append(result)
+@router.get(
+    "/alerts/sources/tables",
+    operation_id="alerts.sources.tables",
+    response_model=AlertSourceTablesResponse,
+    summary="Tables on a registered connection",
+    responses={
+        401: {"model": ErrorDetail, "description": "Missing or invalid session token."},
+        403: {"model": RBACErrorDetail, "description": "Caller lacks the alerts.read permission."},
+        422: {"model": ErrorDetail, "description": "Not a connection source, or the connection is unreachable."},
+    },
+)
+def alert_source_tables(
+    source_id: str = Query(..., description="A conn:<uuid> source id."),
+    _: None = Depends(requires("alerts.read")),
+):
+    """List the tables an alert can read on a registered connection."""
+    from ..alert_sources import SourceError, resolve
+    from ..query_drivers import ConnectionMissing, QueryError, get_driver
+    if not source_id.startswith("conn:"):
+        raise HTTPException(422, "Only connection sources have a table list.")
+    with get_pg_conn() as conn:
+        cur = conn.cursor()
+        try:
+            src = resolve(source_id, pg_cursor=cur)
+            driver = get_driver(src.engine, connection_id=src.connection_id, pg_cursor=cur)
+            tables = driver.list_tables()
+        except SourceError as e:
+            raise HTTPException(422, str(e))
+        except (ConnectionMissing, QueryError) as e:
+            raise HTTPException(422, f"Can't reach the data: {e}")
+    return {"source_id": source_id, "engine": src.engine, "tables": tables}
 
-        return {
-            "alert_id": alert_id,
-            "fired": len(triggered) > 0,
-            "message": f"Would fire on {len(triggered)} of {len(rows_data)} rows" if triggered else "Would not fire — all values within threshold",
-            "rows_checked": len(rows_data),
-            "triggered_rows": triggered[:5],
-        }
-    except ImportError:
-        return {"alert_id": alert_id, "error": "Alert worker module not available on this server."}
-    except Exception as e:
-        logger.error(f"Alert test failed: {e}", exc_info=True)
-        return {"alert_id": alert_id, "error": "Test failed. Check server logs for details."}
+
+@router.get(
+    "/alerts/sources/values",
+    operation_id="alerts.sources.values",
+    response_model=AlertSourceValuesResponse,
+    summary="Most common values of a column, for filter suggestions",
+    responses={
+        401: {"model": ErrorDetail, "description": "Missing or invalid session token."},
+        403: {"model": RBACErrorDetail, "description": "Caller lacks the alerts.read permission."},
+        422: {"model": ErrorDetail, "description": "Unknown source or column."},
+    },
+)
+def alert_source_values(
+    source_id: str = Query(...),
+    column: str = Query(...),
+    table: str | None = Query(None),
+    _: None = Depends(requires("alerts.read")),
+):
+    """Return up to 50 of the most common values of one column."""
+    from ..query_drivers import ConnectionMissing, QueryError
+    with get_pg_conn() as conn:
+        cur = conn.cursor()
+        src, driver, ref = _resolved_table(source_id, table, cur)
+        try:
+            names = {c.name for c in driver.columns(ref)}
+            if column not in names:
+                raise HTTPException(422, f"'{column}' is not a column of {ref.name}.")
+            values = driver.distinct_values(ref, column, 50)
+        except (ConnectionMissing, QueryError) as e:
+            raise HTTPException(422, f"Can't read the values: {e}")
+    return {"column": column, "values": values}
+
+
+@router.post(
+    "/alerts/preview",
+    operation_id="alerts.preview",
+    response_model=AlertPreviewResponse,
+    response_model_exclude_none=True,
+    summary="Evaluate an unsaved alert (nothing is sent or recorded)",
+    responses={
+        401: {"model": ErrorDetail, "description": "Missing or invalid session token."},
+        403: {"model": RBACErrorDetail, "description": "Caller lacks the alerts.write permission."},
+        422: {"model": ErrorDetail, "description": "Unknown source or a dataset kept out of direct alerts."},
+    },
+)
+def preview_alert(
+    req: AlertPreview,
+    _: None = Depends(requires("alerts.write")),
+):
+    """Run an alert as it is in the builder and show which groups would fire, and the SQL."""
+    from ..alert_engine import evaluate_alert
+    alert = req.model_dump(exclude={"source_id", "table"})
+    with get_pg_conn() as conn:
+        cur = conn.cursor()
+        _apply_source(alert, req.source_id, req.table, cur)
+        if not alert.get("group_by_columns") and alert.get("group_by"):
+            alert["group_by_columns"] = [alert["group_by"]]
+        ev = evaluate_alert(alert, pg_cursor=cur)
+    return ev.as_dict(limit=200)
 
 
 # ── Alert sparkline ────────────────────────────────────────────────────

@@ -24,6 +24,7 @@ code, the frontend integration model, and the rules for contributing to official
    - 5.5 [Dashboard specs — dashboards/*.yaml](#55-dashboard-specs--dashboardsyaml)
    - 5.6 [Sync scripts](#56-sync-scripts)
    - 5.7 [Plugin migrations — storage/migrations/](#57-plugin-migrations--storagemigrations)
+   - 5.8 [Alerts — datasets and alerts.yaml](#58-alerts--datasets-and-alertsyaml)
 6. [Cross-plugin data — the Data Explorer](#6-cross-plugin-data--the-data-explorer)
 7. [Install lifecycle](#7-install-lifecycle)
 8. [Uninstall lifecycle](#8-uninstall-lifecycle)
@@ -584,6 +585,15 @@ queries:
 
 **When to use Tier 1:** The insight is a straight SQL result — count something, sum something, find the top N. The frontend displays the raw rows.
 
+**Data in ClickHouse or MySQL (P231).** Set `db: clickhouse` or `db: mysql` on a query
+(and optionally `connection: <connection id>`). Core runs it read-only through the
+default connection of that database, with a 10 s timeout and a 1,000-row cap. If the
+connection is missing, a query with `fallback_empty: true` is skipped; otherwise its
+card says which connection is missing. Name the database in the SQL
+(`FROM my_plugin_db.my_table FINAL`), because the default connection may point at
+another database. You no longer need to copy ClickHouse results into Postgres just to
+show an insight.
+
 ---
 
 #### Tier 2 — GET /plugins/{slug}/insights (programmatic)
@@ -1086,6 +1096,72 @@ switch on, never a stack trace or provider-specific string.
 same-origin path-style URLs (must start with a single `/`). Anything
 else falls back to `/`.
 
+### 5.8 Alerts — datasets and alerts.yaml
+
+Alert definitions and their history live in core Postgres; the data an alert
+**reads** can be in Postgres, ClickHouse or MySQL (P230). Users build alerts
+on your data in two ways.
+
+**1. Column mapping on your `datasets:`.** Every dataset in `plugin.yaml`
+is offered in the alert builder. The user picks the date column, a value
+(a column, a row count or a ratio of two sums), up to three group-by
+columns, filters, a minimum volume and a currency column, from the real
+columns, which core reads from the database. These optional dataset fields help:
+
+```yaml
+datasets:
+  - name: my_daily_stats
+    label: Daily stats
+    db: clickhouse            # postgres (default) | clickhouse | mysql
+    database: my_plugin_db    # ClickHouse/MySQL database; found by name if omitted
+    date_column: day          # pre-selected in the builder
+    currency_column: currency # pre-selected; each currency is checked on its own
+    alertable: true           # false: no column mapping; only your alerts.yaml
+```
+
+Non-Postgres datasets are read through core's **default connection** for that
+database (the same one dashboards use). ClickHouse ReplacingMergeTree tables are
+read with `FINAL` automatically.
+
+Set `alertable: false` when core must not read a dataset directly: for
+example, if your plugin hides or aliases some rows (learning-only data,
+client names) or money needs converting before it means anything. Offer
+ready-made alerts for that data instead.
+
+**2. Ready-made alerts in `alerts.yaml`.** For logic a mapping can't express
+safely (currency conversion, your own definitions, excluded data), ship
+named, read-only queries:
+
+```yaml
+queries:
+  - id: zero_rs_share
+    label: Accounts paid 0% revenue share
+    description: Account-months with net revenue but no RS commission.
+    db: clickhouse
+    value_label: RS ÷ net revenue
+    params:
+      min_net_usd: {type: number, default: 100, label: Minimum net revenue (USD)}
+    default_condition: {type: absolute_below, threshold: 0.001}
+    default_period: last_month
+    sql: |
+      SELECT account AS group_name, sum(rs_usd) / nullIf(sum(net_usd), 0) AS current_value
+      FROM my_plugin_db.my_monthly FINAL
+      WHERE month >= {period_start} AND month < {period_end}
+      GROUP BY account
+      HAVING sum(net_usd) >= {min_net_usd}
+```
+
+- Return `current_value`, plus `group_name` to check each group, and optionally
+  `baseline_value` (filter with `{baseline_start}` / `{baseline_end}`).
+- `{period_start}` / `{period_end}` come from the period the user picks; every
+  other placeholder must be a declared param (`number`, `text` or `enum` with
+  `options`). All are bound as typed parameters, never pasted into the SQL.
+- One `SELECT` (or `WITH … SELECT`) per query. It runs read-only on every
+  database; Postgres queries also run as the `nousviz_query` role.
+- An invalid query is listed in the builder as unavailable, with the reason.
+
+See `sdk/examples/starter-plugin/alerts.yaml`.
+
 ---
 
 ## 6. Cross-plugin data — the Data Explorer
@@ -1414,6 +1490,13 @@ Run through this before opening a PR for a plugin or submitting to the marketpla
 ### insights.yaml
 - [ ] All SQL queries only reference tables declared in this plugin's `plugin.yaml databases`
 - [ ] Every query has `fallback_empty: true`
+- [ ] Queries on ClickHouse or MySQL set `db:` and name their database in `FROM`
+
+### alerts.yaml and datasets
+- [ ] Each query is one `SELECT` returning `current_value` (and `group_name` when it checks groups)
+- [ ] Every `{placeholder}` is a declared param or one of `period_start`, `period_end`, `baseline_start`, `baseline_end`
+- [ ] Non-Postgres `datasets:` set `db:`, and `database:` when the table name isn't unique
+- [ ] Datasets core must not read directly (hidden or aliased rows, unconverted money) set `alertable: false`
 
 ### dashboard YAML
 - [ ] All panel queries only reference tables declared in this plugin's `plugin.yaml databases`

@@ -1,0 +1,37 @@
+# alerts.yaml — Starter Plugin ready-made alerts (P230)
+#
+# Ready-made alerts appear in the alert builder under "Ready-made alerts".
+# The user sets the parameters, the condition, the period, the schedule and
+# the channels; the SQL stays yours and runs read-only.
+#
+# Rules:
+#   - One SELECT (or WITH … SELECT) per query; it runs read-only on every
+#     database (Postgres queries also run as the nousviz_query role).
+#   - Return `current_value`, and `group_name` to check each group on its own.
+#     Optionally return `baseline_value` (use {baseline_start}/{baseline_end}).
+#   - {period_start} and {period_end} come from the period the user picks
+#     ([start, end), end excluded). Every other {placeholder} must be a
+#     declared param; all are bound as typed parameters, never pasted in.
+#   - db: postgres (default) | clickhouse | mysql. Non-Postgres queries read
+#     through the default connection of that database.
+
+queries:
+  - id: new_items_by_status
+    label: New items by status
+    description: Items created in the period, per status.
+    db: postgres
+    value_label: new items
+    params:
+      status:
+        type: enum
+        options: [active, inactive, archived]
+        default: active
+        label: Status
+    default_condition: {type: absolute_below, threshold: 1}
+    default_period: yesterday
+    sql: |
+      SELECT status AS group_name, count(*) AS current_value
+      FROM starter_items
+      WHERE created_at >= {period_start} AND created_at < {period_end}
+        AND status = {status}
+      GROUP BY status
