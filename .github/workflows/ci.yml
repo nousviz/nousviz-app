@@ -55,7 +55,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -79,7 +79,7 @@ jobs:
       - name: Edition guards (leak + import)
         run: bash scripts/edition-guards.sh --public
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -125,7 +125,7 @@ jobs:
         if: steps.token.outputs.have == 'true'
         run: test -f enterprise/nousviz_enterprise/__init__.py
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         if: steps.token.outputs.have == 'true'
         with:
           python-version: "3.12"
@@ -163,7 +163,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -198,7 +198,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -292,7 +292,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
