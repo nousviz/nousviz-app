@@ -297,6 +297,9 @@ class QueryDriver:
     def locate(self, name: str, database: Optional[str] = None) -> TableRef:
         raise NotImplementedError
 
+    def list_tables(self, limit: int = 500) -> list[str]:
+        raise NotImplementedError
+
     def distinct_values(self, table: TableRef, column: str, limit: int = 50) -> list[Any]:
         d = self.dialect
         col = d.quote(column)
@@ -373,6 +376,14 @@ class PostgresDriver(QueryDriver):
             raise QueryError(f"Table '{name}' not found in Postgres.")
         return TableRef(name=name, database=None if schema == "public" else schema,
                         engine_name=rows[0]["table_type"])
+
+    def list_tables(self, limit=500):
+        rows = self.run(
+            "SELECT table_schema, table_name FROM information_schema.tables "
+            "WHERE table_schema NOT IN ('pg_catalog', 'information_schema') ORDER BY 1, 2 LIMIT %(n)s",
+            {"n": int(limit)}, timeout_s=10)
+        return [r["table_name"] if r["table_schema"] == "public" else f"{r['table_schema']}.{r['table_name']}"
+                for r in rows]
 
     def columns(self, table):
         rows = self.run(
@@ -455,6 +466,12 @@ class ClickHouseDriver(QueryDriver):
         r = rows[0]
         return TableRef(name=name, database=r["database"], engine_name=r["engine"])
 
+    def list_tables(self, limit=500):
+        rows = self.run("SELECT database, name FROM system.tables WHERE database NOT IN "
+                        "('system', 'INFORMATION_SCHEMA', 'information_schema') AND NOT is_temporary "
+                        "ORDER BY database, name LIMIT {n:UInt32}", {"n": int(limit)}, timeout_s=10)
+        return [f"{r['database']}.{r['name']}" for r in rows]
+
     def columns(self, table):
         rows = self.run("SELECT name, type FROM system.columns WHERE database = {d:String} AND table = {t:String} "
                         "ORDER BY position", {"d": table.database or "default", "t": table.name}, timeout_s=10)
@@ -532,6 +549,11 @@ class MySQLDriver(QueryDriver):
             raise QueryError(f"Table '{name}' not found in MySQL.")
         r = {k.lower(): v for k, v in rows[0].items()}
         return TableRef(name=name, database=database, engine_name=r.get("engine"))
+
+    def list_tables(self, limit=500):
+        rows = self.run("SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() "
+                        "ORDER BY table_name LIMIT %(n)s", {"n": int(limit)}, timeout_s=10)
+        return [list(r.values())[0] for r in rows]
 
     def columns(self, table):
         rows = self.run("SELECT column_name, column_type FROM information_schema.columns "

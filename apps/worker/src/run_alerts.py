@@ -2,7 +2,9 @@
 NousViz Alert Runner
 
 Checks all enabled alerts and fires notifications when conditions are met.
-Queries the core Postgres DB.
+Alert definitions live in core Postgres; the data each alert reads can be in
+Postgres, ClickHouse or MySQL (P230). Evaluation is shared with the API's
+Test and Preview through apps/api/src/alert_engine.py.
 
 Run on a cron or manually:
 
@@ -23,7 +25,6 @@ import argparse
 import json
 import logging
 import os
-import re
 import sys
 import uuid
 from datetime import datetime, timezone
@@ -33,6 +34,12 @@ import psycopg2
 from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).resolve().parents[3] / ".env")
+
+# P230: the evaluator is shared with the API (Test / Preview).
+_REPO = str(Path(__file__).resolve().parents[3])
+if _REPO not in sys.path:
+    sys.path.insert(0, _REPO)
+from apps.api.src.alert_engine import PERIODS, evaluate_alert  # noqa: E402
 
 logging.basicConfig(
     level=logging.INFO,
@@ -60,15 +67,6 @@ def get_pg():
     )
 
 
-def query_postgres(pg, sql: str, params: dict) -> list[tuple]:
-    """Execute a read-only SELECT on Postgres. Returns list of row tuples."""
-    cur = pg.cursor()
-    # Convert {key:Type} placeholders to %(key)s for psycopg2
-    converted = re.sub(r"\{(\w+):[^}]+\}", r"%(\1)s", sql)
-    cur.execute(converted, params)
-    return cur.fetchall()
-
-
 # ── Load alerts from Postgres ──────────────────────────────────────────────
 
 def load_alerts(pg) -> list[dict]:
@@ -88,171 +86,10 @@ def load_alerts(pg) -> list[dict]:
     return rows
 
 
-# ── Period SQL helpers ─────────────────────────────────────────────────────
-
-def period_filter_pg(check_period: str) -> str:
-    """Postgres WHERE clause fragment for the check period."""
-    return {
-        "today":              "date = current_date",
-        "yesterday":          "date = current_date - 1",
-        "today_or_yesterday": "date IN (current_date, current_date - 1)",
-        "this_week":          "date >= date_trunc('week', current_date)",
-        "rolling_7d":         "date >= current_date - 7",
-    }.get(check_period, "date = current_date - 1")
-
+# ── Labels ─────────────────────────────────────────────────────────────────
 
 def period_label(check_period: str) -> str:
-    return {
-        "today":              "today",
-        "yesterday":          "yesterday",
-        "today_or_yesterday": "today or yesterday",
-        "this_week":          "this week",
-        "rolling_7d":         "last 7 days",
-    }.get(check_period, check_period)
-
-
-# ── SQL builder ────────────────────────────────────────────────────────────
-
-# S103: allowlist/regex for all identifier fields. Previously these were
-# interpolated into f-string SQL without validation — an admin who could
-# create an alert rule could inject arbitrary SQL that ran in the worker.
-# Now every identifier is validated before it touches the SQL template.
-_SAFE_IDENT = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_.]{0,63}$")
-_ALLOWED_AGGS = frozenset({"sum", "avg", "count", "min", "max"})
-
-
-def _validate_ident(name: str, value: str) -> None:
-    """Raise ValueError if `value` is not a safe SQL identifier."""
-    if not value or not _SAFE_IDENT.match(value):
-        raise ValueError(f"Invalid identifier for {name!r}: {value!r}")
-
-
-def build_check_sql(alert: dict) -> tuple[str, dict]:
-    """Build Postgres SQL for the alert condition."""
-    dataset      = alert["dataset"]
-    metric       = alert["metric"]
-    agg          = alert.get("aggregation", "sum")
-    condition    = alert.get("condition_type", "absolute_above")
-    check_period = alert.get("check_period", "yesterday")
-    group_by     = alert.get("group_by")
-    filters      = alert.get("scope_filters", {})
-
-    # S103: validate all identifier fields before any SQL is composed.
-    # `dataset`, `metric`, `group_by` (optional) must be plain identifiers;
-    # `agg` must be in the aggregate function allowlist.
-    _validate_ident("dataset", dataset)
-    _validate_ident("metric", metric)
-    if group_by:
-        _validate_ident("group_by", group_by)
-    if agg not in _ALLOWED_AGGS:
-        raise ValueError(
-            f"Invalid aggregation {agg!r}. Allowed: {sorted(_ALLOWED_AGGS)}"
-        )
-
-    # `min_baseline` is interpolated as a literal number — validate it's numeric.
-    min_baseline = alert.get("min_baseline", 0)
-    try:
-        float(min_baseline)
-    except (TypeError, ValueError):
-        raise ValueError(f"Invalid min_baseline {min_baseline!r} (must be numeric)")
-
-    period = period_filter_pg(check_period)
-
-    # Build optional WHERE filters using parameterized placeholders.
-    # Column names are validated — only alphanumeric/underscore allowed.
-    extra_where = ""
-    query_params: dict = {}
-    if filters:
-        clauses = []
-        for k, v in filters.items():
-            if not v:
-                continue
-            if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]{0,63}$", k):
-                continue
-            param_name = f"filter_{k}"
-            clauses.append(f"{k} = %({param_name})s")
-            query_params[param_name] = str(v)
-        if clauses:
-            extra_where = " AND " + " AND ".join(clauses)
-
-    if condition in ("threshold_drop", "threshold_rise"):
-        compare = alert.get("compare_to", "7d_avg")
-        days = int(compare.replace("d_avg", "")) if "d_avg" in compare else 7
-
-        if group_by:
-            return f"""
-                SELECT
-                    {group_by} AS group_name,
-                    {agg}({metric}) FILTER (WHERE {period}) AS current_value,
-                    COALESCE({agg}({metric}) FILTER (WHERE date >= current_date - {days} AND NOT ({period})), 0)
-                        / GREATEST({days} - 1, 1) AS baseline
-                FROM {dataset}
-                WHERE date >= current_date - {days}{extra_where}
-                  AND {group_by} IS NOT NULL AND {group_by} != ''
-                GROUP BY group_name
-                HAVING COALESCE({agg}({metric}) FILTER (WHERE date >= current_date - {days} AND NOT ({period})), 0)
-                        / GREATEST({days} - 1, 1) > {alert.get('min_baseline', 0)}
-                ORDER BY current_value DESC
-                LIMIT 100
-            """, query_params
-        return f"""
-            SELECT
-                {agg}({metric}) FILTER (WHERE {period}) AS current_value,
-                COALESCE({agg}({metric}) FILTER (WHERE date >= current_date - {days} AND NOT ({period})), 0)
-                    / GREATEST({days} - 1, 1) AS baseline
-            FROM {dataset}
-            WHERE date >= current_date - {days}{extra_where}
-        """, query_params
-
-    # Absolute threshold / zero check
-    if group_by:
-        return f"""
-            SELECT
-                {group_by} AS group_name,
-                {agg}({metric}) AS current_value
-            FROM {dataset}
-            WHERE {period}{extra_where}
-              AND {group_by} IS NOT NULL AND {group_by} != ''
-            GROUP BY group_name
-            ORDER BY current_value DESC
-            LIMIT 100
-        """, query_params
-    return f"""
-        SELECT {agg}({metric}) AS current_value
-        FROM {dataset}
-        WHERE {period}{extra_where}
-    """, query_params
-
-
-# ── Condition evaluator ────────────────────────────────────────────────────
-
-def evaluate_row(alert: dict, current: float, baseline: float = 0.0) -> tuple[bool, float]:
-    """Returns (triggered, change_pct_or_value)."""
-    condition = alert.get("condition_type", "absolute_above")
-    threshold = alert.get("threshold", 0)
-
-    if condition == "threshold_drop":
-        if baseline > 0:
-            change = ((current - baseline) / baseline) * 100
-            return change <= threshold, change
-        return False, 0.0
-
-    if condition == "threshold_rise":
-        if baseline > 0:
-            change = ((current - baseline) / baseline) * 100
-            return change >= threshold, change
-        return False, 0.0
-
-    if condition == "absolute_above":
-        return current > threshold, current
-
-    if condition == "absolute_below":
-        return current < threshold, current
-
-    if condition == "zero_check":
-        return current == 0 and baseline > 0, current
-
-    return False, current
+    return PERIODS.get(check_period, check_period)
 
 
 # ── Cooldown check ─────────────────────────────────────────────────────────
@@ -461,6 +298,22 @@ def _send_email(alert: dict, message: str) -> None:
 
 # ── Main runner ────────────────────────────────────────────────────────────
 
+def record_status(pg, alert_id: str, status: str, ev) -> None:
+    """P230: the alert list shows each alert's last run, status and error."""
+    try:
+        cur = pg.cursor()
+        cur.execute("""
+            UPDATE alert_rules
+               SET last_run_at = now(), last_status = %s, last_error = %s,
+                   last_duration_ms = %s, last_rows_checked = %s
+             WHERE id = %s
+        """, (status, (ev.error or None) and ev.error[:500], ev.elapsed_ms, ev.rows_checked, alert_id))
+        pg.commit()
+    except Exception as e:  # noqa: BLE001 — migration 081 not applied yet
+        pg.rollback()
+        logger.debug(f"Could not record alert status: {e}")
+
+
 def run_alert(alert: dict, pg, dry_run: bool = False) -> bool:
     """Check one alert. Returns True if it fired."""
     label = alert["label"]
@@ -473,56 +326,40 @@ def run_alert(alert: dict, pg, dry_run: bool = False) -> bool:
         logger.info(f"On cooldown: {label}")
         return False
 
-    sql, query_params = build_check_sql(alert)
-    logger.debug(f"Alert SQL for '{label}':\n{sql.strip()}")
+    ev = evaluate_alert(alert, pg_cursor=pg.cursor())
+    logger.debug(f"Alert SQL for '{label}' ({ev.engine}):\n{ev.sql.strip()}")
 
-    try:
-        rows = query_postgres(pg, sql, query_params)
-    except Exception as e:
-        logger.error(f"Alert '{label}' query failed: {e}")
+    if ev.status == "error":
+        logger.error(f"Alert '{label}' could not be evaluated on {ev.engine}: {ev.error}")
+        if not dry_run:
+            record_status(pg, alert["id"], "error", ev)
         return False
 
-    if not rows:
+    triggered_rows = [
+        {k: r[k] for k in ("group", "current_value", "baseline", "change_pct")}
+        for r in ev.fired_rows
+    ]
+    if not dry_run:
+        record_status(pg, alert["id"], "fired" if triggered_rows else ev.status, ev)
+
+    if ev.status == "no_data":
         logger.info(f"No data: {label}")
         return False
-
-    condition = alert.get("condition_type", "absolute_above")
-    group_by = alert.get("group_by")
-    triggered_rows = []
-
-    for row in rows:
-        if group_by:
-            group_name = row[0]
-            current = float(row[1]) if row[1] is not None else 0.0
-            baseline = float(row[2]) if len(row) > 2 and row[2] is not None else 0.0
-        else:
-            group_name = "Total"
-            current = float(row[0]) if row[0] is not None else 0.0
-            baseline = float(row[1]) if len(row) > 1 and row[1] is not None else 0.0
-
-        fired, value = evaluate_row(alert, current, baseline)
-        if fired:
-            triggered_rows.append({
-                "group": group_name,
-                "current_value": round(current, 4),
-                "baseline": round(baseline, 4),
-                "change_pct": round(((current - baseline) / baseline * 100), 1) if baseline > 0 and condition in ("threshold_drop", "threshold_rise") else None,
-            })
-
     if not triggered_rows:
-        logger.info(f"No trigger: {label} — condition not met")
+        logger.info(f"No trigger: {label} — condition not met ({ev.rows_checked} group(s) checked)")
         return False
 
     period = period_label(alert.get("check_period", "yesterday"))
-    logger.info(f"TRIGGERED: {label} — {len(triggered_rows)} row(s) for {period}")
+    logger.info(f"TRIGGERED: {label} — {len(triggered_rows)} row(s) for {period} on {ev.engine}")
 
     trigger_data = {
         "triggered_at": datetime.now(timezone.utc).isoformat(),
         "check_period": alert.get("check_period", "yesterday"),
-        "condition_type": condition,
+        "condition_type": alert.get("condition_type", "absolute_above"),
         "threshold": alert.get("threshold"),
         "triggered_rows": triggered_rows,
-        "sql": sql.strip(),
+        "engine": ev.engine,
+        "sql": ev.sql.strip(),
     }
 
     if not dry_run:
