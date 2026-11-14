@@ -375,8 +375,23 @@ def validate_oauth_block(plugin_id: str, block: Any) -> None:
 # ── Public entry point ────────────────────────────────────────────────
 
 
+def validate_permissions_block(plugin_id: str, block: Any) -> None:
+    """B348: reject at install a `permissions:` block that uses `step_up`
+    or `reveal_secrets` and doesn't parse (e.g. `reveal_secrets` on a GET
+    rule, or `step_up: "yes"`). Blocks without these fields are left to
+    the loader exactly as before."""
+    from .plugin_manifest import ManifestPermissionsError, parse, uses_b348_fields
+    if not uses_b348_fields(block):
+        return
+    try:
+        parse(block)
+    except ManifestPermissionsError as exc:
+        raise ManifestValidationError(f"plugin {plugin_id}: {exc}") from exc
+
+
 def validate_manifest_extensions(plugin_id: str, meta: dict) -> None:
     """Validate all v0.8.6+ manifest extensions. Call at install time."""
+    validate_permissions_block(plugin_id, meta.get("permissions"))
     validate_hooks_block(plugin_id, meta.get("hooks"))
     validate_actions_block(plugin_id, meta.get("actions"))
     validate_setup_checklist_block(plugin_id, meta.get("setup_checklist"))

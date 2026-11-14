@@ -23,7 +23,7 @@ from __future__ import annotations
 import logging
 from typing import Iterable
 
-from ..plugin_manifest import LEVELS, permission_string
+from ..plugin_manifest import ALL_LEVELS, LEVELS, SENSITIVE_LEVELS, permission_string
 from .permissions import (
     PERMISSIONS,
     ROLE_PERMISSIONS,
@@ -39,6 +39,11 @@ _DEFAULT_ROLE_GRANTS: dict[str, frozenset[str]] = {
     "write":     frozenset({"analyst", "admin", "superadmin"}),
     "configure": frozenset({"admin", "superadmin"}),
     "admin":     frozenset({"superadmin"}),
+    # B348: sensitive levels are granted to NO role by default — not
+    # admin, not superadmin. A superadmin grants them deliberately in
+    # /system/permissions (rbac_role_overrides). Nothing in a plugin
+    # manifest can change this table.
+    "reveal_secrets": frozenset(),
 }
 
 
@@ -56,16 +61,17 @@ def register_plugin_permissions(slug: str, levels: Iterable[str] = LEVELS) -> li
         write      → analyst+
         configure  → admin+
         admin      → superadmin
+        reveal_secrets → nobody (B348)
 
     Returns the list of permission strings registered (or already
     present, on a subsequent call).
     """
     out: list[str] = []
     for level in levels:
-        if level not in LEVELS:
+        if level not in ALL_LEVELS:
             logger.error(
                 "[rbac] plugin %s: ignoring invalid level %r (must be one of %s)",
-                slug, level, list(LEVELS),
+                slug, level, list(ALL_LEVELS),
             )
             continue
 
@@ -76,9 +82,16 @@ def register_plugin_permissions(slug: str, levels: Iterable[str] = LEVELS) -> li
 
         # 1. Add to the live PERMISSIONS dict.
         # `PERMISSIONS` is typed as Mapping but is a plain dict at runtime.
-        PERMISSIONS[perm] = (  # type: ignore[index]
-            f"Per-plugin {level} access for the {slug!r} plugin (B247)."
-        )
+        if level in SENSITIVE_LEVELS:
+            PERMISSIONS[perm] = (  # type: ignore[index]
+                f"Reveal stored secrets in the {slug!r} plugin. Sensitive: "
+                f"granted to no role by default; every call needs a fresh "
+                f"re-authentication when the route asks for it and is audited (B348)."
+            )
+        else:
+            PERMISSIONS[perm] = (  # type: ignore[index]
+                f"Per-plugin {level} access for the {slug!r} plugin (B247)."
+            )
 
         # 2. Append to each role's frozenset that should hold this perm
         #    by default. ROLE_PERMISSIONS values are frozensets — replace

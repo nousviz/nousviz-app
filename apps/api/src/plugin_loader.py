@@ -705,11 +705,17 @@ def _auto_register_plugin_routes(app: FastAPI) -> None:
     from the webhooks plugin).
     """
     from .rbac import ROUTE_PERMISSIONS, PUBLIC_ROUTES, register_route
-    from .rbac.plugin_permissions import register_all_plugin_levels
+    from .rbac.routes import PluginRouteGuard, register_plugin_route_guard
+    from .rbac.plugin_permissions import (
+        register_all_plugin_levels,
+        register_plugin_permissions,
+    )
     from .plugin_manifest import (
+        SENSITIVE_LEVELS,
         ManifestPermissionsError,
         parse as parse_permissions_block,
         permission_string,
+        uses_b348_fields,
     )
 
     DEFAULT_BY_METHOD = {
@@ -723,14 +729,25 @@ def _auto_register_plugin_routes(app: FastAPI) -> None:
     # Load manifests + parse `permissions:` blocks once.
     manifests = _load_plugin_manifests()
     plugin_perms: dict[str, Any] = {}
+    blocked_plugins: dict[str, str] = {}
     for slug, manifest in manifests.items():
         try:
             cfg = parse_permissions_block(manifest.get("permissions"))
         except ManifestPermissionsError as exc:
-            logger.error(
-                "[rbac] plugin %s has invalid `permissions:` block: %s — falling back to legacy defaults",
-                slug, exc,
-            )
+            if uses_b348_fields(manifest.get("permissions")):
+                # B348: fail closed. Legacy defaults have no step-up and no
+                # reveal_secrets level, so falling back would open the route.
+                logger.error(
+                    "[rbac] plugin %s has invalid `permissions:` block that uses "
+                    "step_up/reveal_secrets: %s — its routes are blocked (503)",
+                    slug, exc,
+                )
+                blocked_plugins[slug] = str(exc)
+            else:
+                logger.error(
+                    "[rbac] plugin %s has invalid `permissions:` block: %s — falling back to legacy defaults",
+                    slug, exc,
+                )
             cfg = None
         plugin_perms[slug] = cfg
         if cfg is None:
@@ -748,6 +765,11 @@ def _auto_register_plugin_routes(app: FastAPI) -> None:
             # whether or not any route uses every level — operators can
             # grant levels even before a plugin route uses them.
             register_all_plugin_levels(slug)
+            # B348: sensitive levels join the catalog only for plugins that
+            # use them, and with no default role grant.
+            used_sensitive = [lvl for lvl in SENSITIVE_LEVELS if cfg.uses_level(lvl)]
+            if used_sensitive:
+                register_plugin_permissions(slug, used_sensitive)
 
     auto_count = 0
     per_plugin_count = 0
@@ -794,3 +816,64 @@ def _auto_register_plugin_routes(app: FastAPI) -> None:
             "[rbac] auto-registered %d plugin route(s) total (per-plugin: %d, legacy: %d)",
             auto_count, per_plugin_count, legacy_count,
         )
+
+    # B348: step-up / sensitive-level guards. A separate pass over the
+    # *effective* route table: newer FastAPI versions keep included
+    # routers as lazy `_IncludedRouter` entries in `app.routes`, which the
+    # loop above doesn't descend into. Guards are registered whether or
+    # not the route was registered explicitly, so a plugin can't skip
+    # core's step-up check or the reveal audit.
+    guard_count = 0
+    for route in _iter_effective_routes(app.routes):
+        path = getattr(route, "path", None)
+        methods = getattr(route, "methods", None)
+        if not path or not methods or not path.startswith("/api/"):
+            continue
+        slug = _slug_from_route_path(path)
+        if not slug:
+            continue
+        cfg = plugin_perms.get(slug)
+        for method in methods:
+            if method == "HEAD":
+                continue
+            if slug in blocked_plugins:
+                register_plugin_route_guard(PluginRouteGuard(
+                    slug=slug, method=method, path=path, level="blocked",
+                    permission="", step_up=False, audit_reveal=False,
+                    blocked=blocked_plugins[slug],
+                ))
+                guard_count += 1
+                continue
+            if cfg is None:
+                continue
+            rule = cfg.resolve_rule(method, path)
+            if rule is None or not (rule.step_up or rule.level in SENSITIVE_LEVELS):
+                continue
+            register_plugin_route_guard(PluginRouteGuard(
+                slug=slug,
+                method=method,
+                path=path,
+                level=rule.level,
+                permission=permission_string(slug, rule.level),
+                step_up=rule.step_up,
+                audit_reveal=rule.level in SENSITIVE_LEVELS,
+            ))
+            guard_count += 1
+            logger.info(
+                "[rbac] B348 plugin route guard: %s %s (level=%s, step_up=%s)",
+                method, path, rule.level, rule.step_up,
+            )
+    if guard_count:
+        logger.info("[rbac] B348 registered %d plugin route guard(s)", guard_count)
+
+
+def _iter_effective_routes(routes):
+    """Yield every concrete route, descending into FastAPI's lazy
+    included-router entries (`effective_candidates()`, newer FastAPI versions).
+    On older FastAPI versions `app.routes` is already flat."""
+    for route in routes:
+        candidates = getattr(route, "effective_candidates", None)
+        if callable(candidates):
+            yield from _iter_effective_routes(candidates())
+        else:
+            yield route

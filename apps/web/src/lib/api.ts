@@ -31,8 +31,8 @@ const TOKEN_KEY = "nousviz_auth_token";
  */
 
 interface StepUpPendingRequest {
-  input: RequestInfo | URL;
-  init?: RequestInit;
+  /** Re-issues the original request once the session has stepped up. */
+  retry: () => Promise<Response>;
   resolve: (res: Response) => void;
   reject: (err: unknown) => void;
 }
@@ -60,8 +60,7 @@ export function retryStepUpRequest() {
   }
   // Re-issue the request fresh — apiFetch will pick up the same token,
   // which now carries a valid step_up_until.
-  apiFetch(pending.input, pending.init)
-    .then(pending.resolve, pending.reject);
+  pending.retry().then(pending.resolve, pending.reject);
   dispatchStepUpEvent(false);
 }
 
@@ -118,10 +117,7 @@ export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Pr
       const detail = data?.detail;
       if (detail && typeof detail === "object" && detail.error === "stepup_required") {
         // Park the request and signal the modal.
-        return new Promise<Response>((resolve, reject) => {
-          pendingRequest = { input, init, resolve, reject };
-          dispatchStepUpEvent(true);
-        });
+        return parkForStepUp(() => apiFetch(input, init));
       }
     } catch {
       // Body wasn't JSON — fall through to normal 401 handling.
@@ -153,6 +149,59 @@ export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Pr
     window.location.href = `/?return=${returnTo}`;
   }
   return res;
+}
+
+/**
+ * Park a request until the globally-mounted StepUpModal finishes. On a
+ * correct password the modal calls `retryStepUpRequest()`, which runs
+ * `retry` and resolves with its response; on cancel the promise resolves
+ * with a synthetic 401 `stepup_cancelled`.
+ */
+function parkForStepUp(retry: () => Promise<Response>): Promise<Response> {
+  return new Promise<Response>((resolve, reject) => {
+    pendingRequest = { retry, resolve, reject };
+    dispatchStepUpEvent(true);
+  });
+}
+
+async function isStepUpRequired(res: Response): Promise<boolean> {
+  if (res.status !== 401) return false;
+  try {
+    const data = await res.clone().json();
+    const detail = data?.detail;
+    return !!detail && typeof detail === "object" && detail.error === "stepup_required";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * B348: wrap a fetch-like function so a 401 `stepup_required` response
+ * shows the host's password prompt (StepUpModal) and, after a correct
+ * password, retries the call ONCE. A second `stepup_required`, a cancel
+ * (synthetic 401 `stepup_cancelled`), or any other response is returned
+ * to the caller unchanged.
+ *
+ * Plugin widgets get this as `window.NousViz.widgets.withStepUp`:
+ *
+ *   const reveal = window.NousViz.widgets.withStepUp(
+ *     window.NousViz.widgets.apiFetch,
+ *   );
+ *   const r = await reveal(`/api/plugins/${pluginId}/accounts/${id}/reveal`,
+ *                          { method: "POST" });
+ *
+ * `apiFetch` already prompts on its own; `withStepUp` makes the behaviour
+ * explicit and also works around a plain `fetch` that sets its own
+ * `X-Session-Token` header.
+ */
+export function withStepUp(
+  fetchFn: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>,
+): (input: RequestInfo | URL, init?: RequestInit) => Promise<Response> {
+  return async (input, init) => {
+    const res = await fetchFn(input, init);
+    if (!(await isStepUpRequired(res))) return res;
+    return parkForStepUp(() => fetchFn(input, init));
+  };
 }
 
 /**

@@ -14,6 +14,7 @@ NousViz is multi-user only. Each user has their own email, bcrypt-hashed passwor
 - First user on fresh install becomes superadmin via the setup wizard
 - Subsequent users join via admin-issued invites (email or manual link)
 - Step-up auth for sensitive operations (RBAC matrix edits, impersonation): re-prompts password and grants a 5-minute elevated window
+- Plugin routes can require step-up too (`step_up: true` in `plugin.yaml`, B348), and a plugin can declare the sensitive `plugin.<slug>.reveal_secrets` permission for routes that return a stored secret: granted to no role by default (not even admin), session users only, and every successful call writes a `revealed` row to `credential_audit_log`
 - Password reset via emailed link (requires SMTP configured) or `scripts/reset-password.sh` for the offline case
 
 ### API Keys

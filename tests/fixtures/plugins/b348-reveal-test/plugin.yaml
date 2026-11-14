@@ -1,0 +1,32 @@
+# B348 test fixture: a plugin route that requires re-authentication and the
+# `reveal_secrets` permission. Used by tests/test_plugin_step_up.py and by the
+# manual browser test plan (copy this folder into the installed plugins
+# directory, restart the API, then call the routes below).
+name: b348-reveal-test
+display_name: B348 Reveal Test
+version: 0.1.0
+description: >
+  Test fixture for B348. Returns a fixed string from a POST route that needs
+  the reveal_secrets permission and a fresh step-up. Not a real plugin.
+license: MIT
+type: utility
+visibility: private
+
+permissions:
+  default: read
+  routes:
+    # The browser test plan's route: sensitive level + step-up.
+    - method: POST
+      path: /api/plugins/b348-reveal-test/secret/reveal
+      level: reveal_secrets
+      step_up: true
+    # Same, on a templated route (path parameter).
+    - method: POST
+      path: /api/plugins/b348-reveal-test/accounts/*/reveal
+      level: reveal_secrets
+      step_up: true
+    # Step-up on an ordinary level: no reveal audit row.
+    - method: POST
+      path: /api/plugins/b348-reveal-test/settings/check
+      level: configure
+      step_up: true

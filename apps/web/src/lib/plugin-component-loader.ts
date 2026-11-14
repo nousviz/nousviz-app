@@ -26,7 +26,7 @@
 import React from "react";
 import * as ReactJSXRuntime from "react/jsx-runtime";
 import type { ComponentType } from "react";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, withStepUp } from "@/lib/api";
 import {
   formatRelativeTime,
   formatAbsoluteTime,
@@ -64,6 +64,8 @@ function publishHostSDK(): void {
     w.NousViz.widgets = {
       // API
       apiFetch,
+      // B348: prompt for the password on 401 stepup_required, retry once.
+      withStepUp,
       // Formatters (host's utils, exposed verbatim)
       formatRelativeTime,
       formatAbsoluteTime,

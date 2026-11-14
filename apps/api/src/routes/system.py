@@ -31,6 +31,7 @@ from ..rbac import (
     PERMISSIONS,
     ROLE_PERMISSIONS,
     SENSITIVE_PERMISSIONS,
+    is_sensitive_permission,
     ROUTE_PERMISSIONS,
     PUBLIC_ROUTES,
     all_permissions_for_role,
@@ -353,7 +354,8 @@ async def get_permissions(
         "permissions": {
             name: {
                 "description": desc,
-                "sensitive": name in SENSITIVE_PERMISSIONS,
+                # B348: also true for plugin.<slug>.reveal_secrets.
+                "sensitive": is_sensitive_permission(name),
             }
             for name, desc in PERMISSIONS.items()
         },
@@ -557,7 +559,7 @@ async def upsert_role_override(
     # target role must be admin or superadmin (or a custom role that's
     # explicitly admin-tier — but custom roles don't have a tier yet,
     # so we conservatively block them).
-    if kind == "grant" and permission in SENSITIVE_PERMISSIONS:
+    if kind == "grant" and is_sensitive_permission(permission):
         if role not in ("admin", "superadmin"):
             raise HTTPException(
                 409,
@@ -573,6 +575,9 @@ async def upsert_role_override(
     # Allow revokes from `admin` (operator can re-grant) but never from
     # `superadmin` (no recovery path). Custom roles always allowed since
     # they didn't have the permission to begin with.
+    # B348: deliberately the static set only. A plugin's reveal_secrets
+    # permission isn't needed to administer RBAC, so a superadmin who
+    # granted it to their own role can revoke it again.
     if kind == "revoke" and permission in SENSITIVE_PERMISSIONS and role == "superadmin":
         raise HTTPException(
             400,
@@ -798,7 +803,7 @@ async def create_custom_role(
         # operator. Custom roles can be promoted to admin-tier later via
         # explicit /role-overrides on the admin or superadmin role; they
         # cannot be born with sensitive permissions.
-        sensitive_in_seed = set(body.permissions) & SENSITIVE_PERMISSIONS
+        sensitive_in_seed = {p for p in body.permissions if is_sensitive_permission(p)}
         if sensitive_in_seed:
             raise HTTPException(
                 409,
@@ -815,7 +820,10 @@ async def create_custom_role(
             )
         seed = set(body.permissions)
     elif based_on:
-        seed = set(default_permissions_for_role(based_on)) - set(SENSITIVE_PERMISSIONS)
+        seed = {
+            p for p in default_permissions_for_role(based_on)
+            if not is_sensitive_permission(p)
+        }
 
     actor_id, actor_role = _actor(request)
 

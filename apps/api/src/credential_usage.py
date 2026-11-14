@@ -13,6 +13,8 @@ What a credential read records, and what it no longer records:
   `fetch` row (who, which run, how many keys, scoped or full); credential
   lifecycle (created / rotated / deleted / decrypt_failed) is written where
   it happens. Before B342 every read wrote one `used` row per credential.
+  B348 adds `revealed`: one row per successful call to a plugin route at
+  the `reveal_secrets` level, written by core's auth middleware.
 
 Telemetry never breaks a read: it runs after the read, in its own
 transaction, and a failure logs one warning for the whole call.
@@ -94,4 +96,27 @@ def record_event(connection_id: Optional[str], action: str, performed_by: str, d
         )
 
 
-__all__ = ["LAST_USED_THROTTLE_SEC", "record_event", "record_reads"]
+def record_reveal(plugin_id: str, performed_by: str, detail: str) -> None:
+    """B348: one `revealed` row in `credential_audit_log` for a successful
+    call to a plugin route at the `reveal_secrets` level.
+
+    Written by core's auth middleware, not by the plugin. Unlike
+    `record_event`, this RAISES on failure: the caller withholds the
+    response when the reveal can't be recorded. credential_id is NULL
+    (core doesn't know which secret the plugin returned); connection_id
+    is the plugin's `plugin:<slug>` connection.
+    """
+    from .plugin_credentials import get_or_create_plugin_connection
+
+    connection_id = get_or_create_plugin_connection(plugin_id)
+    with get_pg_conn() as conn:
+        conn.cursor().execute(
+            """
+            INSERT INTO credential_audit_log (credential_id, connection_id, action, performed_by, detail)
+            VALUES (NULL, %s, 'revealed', %s, %s)
+            """,
+            (connection_id, performed_by, detail),
+        )
+
+
+__all__ = ["LAST_USED_THROTTLE_SEC", "record_event", "record_reads", "record_reveal"]
