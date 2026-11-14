@@ -28,11 +28,18 @@ interface Endpoint {
   // B283 (v0.9.11.24): typed channel + per-channel config.
   channel_type?: ChannelType;
   channel_config?: SlackChannelConfig | Record<string, unknown>;
+  // B347: inbound only. Reject requests without a valid timestamped (V2) signature.
+  require_signature_v2?: boolean;
 }
+
+// B347: one-line explanation shown next to the toggle in the create and edit forms.
+const REQUIRE_V2_HINT =
+  "Only accept requests signed with X-Webhook-Timestamp + X-Webhook-Signature-V2, which expire after 5 minutes and cannot be replayed. Senders that sign only X-Webhook-Signature will get 401.";
 
 interface WebhookEvent {
   id: string;
   payload: Record<string, unknown>;
+  headers?: Record<string, string>;
   source_ip: string;
   received_at: string;
 }
@@ -44,6 +51,7 @@ export default function WebhookManager(_props: CustomWidgetProps) {
   const [createName, setCreateName] = useState("");
   const [createUrl, setCreateUrl] = useState("");
   const [createSecret, setCreateSecret] = useState(false);
+  const [createRequireV2, setCreateRequireV2] = useState(false);
   const [creating, setCreating] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -57,6 +65,11 @@ export default function WebhookManager(_props: CustomWidgetProps) {
   const [editChannelOverride, setEditChannelOverride] = useState<string>("");
   const [editError, setEditError] = useState<string | null>(null);
   const [savingChannel, setSavingChannel] = useState(false);
+  // B347: inline inbound-endpoint settings editor. `null` = closed.
+  const [editingInboundId, setEditingInboundId] = useState<string | null>(null);
+  const [editRequireV2, setEditRequireV2] = useState(false);
+  const [inboundError, setInboundError] = useState<string | null>(null);
+  const [savingInbound, setSavingInbound] = useState(false);
 
   const load = useCallback(() => {
     apiFetch("/api/plugins/webhooks/endpoints")
@@ -79,6 +92,7 @@ export default function WebhookManager(_props: CustomWidgetProps) {
         direction: showCreate,
         url: showCreate === "outbound" ? createUrl.trim() : undefined,
         generate_secret: createSecret,
+        require_signature_v2: showCreate === "inbound" && createSecret && createRequireV2,
       }),
     });
     setCreating(false);
@@ -88,6 +102,7 @@ export default function WebhookManager(_props: CustomWidgetProps) {
       setCreateName("");
       setCreateUrl("");
       setCreateSecret(false);
+      setCreateRequireV2(false);
       setShowCreate(null);
       if (data.ingestion_url) {
         setCopiedId(data.id);
@@ -133,6 +148,42 @@ export default function WebhookManager(_props: CustomWidgetProps) {
     navigator.clipboard.writeText(url);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
+  }
+
+  // ── B347: inbound settings editor ──────────────────────────────────
+
+  function openInboundEditor(ep: Endpoint) {
+    setEditingInboundId(ep.id);
+    setInboundError(null);
+    setEditRequireV2(!!ep.require_signature_v2);
+  }
+
+  function closeInboundEditor() {
+    setEditingInboundId(null);
+    setInboundError(null);
+  }
+
+  async function saveInboundSettings(id: string) {
+    setSavingInbound(true);
+    setInboundError(null);
+    try {
+      const res = await apiFetch(`/api/plugins/webhooks/endpoints/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ require_signature_v2: editRequireV2 }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({} as { detail?: string }));
+        setInboundError(`Save failed (${res.status}): ${err.detail ?? "unknown"}`);
+        return;
+      }
+      setEndpoints((prev) => prev.map((e) => (e.id === id ? { ...e, require_signature_v2: editRequireV2 } : e)));
+      closeInboundEditor();
+    } catch (e) {
+      setInboundError(`Save error: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setSavingInbound(false);
+    }
   }
 
   // ── B283: channel-type editor handlers ─────────────────────────────
@@ -253,6 +304,22 @@ export default function WebhookManager(_props: CustomWidgetProps) {
                 {creating ? "Creating..." : "Create"}
               </button>
             </div>
+            {/* B347: opt in to V2-only verification. Needs a secret to have any effect. */}
+            <div>
+              <label className={cn("flex items-center gap-2 text-xs text-muted-foreground", createSecret ? "cursor-pointer" : "cursor-not-allowed")}>
+                <input
+                  type="checkbox"
+                  checked={createSecret && createRequireV2}
+                  disabled={!createSecret}
+                  onChange={e => setCreateRequireV2(e.target.checked)}
+                  className="rounded border-border"
+                />
+                Require timestamped signature
+              </label>
+              <p className="text-[10px] text-muted-foreground mt-1 ml-5">
+                {createSecret ? REQUIRE_V2_HINT : "Needs a signing secret."}
+              </p>
+            </div>
           </div>
         )}
 
@@ -268,7 +335,19 @@ export default function WebhookManager(_props: CustomWidgetProps) {
                     <span className="text-foreground font-medium">{ep.name}</span>
                     <span className="text-muted-foreground font-mono-deck shrink-0">{ep.event_count} event{ep.event_count !== 1 ? "s" : ""}</span>
                     {ep.last_event_at && <span className="text-muted-foreground font-mono-deck shrink-0">{formatRelativeTime(ep.last_event_at)}</span>}
+                    {ep.has_secret && ep.require_signature_v2 && (
+                      <span className="shrink-0 text-[10px] font-mono-deck px-1.5 py-0.5 rounded border border-border bg-secondary/40 text-muted-foreground" title={REQUIRE_V2_HINT}>
+                        V2 only
+                      </span>
+                    )}
                     <span className="flex-1" />
+                    <button
+                      onClick={() => (editingInboundId === ep.id ? closeInboundEditor() : openInboundEditor(ep))}
+                      className="text-muted-foreground hover:text-foreground shrink-0"
+                      title="Endpoint settings"
+                    >
+                      <Settings className="w-3 h-3" />
+                    </button>
                     <button onClick={() => loadEvents(ep.id)} className="text-muted-foreground hover:text-foreground shrink-0 text-[10px]">
                       {expandedId === ep.id ? "Hide" : "Events"}
                     </button>
@@ -286,6 +365,48 @@ export default function WebhookManager(_props: CustomWidgetProps) {
                     </button>
                   </div>
                 </div>
+                {editingInboundId === ep.id && (
+                  <div className="ml-6 mt-1 mb-2 px-4 py-3 rounded-md bg-secondary/30 border border-border space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-[11px] font-display text-foreground">Endpoint settings</h4>
+                      <button onClick={closeInboundEditor} className="text-muted-foreground hover:text-foreground">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                    <div>
+                      <label className={cn("flex items-center gap-2 text-xs", ep.has_secret ? "text-foreground cursor-pointer" : "text-muted-foreground cursor-not-allowed")}>
+                        <input
+                          type="checkbox"
+                          checked={editRequireV2}
+                          disabled={!ep.has_secret}
+                          onChange={(e) => setEditRequireV2(e.target.checked)}
+                          className="rounded border-border"
+                        />
+                        Require timestamped signature
+                      </label>
+                      <p className="text-[10px] text-muted-foreground mt-1 ml-5">
+                        {ep.has_secret ? REQUIRE_V2_HINT : "This endpoint has no signing secret, so it accepts unsigned requests and this setting has no effect."}
+                      </p>
+                    </div>
+                    {inboundError && (
+                      <div className="bg-red-500/10 border border-red-500/20 rounded px-3 py-2">
+                        <p className="text-[11px] text-danger-foreground">{inboundError}</p>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-end gap-2 pt-1">
+                      <button onClick={closeInboundEditor} className="h-7 px-3 rounded text-xs text-muted-foreground hover:text-foreground">
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => saveInboundSettings(ep.id)}
+                        disabled={savingInbound || !ep.has_secret}
+                        className="h-7 px-3 rounded bg-primary text-primary-foreground text-xs font-medium disabled:opacity-50"
+                      >
+                        {savingInbound ? "Saving…" : "Save"}
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {expandedId === ep.id && (
                   <div className="ml-6 mt-1 space-y-1 max-h-48 overflow-y-auto">
                     {events.length > 0 ? events.map(ev => (
@@ -295,6 +416,12 @@ export default function WebhookManager(_props: CustomWidgetProps) {
                           <span>{formatRelativeTime(ev.received_at)}</span>
                         </div>
                         <pre className="text-foreground whitespace-pre-wrap break-all max-h-24 overflow-y-auto">{JSON.stringify(ev.payload, null, 2)}</pre>
+                        {ev.headers && Object.keys(ev.headers).length > 0 && (
+                          <details className="mt-1">
+                            <summary className="text-muted-foreground cursor-pointer">Saved headers</summary>
+                            <pre className="text-foreground whitespace-pre-wrap break-all">{Object.entries(ev.headers).map(([k, v]) => `${k}: ${v}`).join("\n")}</pre>
+                          </details>
+                        )}
                       </div>
                     )) : (
                       <p className="text-[11px] text-muted-foreground px-3 py-2">No events yet.</p>

@@ -17,6 +17,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Nou
   diagnostic alerts, and the endpoint **Test** button, which all now share
   one signer (`webhook_dispatch.sign_headers`). An endpoint with no secret
   still sends no signature headers. No database migration.
+- **Inbound webhooks verify the timestamped signature and reject replays
+  (B347).** When a request to `POST /api/webhooks/in/{slug}` carries
+  `X-Webhook-Timestamp` and `X-Webhook-Signature-V2`, the endpoint checks V2
+  only: the timestamp must be within 5 minutes of server time and the
+  signature must match, or the request gets 401. It never falls back to the
+  body-only `X-Webhook-Signature`, which a captured old delivery also
+  carries. The same V2 delivery posted again within 10 minutes gets 409 and
+  is not stored. Senders that sign only `X-Webhook-Signature` keep working,
+  unless the endpoint turns on the new **Require timestamped signature**
+  setting (inbound endpoint settings, off by default). The one change for
+  existing senders: a sender that already sends V2 headers with a clock more
+  than 5 minutes off now gets 401. Event headers now keep
+  `x-webhook-signature-v2` and `x-webhook-timestamp`, and the event list
+  shows saved headers. Webhooks plugin migration
+  `003_signature_v2` adds `webhook_endpoints.require_signature_v2`; no new
+  table.
 
 ---
 
