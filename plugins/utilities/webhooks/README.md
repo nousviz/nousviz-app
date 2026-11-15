@@ -46,5 +46,47 @@ This is the timestamped scheme used by Standard Webhooks-style receivers
 
 ## Inbound signatures
 
-Inbound endpoints with a secret check `X-Webhook-Signature` (body-only
-HMAC-SHA256). They do not yet accept V2.
+An inbound endpoint without a secret accepts every request, signed or not.
+An endpoint with a secret verifies each request as follows (B347):
+
+1. **V2, when the sender sends it.** If the request has
+   `X-Webhook-Timestamp` or `X-Webhook-Signature-V2`, it must have both,
+   and:
+   - the timestamp must be a whole number of Unix seconds within ±300 s
+     (5 minutes) of the server's clock;
+   - `X-Webhook-Signature-V2` must equal lowercase hex
+     `HMAC-SHA256(secret, timestamp + "." + body)`, the same scheme NousViz
+     sends (see [Outbound signatures](#outbound-signatures)).
+
+   If any check fails, the response is **401**. The endpoint does **not**
+   fall back to `X-Webhook-Signature`. A captured old delivery also carries
+   a valid V1 signature, so a fallback would accept exactly the replay that
+   V2 blocks. A sender that sends V2 must keep its clock in sync.
+2. **V1, only when no V2 header is sent.** The endpoint checks
+   `X-Webhook-Signature` = hex `HMAC-SHA256(secret, body)`, as before. This
+   keeps third-party senders and NousViz versions before B346 working.
+3. **Require timestamped signature.** This per-endpoint setting is off by
+   default. Turn it on under the endpoint's settings (the gear icon on an
+   inbound endpoint, or when creating one). When it is on, a request without
+   valid V2 headers gets **401**, even with a valid V1 signature. Without
+   it, someone who captured a delivery could strip its V2 headers and replay
+   it with V1. Turn it on once every sender to that endpoint signs V2. It
+   has no effect on an endpoint without a secret.
+4. **Duplicates.** A verified V2 delivery is stored with its
+   `x-webhook-signature-v2` and `x-webhook-timestamp` headers. If the same
+   endpoint receives the same V2 signature again within 10 minutes, the
+   response is **409** and nothing is stored. Ten minutes covers the whole
+   time a timestamp stays valid. V1-only requests are not de-duplicated:
+   without a timestamp, two identical bodies may be legitimate.
+
+Error responses are always `{"detail": "Invalid signature"}`,
+`{"detail": "Signature expired"}` or `{"detail": "Duplicate delivery"}`.
+They never include the expected signature.
+
+| Request | Require timestamped signature off | On |
+|---|---|---|
+| Valid V2 (V1 optional) | 200 | 200 |
+| V2 timestamp more than 5 minutes off, or bad V2 (even with valid V1) | 401 | 401 |
+| Same V2 delivery again within 10 minutes | 409 | 409 |
+| Valid V1 only | 200 | 401 |
+| No signature | 401 | 401 |

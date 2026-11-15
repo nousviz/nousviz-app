@@ -4,20 +4,28 @@ Webhooks plugin — inbound data ingestion + outbound alert delivery.
 Management (authenticated):
   GET    /plugins/webhooks/endpoints           — list all endpoints
   POST   /plugins/webhooks/endpoints           — create endpoint
-  PATCH  /plugins/webhooks/endpoints/{id}      — update name, url, active
+  PATCH  /plugins/webhooks/endpoints/{id}      — update name, url, active,
+                                                 require_signature_v2
   DELETE /plugins/webhooks/endpoints/{id}      — delete endpoint
   POST   /plugins/webhooks/endpoints/{id}/test — test outbound endpoint
   GET    /plugins/webhooks/events/{id}         — list recent inbound events
 
 Ingestion (public):
   POST   /api/webhooks/in/{slug}               — receive external data
+
+Inbound signatures (B347): when an endpoint has a secret, a request that
+carries X-Webhook-Timestamp + X-Webhook-Signature-V2 is verified with V2
+only (no V1 fallback); V1 (X-Webhook-Signature) is accepted only when no
+V2 header is sent and the endpoint does not require V2.
 """
 
 import hashlib
 import hmac as _hmac
 import json
 import logging
+import re
 import secrets
+import time
 import urllib.request
 
 from datetime import datetime, timezone
@@ -27,6 +35,25 @@ from pydantic import BaseModel
 from typing import Optional
 
 logger = logging.getLogger("nousviz.plugin.webhooks")
+
+# B347: a V2 timestamp must be within this many seconds of server time,
+# in either direction.
+INBOUND_REPLAY_WINDOW_SECONDS = 300
+# B347: an identical verified V2 signature seen on the same endpoint within
+# this many seconds is a replay (409). Twice the replay window: a delivery
+# whose timestamp is accepted at first receipt (ts >= first - 300) expires
+# at ts + 300 <= first + 600, so the duplicate check covers its whole life.
+INBOUND_DUPLICATE_WINDOW_SECONDS = 2 * INBOUND_REPLAY_WINDOW_SECONDS
+
+# Headers kept on each stored inbound event (lowercase).
+_SAVED_EVENT_HEADERS = (
+    "content-type", "user-agent", "x-github-event", "x-gitlab-event",
+    "x-stripe-signature", "x-shopify-topic",
+    # B347: the V2 signature is the duplicate-delivery key.
+    "x-webhook-signature-v2", "x-webhook-timestamp",
+)
+
+_TIMESTAMP_RE = re.compile(r"[0-9]{1,15}")
 
 router = APIRouter()
 ingestion_router = APIRouter()
@@ -67,7 +94,8 @@ async def list_endpoints(request: Request):
                 SELECT id, name, slug, direction, url, secret IS NOT NULL as has_secret,
                        is_active, event_count, last_event_at, created_at,
                        COALESCE(channel_type, 'generic') AS channel_type,
-                       COALESCE(channel_config, '{}'::jsonb) AS channel_config
+                       COALESCE(channel_config, '{}'::jsonb) AS channel_config,
+                       require_signature_v2
                 FROM webhook_endpoints WHERE direction = %s
                 ORDER BY created_at DESC
             """, (direction,))
@@ -76,7 +104,8 @@ async def list_endpoints(request: Request):
                 SELECT id, name, slug, direction, url, secret IS NOT NULL as has_secret,
                        is_active, event_count, last_event_at, created_at,
                        COALESCE(channel_type, 'generic') AS channel_type,
-                       COALESCE(channel_config, '{}'::jsonb) AS channel_config
+                       COALESCE(channel_config, '{}'::jsonb) AS channel_config,
+                       require_signature_v2
                 FROM webhook_endpoints ORDER BY created_at DESC
             """)
         return {"endpoints": [_serialize_row(r) for r in cur.fetchall()]}
@@ -89,6 +118,9 @@ class CreateEndpoint(BaseModel):
     direction: str = "inbound"
     url: Optional[str] = None
     generate_secret: bool = False
+    # B347: inbound only. Reject requests without a valid timestamped (V2)
+    # signature. Has no effect on an endpoint without a secret.
+    require_signature_v2: bool = False
 
 
 @router.post("/plugins/webhooks/endpoints")
@@ -108,10 +140,12 @@ async def create_endpoint(body: CreateEndpoint, request: Request):
     with _get_conn() as conn:
         cur = _dict_cursor(conn)
         cur.execute("""
-            INSERT INTO webhook_endpoints (name, slug, direction, url, secret)
-            VALUES (%s, %s, %s, %s, %s)
-            RETURNING id, name, slug, direction, url, is_active, created_at
-        """, (name, slug, body.direction, url, secret))
+            INSERT INTO webhook_endpoints
+                (name, slug, direction, url, secret, require_signature_v2)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            RETURNING id, name, slug, direction, url, is_active, created_at,
+                      secret IS NOT NULL AS has_secret, require_signature_v2
+        """, (name, slug, body.direction, url, secret, body.require_signature_v2))
         row = _serialize_row(cur.fetchone())
 
     if body.direction == "inbound":
@@ -134,6 +168,8 @@ class UpdateEndpoint(BaseModel):
     # B283 (v0.9.11.24): typed channel + per-channel config.
     channel_type: Optional[str] = None
     channel_config: Optional[dict] = None
+    # B347: "Require timestamped signature" (inbound endpoints).
+    require_signature_v2: Optional[bool] = None
 
 
 _ALLOWED_CHANNEL_TYPES = {"generic", "slack", "discord", "teams"}
@@ -319,7 +355,7 @@ async def list_events(endpoint_id: str):
     with _get_conn() as conn:
         cur = _dict_cursor(conn)
         cur.execute("""
-            SELECT id, payload, source_ip, received_at
+            SELECT id, payload, headers, source_ip, received_at
             FROM webhook_events
             WHERE endpoint_id = %s
             ORDER BY received_at DESC
@@ -330,12 +366,51 @@ async def list_events(endpoint_id: str):
 
 # ── Public ingestion (inbound) ───────────────────────────────────────
 
+def _digest_eq(given: str, expected: str) -> bool:
+    """Constant-time comparison. Header values are compared as bytes, so a
+    non-ASCII header cannot raise inside `compare_digest`."""
+    return _hmac.compare_digest(given.encode("utf-8"), expected.encode("utf-8"))
+
+
+def _verify_inbound_signature(endpoint, headers, body_bytes: bytes):
+    """B347. Return the verified V2 signature (the duplicate key), or None
+    when the request was verified with V1. Raise 401 otherwise.
+
+    Error details are fixed strings and never include an expected value.
+    """
+    secret = endpoint["secret"].encode()
+    ts = headers.get("x-webhook-timestamp")
+    v2 = headers.get("x-webhook-signature-v2")
+
+    if ts is not None or v2 is not None:
+        # The sender speaks V2. Verify V2 only: never fall back to V1, or a
+        # captured old delivery (which also carries V1) would be accepted.
+        # A request with only one of the two V2 headers is rejected too.
+        if ts is None or v2 is None or not _TIMESTAMP_RE.fullmatch(ts):
+            raise HTTPException(401, "Invalid signature")
+        expected = _hmac.new(secret, f"{ts}.".encode() + body_bytes, hashlib.sha256).hexdigest()
+        if not _digest_eq(v2, expected):
+            raise HTTPException(401, "Invalid signature")
+        if abs(int(time.time()) - int(ts)) > INBOUND_REPLAY_WINDOW_SECONDS:
+            raise HTTPException(401, "Signature expired")
+        return v2
+
+    if endpoint["require_signature_v2"]:
+        raise HTTPException(401, "Invalid signature")
+
+    sig = headers.get("x-webhook-signature", "")
+    expected = _hmac.new(secret, body_bytes, hashlib.sha256).hexdigest()
+    if not _digest_eq(sig, expected):
+        raise HTTPException(401, "Invalid signature")
+    return None
+
+
 @ingestion_router.post("/webhooks/in/{slug}")
 async def receive_webhook(slug: str, request: Request):
     with _get_conn() as conn:
         cur = _dict_cursor(conn)
         cur.execute("""
-            SELECT id, secret, is_active FROM webhook_endpoints
+            SELECT id, secret, is_active, require_signature_v2 FROM webhook_endpoints
             WHERE slug = %s AND direction = 'inbound'
         """, (slug,))
         endpoint = cur.fetchone()
@@ -347,11 +422,9 @@ async def receive_webhook(slug: str, request: Request):
 
     body_bytes = await request.body()
 
+    v2_signature = None
     if endpoint["secret"]:
-        sig = request.headers.get("x-webhook-signature", "")
-        expected = _hmac.new(endpoint["secret"].encode(), body_bytes, hashlib.sha256).hexdigest()
-        if not _hmac.compare_digest(sig, expected):
-            raise HTTPException(401, "Invalid signature")
+        v2_signature = _verify_inbound_signature(endpoint, request.headers, body_bytes)
 
     try:
         payload = json.loads(body_bytes)
@@ -364,12 +437,29 @@ async def receive_webhook(slug: str, request: Request):
 
     relevant_headers = {
         k: v for k, v in request.headers.items()
-        if k.lower() in ("content-type", "user-agent", "x-github-event", "x-gitlab-event",
-                          "x-stripe-signature", "x-shopify-topic")
+        if k.lower() in _SAVED_EVENT_HEADERS
     }
 
     with _get_conn() as conn:
         cur = conn.cursor()
+        if v2_signature is not None:
+            # B347: reject an exact replay of a verified V2 delivery. Lock
+            # the endpoint row first so two concurrent copies cannot both
+            # pass the check; the lock is released when this transaction
+            # commits (or rolls back on the 409).
+            cur.execute(
+                "SELECT 1 FROM webhook_endpoints WHERE id = %s FOR UPDATE",
+                (endpoint["id"],),
+            )
+            cur.execute("""
+                SELECT 1 FROM webhook_events
+                WHERE endpoint_id = %s
+                  AND received_at > now() - make_interval(secs => %s)
+                  AND headers->>'x-webhook-signature-v2' = %s
+                LIMIT 1
+            """, (endpoint["id"], INBOUND_DUPLICATE_WINDOW_SECONDS, v2_signature))
+            if cur.fetchone():
+                raise HTTPException(409, "Duplicate delivery")
         cur.execute("""
             INSERT INTO webhook_events (endpoint_id, payload, headers, source_ip)
             VALUES (%s, %s, %s, %s)
