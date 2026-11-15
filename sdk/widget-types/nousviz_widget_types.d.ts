@@ -90,6 +90,28 @@ declare interface NousVizWidgetsSDK {
   ) => Promise<Response>;
 
   /**
+   * B348 (core release after 1.1.0). Wrap a fetch-like function for routes the plugin
+   * manifest marks `step_up: true`. When the call returns 401
+   * `{detail: {error: "stepup_required"}}`, the host shows its password
+   * prompt; after a correct password the call is retried ONCE and that
+   * response is returned. If the user cancels, the response is a 401
+   * with `detail.error === "stepup_cancelled"`.
+   *
+   *   const { apiFetch, withStepUp } = window.NousViz.widgets;
+   *   const reveal = withStepUp(apiFetch);
+   *   const r = await reveal(
+   *     `/api/plugins/${pluginId}/accounts/${accountId}/reveal`,
+   *     { method: "POST" },
+   *   );
+   *   if (r.ok) { const { value } = await r.json(); }
+   *
+   * Feature-detect on older hosts: `if (window.NousViz.widgets.withStepUp)`.
+   */
+  withStepUp?: (
+    fetchFn: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>,
+  ) => (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+
+  /**
    * Format an ISO timestamp as a relative-time string ("2 hours ago",
    * "in 5 minutes"). Returns "—" for null/invalid input.
    */

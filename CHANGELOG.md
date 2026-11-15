@@ -6,6 +6,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Nou
 
 ## [Unreleased]
 
+### Added
+
+- **Plugin routes can require re-authentication, and plugins can declare a
+  `reveal_secrets` permission (B348).** In a `plugin.yaml` `permissions:`
+  route rule, `step_up: true` makes core run its step-up check (B236)
+  before the plugin handler: without a password confirmation in the last
+  5 minutes the caller gets core's 401 `stepup_required`, and API keys are
+  refused. The new `level: reveal_secrets` maps to
+  `plugin.<slug>.reveal_secrets`: it is marked sensitive in
+  `/system/permissions`, granted to no role by default (not even admin),
+  only valid on non-GET rules, and every successful call writes a
+  `revealed` row to `credential_audit_log` (user, plugin, route). Plugin
+  widgets get `window.NousViz.widgets.withStepUp(fetchFn)`, which shows the
+  host's password prompt and retries once. Plugins without these fields
+  behave as before. No database migration.
+
 ### Security
 
 - **Replay-protected webhook signatures (B346).** Signed outbound webhooks

@@ -371,11 +371,19 @@ class AuthMiddleware(BaseHTTPMiddleware):
         # Check if auth is required
         auth_required = os.environ.get("AUTH_REQUIRED", "false").lower() in ("true", "1", "yes")
 
-        if not auth_required:
-            return await call_next(request)
-
         path = request.url.path
         method = request.method
+
+        # B348: plugin routes with `step_up: true` or a sensitive level
+        # (`reveal_secrets`) are always enforced — also when
+        # AUTH_REQUIRED is off and even if the path looks public.
+        from ..rbac.routes import match_plugin_route_guard
+        guard = match_plugin_route_guard(method, path)
+        if guard is not None:
+            return await _dispatch_guarded_plugin_route(request, call_next, guard)
+
+        if not auth_required:
+            return await call_next(request)
 
         # Skip public routes
         if is_public_route(path, method):
@@ -392,36 +400,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         # Attach identity to request state for downstream use
         request.state.user_identity = identity
 
-        # B236 (v0.9.10.0): if this is a session-token request and the
-        # session is impersonating, stash both real_user_id and
-        # acting_as_user_id on request.state so the RBAC audit logger and
-        # /me endpoint can render the Option B identity shape correctly.
-        if identity.startswith("session:"):
-            try:
-                token = request.headers.get("X-Session-Token")
-                if token:
-                    th = hashlib.sha256(token.encode()).hexdigest()
-                    from ..db import get_pg_conn
-                    with get_pg_conn() as conn:
-                        cur = conn.cursor()
-                        cur.execute(
-                            """
-                            SELECT user_id::text, acting_as_user_id::text
-                            FROM user_sessions
-                            WHERE token_hash = %s AND expires_at > now()
-                            """,
-                            (th,),
-                        )
-                        row = cur.fetchone()
-                    if row:
-                        request.state.real_user_id = row[0]
-                        request.state.acting_as_user_id = row[1]
-            except Exception:
-                # Audit-side metadata is best-effort; don't break the request
-                # if the lookup fails.
-                logging.getLogger("nousviz.auth.middleware").exception(
-                    "session metadata lookup failed (request continues)"
-                )
+        _stash_session_metadata(request, identity)
 
         # Update last_seen_at (debounced, max once per 60s per user)
         if identity.startswith("session:"):
@@ -437,6 +416,158 @@ class AuthMiddleware(BaseHTTPMiddleware):
             return rbac_decision
 
         return await call_next(request)
+
+
+def _stash_session_metadata(request: Request, identity: str) -> None:
+    """B236 (v0.9.10.0): if this is a session-token request and the
+    session is impersonating, stash both real_user_id and
+    acting_as_user_id on request.state so the RBAC audit logger and
+    /me endpoint can render the Option B identity shape correctly."""
+    if not identity.startswith("session:"):
+        return
+    try:
+        token = request.headers.get("X-Session-Token")
+        if token:
+            th = hashlib.sha256(token.encode()).hexdigest()
+            from ..db import get_pg_conn
+            with get_pg_conn() as conn:
+                cur = conn.cursor()
+                cur.execute(
+                    """
+                    SELECT user_id::text, acting_as_user_id::text
+                    FROM user_sessions
+                    WHERE token_hash = %s AND expires_at > now()
+                    """,
+                    (th,),
+                )
+                row = cur.fetchone()
+            if row:
+                request.state.real_user_id = row[0]
+                request.state.acting_as_user_id = row[1]
+    except Exception:
+        # Audit-side metadata is best-effort; don't break the request
+        # if the lookup fails.
+        logging.getLogger("nousviz.auth.middleware").exception(
+            "session metadata lookup failed (request continues)"
+        )
+
+
+async def _dispatch_guarded_plugin_route(request: Request, call_next, guard):
+    """B348: enforce a plugin route guard, in this order, before the
+    plugin handler runs:
+
+    1. A signed-in caller (401 otherwise). With `step_up: true`, API keys
+       are refused (403 `session_required`): only a user session can
+       re-authenticate.
+    2. The rule's permission `plugin.<slug>.<level>` (403). Templated
+       routes are covered too.
+    3. With `step_up: true`: core's `requires_step_up` (401
+       `stepup_required`, the same body core's own routes return).
+
+    Then the handler runs. For `reveal_secrets`, a 2xx response writes
+    one `credential_audit_log` row (`revealed`); if that write fails the
+    response is withheld (500), so a secret is never returned unrecorded.
+    """
+    from fastapi import HTTPException
+    from ..rbac.permissions import role_has_permission
+
+    method = request.method
+    path = request.url.path
+
+    if guard.blocked:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "detail": (
+                    f"Plugin {guard.slug!r} is unavailable: its `permissions:` block "
+                    f"is invalid ({guard.blocked}). Fix plugin.yaml and restart the API."
+                ),
+            },
+        )
+
+    identity = get_authenticated_identity(request)
+    if not identity:
+        return JSONResponse(
+            status_code=401,
+            content={"detail": "Authentication required. Use API key or session token."},
+        )
+    request.state.user_identity = identity
+
+    if guard.step_up and not identity.startswith("session:"):
+        return JSONResponse(
+            status_code=403,
+            content={
+                "detail": {
+                    "error": "session_required",
+                    "message": (
+                        "This action requires re-authentication by a signed-in user. "
+                        "API keys can't call it."
+                    ),
+                },
+            },
+        )
+
+    _stash_session_metadata(request, identity)
+    if identity.startswith("session:"):
+        _update_last_seen(request)
+
+    # A plugin may have registered this exact route itself with another
+    # permission; that permission must hold as well.
+    rbac_decision = _check_plugin_route_permission(request, method, path)
+    if rbac_decision is not None:
+        return rbac_decision
+
+    user: dict = {}
+    try:
+        from ..routes.auth import get_me
+        user = get_me(request) or {}
+    except Exception:
+        user = {}
+    role = user.get("role")
+    if not (role and role_has_permission(role, guard.permission)):
+        return JSONResponse(
+            status_code=403,
+            content={"detail": f"Permission denied: this action requires {guard.permission}."},
+        )
+
+    if guard.step_up:
+        from ..rbac.dependency import requires_step_up
+        try:
+            requires_step_up(request)
+        except HTTPException as exc:
+            return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+
+    response = await call_next(request)
+
+    if guard.audit_reveal and 200 <= response.status_code < 300:
+        real_user_id = getattr(request.state, "real_user_id", None)
+        acting_as = getattr(request.state, "acting_as_user_id", None)
+        detail = (
+            f"plugin={guard.slug} route={guard.method} {guard.path} path={path} "
+            f"user_id={user.get('id')}"
+        )
+        if acting_as:
+            detail += f" actor_user_id={real_user_id}"
+        try:
+            from ..credential_usage import record_reveal
+            record_reveal(guard.slug, user.get("email") or identity, detail)
+        except Exception:
+            logger.exception(
+                "B348: could not write the `revealed` audit row for %s %s — response withheld",
+                method, path,
+            )
+            # Drain the plugin's response so its body is never sent.
+            try:
+                async for _ in response.body_iterator:  # type: ignore[attr-defined]
+                    pass
+            except Exception:
+                pass
+            return JSONResponse(
+                status_code=500,
+                content={"detail": "The reveal could not be recorded in the audit log, so nothing was returned."},
+            )
+
+    return response
 
 
 def _check_plugin_route_permission(request: Request, method: str, path: str):

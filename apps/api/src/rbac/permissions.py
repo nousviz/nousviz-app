@@ -75,6 +75,17 @@ SENSITIVE_PERMISSIONS: FrozenSet[str] = frozenset({
 })
 
 
+def is_sensitive_permission(permission: str) -> bool:
+    """True if `permission` is sensitive: a static SENSITIVE_PERMISSIONS
+    entry, or (B348) a dynamic plugin permission at a sensitive level such
+    as `plugin.<slug>.reveal_secrets`. Sensitive permissions are badged in
+    /system/permissions and can only be granted to admin or superadmin."""
+    if permission in SENSITIVE_PERMISSIONS:
+        return True
+    from ..plugin_manifest import is_sensitive_plugin_permission
+    return is_sensitive_plugin_permission(permission)
+
+
 # Built-in roles. Role hierarchy is implicit in the permission sets:
 # superadmin ⊇ admin ⊇ analyst ⊇ viewer.
 #

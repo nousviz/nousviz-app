@@ -15,6 +15,7 @@ from .permissions import (
     PERMISSIONS,
     ROLE_PERMISSIONS,
     SENSITIVE_PERMISSIONS,
+    is_sensitive_permission,
     BUILTIN_ROLE_RANK,
     role_rank,
     role_has_permission,
@@ -33,6 +34,10 @@ from .routes import (
     register_route,
     get_route_permission,
     is_public,
+    PluginRouteGuard,
+    PLUGIN_ROUTE_GUARDS,
+    register_plugin_route_guard,
+    match_plugin_route_guard,
 )
 from .audit import log_decision
 from .config_audit import log_config_change
@@ -54,6 +59,7 @@ __all__ = [
     "PERMISSIONS",
     "ROLE_PERMISSIONS",
     "SENSITIVE_PERMISSIONS",
+    "is_sensitive_permission",
     "BUILTIN_ROLE_RANK",
     "role_rank",
     "role_has_permission",
@@ -68,6 +74,10 @@ __all__ = [
     "register_route",
     "get_route_permission",
     "is_public",
+    "PluginRouteGuard",
+    "PLUGIN_ROUTE_GUARDS",
+    "register_plugin_route_guard",
+    "match_plugin_route_guard",
     "log_decision",
     "log_config_change",
     "requires",

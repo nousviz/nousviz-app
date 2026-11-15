@@ -30,6 +30,7 @@ Plugins with HTTP routes should declare a `permissions:` block in `plugin.yaml`.
 | `write` | analyst+ | Creating/editing plugin data |
 | `configure` | admin+ | Plugin settings, secrets, schedules |
 | `admin` | superadmin | Destructive ops (uninstall hooks, data wipe, role overrides specific to your plugin) |
+| `reveal_secrets` | nobody (sensitive) | Returning a stored secret to the user. Non-GET routes only; see [below](#re-authentication-and-revealing-stored-secrets-b348) |
 
 ### Minimal example
 
@@ -71,6 +72,47 @@ Plugins without a `permissions:` block fall back to the legacy B229 method-deriv
 ### Validation
 
 The platform parses your `permissions:` block at install time. Errors (unknown level, missing required fields, invalid HTTP method) **block install** with a clear error message — fix the manifest and reinstall. There's no silent fallback for typos.
+
+### Re-authentication and revealing stored secrets (B348)
+
+Two optional route-rule fields cover routes that hand a stored secret back to a user, for example "show the saved password for this account":
+
+```yaml
+permissions:
+  default: read
+  routes:
+    - method: POST
+      path: /api/plugins/my-plugin/accounts/*/reveal
+      level: reveal_secrets
+      step_up: true
+```
+
+- **`step_up: true`** (any level). Core requires the user to have re-entered their password in the last 5 minutes (`POST /api/auth/step-up`, the same check as core's RBAC edits). Without it the request gets core's `401 {"detail": {"error": "stepup_required", ...}}` and never reaches your handler. API keys are refused (`403`, `detail.error = "session_required"`): only a signed-in user can re-authenticate. Must be a YAML boolean (`true`/`false`).
+- **`level: reveal_secrets`**. A sensitive level outside the read → admin ladder: holding `admin` does not include it. It maps to `plugin.<slug>.reveal_secrets`, is marked **sensitive** in `/system/permissions`, and is **granted to no role by default, including admin and superadmin**. A superadmin grants it to the admin or superadmin role deliberately (sensitive permissions can't go to other roles). Nothing in `plugin.yaml` can grant it.
+  - Only valid on a rule with a non-GET `method:` (`POST`, `PUT`, `PATCH`, `DELETE`). A GET rule, a rule without `method:`, or `default: reveal_secrets` fails validation, and the install is refused.
+  - Core writes one `credential_audit_log` row per successful (2xx) call: `action = 'revealed'`, `performed_by` = the user's email, `detail` = plugin, route template, request path and user id. Failed calls (401, 403, a 4xx/5xx from your handler) write nothing. If the row can't be written, core withholds your response and returns 500. You don't write this row yourself.
+  - Use `step_up: true` together with it.
+
+Your handler only decrypts and returns the value; core has already checked the permission and the step-up (also on development installs with `AUTH_REQUIRED` off). Path globs match the route template, so `accounts/*/reveal` covers `accounts/{account_id}/reveal`. Templated routes are guarded too.
+
+If a `permissions:` block that uses `step_up` or `reveal_secrets` is invalid, the plugin's routes answer `503` instead of falling back to the legacy defaults.
+
+**In a widget**, wrap the call with `withStepUp` from the host SDK. On `stepup_required` it shows NousViz's own password prompt and, after a correct password, retries the call once:
+
+```ts
+const { apiFetch, withStepUp } = window.NousViz.widgets;
+const reveal = withStepUp(apiFetch);
+const r = await reveal(`/api/plugins/${pluginId}/accounts/${accountId}/reveal`, { method: "POST" });
+if (r.ok) {
+  const { value } = await r.json();
+} else if (r.status === 401) {
+  // The user cancelled the prompt (detail.error === "stepup_cancelled").
+} else if (r.status === 403) {
+  // No reveal_secrets grant for this user's role.
+}
+```
+
+`withStepUp` is typed in `sdk/widget-types/nousviz_widget_types.d.ts` (optional there; check `window.NousViz.widgets.withStepUp` exists if your plugin supports older cores).
 
 ### See also
 
