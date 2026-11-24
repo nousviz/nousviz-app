@@ -9,6 +9,7 @@ app_logs
 auth_audit
 connections
 credential_audit_log
+credential_usage_daily
 credentials
 datasets
 deploy_keys
