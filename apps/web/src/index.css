@@ -1,6 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap');
+/* P232: fonts are bundled from @fontsource-variable (imported in main.tsx) and
+   served by NousViz itself; no requests to Google Fonts. */
 
 @tailwind base;
 
@@ -63,8 +62,8 @@ html {
     --sidebar-w: 224px;
     --topbar-h: 56px;
     /* Font family tokens */
-    --font-display: 'Instrument Sans', system-ui, sans-serif;
-    --font-body: 'Instrument Sans', system-ui, sans-serif;
+    --font-display: 'Instrument Sans Variable', 'Instrument Sans', system-ui, sans-serif;
+    --font-body: 'Instrument Sans Variable', 'Instrument Sans', system-ui, sans-serif;
   }
 
   /* ── Dark mode ──────────────────────────────────────────── */
@@ -148,8 +147,8 @@ html {
     --sidebar-ring:       214 100% 82%;
 
     /* Font family override — Manrope display + Inter body */
-    --font-display: 'Manrope', system-ui, sans-serif;
-    --font-body:    'Inter', system-ui, sans-serif;
+    --font-display: 'Manrope Variable', 'Manrope', system-ui, sans-serif;
+    --font-body:    'Inter Variable', 'Inter', system-ui, sans-serif;
   }
 }
 
@@ -160,6 +159,10 @@ html {
   body {
     @apply bg-background text-foreground antialiased;
     font-family: var(--font-body);
+  }
+  /* P232: digits of equal width in tables, so number columns line up. */
+  td, th {
+    font-variant-numeric: tabular-nums;
   }
 }
 
@@ -180,7 +183,7 @@ html {
     line-height: 1.6;
   }
   .font-mono-deck {
-    font-family: 'Geist Mono', ui-monospace, monospace;
+    font-family: 'Geist Mono Variable', 'Geist Mono', ui-monospace, monospace;
   }
   .scrollbar-hide {
     -ms-overflow-style: none;

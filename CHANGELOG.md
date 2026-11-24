@@ -6,6 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Nou
 
 ## [Unreleased]
 
+### Changed
+
+- **UI fonts are served by NousViz itself; nothing loads from Google Fonts
+  (P232).** The same four fonts (Instrument Sans, Manrope, Inter, Geist
+  Mono; all SIL Open Font License) are bundled from `@fontsource-variable`
+  packages, so pages no longer send viewers' IP addresses to Google and
+  render the same offline. The CSP in `infra/nginx*.conf` no longer allows
+  the Google hosts. Table cells use tabular figures so number columns line
+  up. A test fails if a Google Fonts host comes back.
+
 ### Added
 
 - **Plugin routes can require re-authentication, and plugins can declare a
