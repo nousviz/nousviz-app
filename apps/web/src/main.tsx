@@ -2,6 +2,13 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
+// P232: the UI fonts, bundled and served by NousViz (no Google Fonts).
+// Variable fonts: one file per family covers every weight; each subset
+// (Latin, Latin Extended, …) downloads only when the page uses it.
+import "@fontsource-variable/instrument-sans";
+import "@fontsource-variable/inter";
+import "@fontsource-variable/manrope";
+import "@fontsource-variable/geist-mono";
 import "./index.css";
 // v0.10.1.0: react-grid-layout CSS for the dashboard builder's drag-and-resize.
 import "react-grid-layout/css/styles.css";
